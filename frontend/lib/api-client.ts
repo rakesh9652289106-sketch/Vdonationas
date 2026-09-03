@@ -1,5 +1,5 @@
-// Multi-Tier Temple REST API Client Service Layer
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+// Django REST API Client Service Layer
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export async function fetchFromDjango<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
   try {
