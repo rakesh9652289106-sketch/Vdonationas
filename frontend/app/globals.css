@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #FAF7F2;
+    --foreground: #1C1917;
+  }
+
+  .dark {
+    --background: #121212;
+    --foreground: #FAF7F2;
+  }
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Devotional Theme Utilities */
+.bg-devotional-maroon { background-color: #6B1D2F; }
+.bg-devotional-maroon-dark { background-color: #4A121F; }
+.bg-devotional-maroon-light { background-color: #8C2B43; }
+.bg-devotional-saffron { background-color: #E06D29; }
+.bg-devotional-gold { background-color: #D4AF37; }
+.bg-devotional-cream { background-color: #FAF7F2; }
+.bg-devotional-cream-dark { background-color: #F4EFE6; }
+
+.text-devotional-maroon { color: #6B1D2F; }
+.text-devotional-saffron { color: #E06D29; }
+.text-devotional-gold { color: #D4AF37; }
+
+.border-devotional-maroon { border-color: #6B1D2F; }
+.border-devotional-saffron { border-color: #E06D29; }
+.border-devotional-gold { border-color: #D4AF37; }
+
+/* 3D VISUAL DESIGN UTILITIES */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.translate-z-20 {
+  transform: translateZ(20px);
+}
+
+.translate-z-30 {
+  transform: translateZ(30px);
+}
+
+.translate-z-40 {
+  transform: translateZ(40px);
+}
+
+.shadow-gold {
+  box-shadow: 0 10px 30px -5px rgba(212, 175, 55, 0.4);
+}
+
+.shadow-gold-lg {
+  box-shadow: 0 25px 60px -10px rgba(212, 175, 55, 0.5), 0 10px 20px -5px rgba(107, 29, 47, 0.3);
+}
+
+.shadow-devotional-3d {
+  box-shadow: 0 20px 50px -10px rgba(107, 29, 47, 0.35), 0 10px 20px -5px rgba(224, 109, 41, 0.25);
+}
+
+/* Metallic Gold Text Gradient */
+.text-gold-gradient {
+  background: linear-gradient(135deg, #FFF1B0 0%, #D4AF37 40%, #AA7C11 75%, #FDF0A6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Gold Shimmer Animation */
+@keyframes goldShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer-gold {
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0) 0%, rgba(255, 223, 110, 0.6) 50%, rgba(212, 175, 55, 0) 100%);
+  background-size: 200% 100%;
+  animation: goldShimmer 3s infinite linear;
+}
+
+/* Pulsing Diya Glow Halo */
+@keyframes diyaGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.5), 0 0 40px rgba(224, 109, 41, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(212, 175, 55, 0.8), 0 0 65px rgba(224, 109, 41, 0.5);
+  }
+}
+
+.diya-glow-pulse {
+  animation: diyaGlow 3s infinite ease-in-out;
+}
+
+/* Gold Filigree Ornamental Border */
+.gold-filigree-border {
+  border: 2px solid #D4AF37;
+  position: relative;
+}
+
+.gold-filigree-border::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px dashed rgba(212, 175, 55, 0.6);
+  pointer-events-none: none;
+  border-radius: inherit;
+}
+
+/* Glassmorphism */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1 border-devotional-gold;
+}
+
+.dark .glass-panel {
+  background: rgba(28, 25, 23, 0.88);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+/* Devotional Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dark ::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D4AF37;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #E06D29;
+}

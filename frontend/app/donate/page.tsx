@@ -1,0 +1,518 @@
+'use client';
+
+import React, { useState, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { MOCK_TEMPLES, MOCK_CATEGORIES, MOCK_CAMPAIGNS } from '@/lib/mock-data';
+import { PaymentProviderEngine } from '@/lib/payment-provider';
+import ReceiptViewModal from '@/components/ReceiptViewModal';
+import {
+  Heart,
+  ShieldCheck,
+  Building2,
+  CheckCircle2,
+  Lock,
+  QrCode,
+  CreditCard,
+  Building,
+  RefreshCw,
+  Sparkles,
+  Users,
+} from 'lucide-react';
+
+function DonationFormContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const initialTempleId = searchParams.get('templeId') || MOCK_TEMPLES[0].id;
+  const initialCategoryId = searchParams.get('categoryId') || '';
+  const initialCampaignId = searchParams.get('campaignId') || '';
+
+  // Form State
+  const [selectedTempleId, setSelectedTempleId] = useState(initialTempleId);
+  const [purpose, setPurpose] = useState(initialCategoryId ? 'Nitya Annadanam' : 'General Donation');
+  const [amount, setAmount] = useState<number>(1001);
+  const [customAmount, setCustomAmount] = useState('');
+  const [donorName, setDonorName] = useState('Radha Krishna');
+  const [donorEmail, setDonorEmail] = useState('devotee@gmail.com');
+  const [donorPhone, setDonorPhone] = useState('+91 9123456789');
+  const [donorPan, setDonorPan] = useState('');
+  const [onBehalfOf, setOnBehalfOf] = useState('');
+  const [dedicationMsg, setDedicationMsg] = useState('');
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'QR' | 'CARD' | 'NETBANKING'>('UPI');
+
+  // Checkout Steps
+  const [step, setStep] = useState<'DETAILS' | 'PAYMENT' | 'VERIFYING' | 'SUCCESS'>('DETAILS');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [receiptData, setReceiptData] = useState<any>(null);
+
+  const currentTemple = MOCK_TEMPLES.find((t) => t.id === selectedTempleId) || MOCK_TEMPLES[0];
+  const presets = [101, 501, 1001, 2501, 5001, 10001];
+
+  const handleAmountPreset = (val: number) => {
+    setAmount(val);
+    setCustomAmount('');
+  };
+
+  const handleCustomAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val.includes('-')) return;
+    setCustomAmount(val);
+    const num = parseFloat(val);
+    if (!isNaN(num) && num > 0) {
+      setAmount(num);
+    } else if (val === '' || num <= 0) {
+      setAmount(1);
+    }
+  };
+
+  const handleProceedToPayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (amount <= 0 || isNaN(amount)) {
+      alert('Donation amount must be a positive number (minimum ₹1).');
+      return;
+    }
+    setStep('PAYMENT');
+  };
+
+  const handleConfirmPayment = async () => {
+    setStep('VERIFYING');
+    setIsProcessing(true);
+
+    // Initiate server-side payment abstraction
+    const initiateRes = await PaymentProviderEngine.initiatePayment({
+      templeId: currentTemple.id,
+      amount,
+      currency: 'INR',
+      donorName: isAnonymous ? 'Anonymous Devotee' : donorName,
+      donorEmail,
+      donorPhone,
+      paymentMethod,
+      purpose,
+    });
+
+    // Simulate server verification check (Requirement #12)
+    setTimeout(async () => {
+      const verifyRes = await PaymentProviderEngine.verifyPaymentServerSide(initiateRes.transactionId);
+
+      setIsProcessing(false);
+      if (verifyRes.isVerified) {
+        const receipt = {
+          receiptNo: verifyRes.receiptNo,
+          donationId: `DON-${Date.now()}`,
+          templeName: currentTemple.name,
+          trustName: currentTemple.trustName,
+          donorName: isAnonymous ? 'Anonymous Devotee' : donorName,
+          amount,
+          categoryName: purpose,
+          campaignTitle: initialCampaignId ? 'Campaign Support' : undefined,
+          date: new Date().toLocaleString(),
+          paymentMethod,
+          transactionId: verifyRes.transactionId,
+          taxInfo: currentTemple.taxBenefitInfo,
+          verificationCode: verifyRes.verificationCode,
+        };
+
+        setReceiptData(receipt);
+        setStep('SUCCESS');
+      }
+    }, 2000);
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      {/* Header Stepper */}
+      <div className="text-center space-y-2 mb-8">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-devotional-saffron text-xs font-bold uppercase">
+          <ShieldCheck className="w-4 h-4" /> SECURE DIGITAL SEVA GATEWAY
+        </div>
+        <h1 className="text-3xl font-serif font-bold text-devotional-maroon dark:text-amber-400">
+          Make a Sacred Donation
+        </h1>
+        <p className="text-stone-600 dark:text-stone-300 text-xs">
+          Your offering is 100% server-verified and generates an official 80G digital receipt immediately.
+        </p>
+      </div>
+
+      {/* STEP CONTENT CONTAINER */}
+      <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-xl overflow-hidden">
+        {step === 'DETAILS' && (
+          <form onSubmit={handleProceedToPayment} className="p-6 sm:p-10 space-y-8">
+            {/* Step 1: Temple Selection */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
+                1. Select Temple Shrine
+              </label>
+              <select
+                value={selectedTempleId}
+                onChange={(e) => setSelectedTempleId(e.target.value)}
+                className="w-full px-4 py-3 rounded-2xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-stone-100 text-sm font-semibold focus:ring-2 focus:ring-devotional-maroon"
+              >
+                {MOCK_TEMPLES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.city}, {t.state})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Step 2: Purpose */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
+                2. Donation Purpose / Seva Cause
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {[
+                  'Nitya Annadanam',
+                  'General Donation',
+                  'Gau Seva (Cows)',
+                  'Temple Development',
+                  'Daily Pooja',
+                  'Festival Seva',
+                ].map((p) => (
+                  <button
+                    type="button"
+                    key={p}
+                    onClick={() => setPurpose(p)}
+                    className={`p-3 rounded-2xl text-xs font-bold border transition-all text-left ${
+                      purpose === p
+                        ? 'border-devotional-maroon bg-amber-50 dark:bg-stone-800 text-devotional-maroon dark:text-amber-400 shadow-sm'
+                        : 'border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Step 3: Choose Amount */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
+                3. Choose Offering Amount (INR ₹)
+              </label>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                {presets.map((val) => (
+                  <button
+                    type="button"
+                    key={val}
+                    onClick={() => handleAmountPreset(val)}
+                    className={`py-3 rounded-xl text-xs font-bold border transition-all ${
+                      amount === val && !customAmount
+                        ? 'bg-devotional-maroon text-white border-devotional-maroon shadow-md'
+                        : 'bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200'
+                    }`}
+                  >
+                    ₹{val.toLocaleString('en-IN')}
+                  </button>
+                ))}
+              </div>
+              <div>
+                <input
+                  type="number"
+                  placeholder="Or enter custom amount in ₹"
+                  value={customAmount}
+                  onChange={handleCustomAmountChange}
+                  className="w-full px-4 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-xs text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-devotional-maroon"
+                />
+              </div>
+            </div>
+
+            {/* Step 4: Donor Information */}
+            <div className="space-y-4 pt-4 border-t border-stone-200 dark:border-stone-800">
+              <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
+                4. Devotee & Tax Information
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={donorName}
+                    onChange={(e) => setDonorName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Mobile Number *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={donorPhone}
+                    onChange={(e) => setDonorPhone(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Email Address (for Digital Receipt) *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={donorEmail}
+                    onChange={(e) => setDonorEmail(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    PAN Card Number (Optional for 80G Tax Exemption)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. ABCDE1234F"
+                    value={donorPan}
+                    onChange={(e) => setDonorPan(e.target.value.toUpperCase())}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 uppercase font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Family Dedication */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2">
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Donate on behalf of family / person
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. On behalf of my parents"
+                    value={onBehalfOf}
+                    onChange={(e) => setOnBehalfOf(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Personal Dedication Message / Prayer
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Birthday blessing / Memorial prayer"
+                    value={dedicationMsg}
+                    onChange={(e) => setDedicationMsg(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900"
+                  />
+                </div>
+              </div>
+
+              {/* Anonymous Checkbox */}
+              <div className="flex items-center gap-2 text-xs pt-2">
+                <input
+                  type="checkbox"
+                  id="anon"
+                  checked={isAnonymous}
+                  onChange={(e) => setIsAnonymous(e.target.checked)}
+                  className="rounded border-stone-300 text-devotional-maroon focus:ring-devotional-maroon"
+                />
+                <label htmlFor="anon" className="text-stone-700 dark:text-stone-300 font-medium">
+                  Donate anonymously (Hide my name on public campaign supporter walls)
+                </label>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-devotional-saffron to-amber-600 text-white font-bold text-sm hover:brightness-110 shadow-gold transition-all"
+            >
+              PROCEED TO PAYMENT (₹{amount.toLocaleString('en-IN')})
+            </button>
+          </form>
+        )}
+
+        {/* STEP 2: PAYMENT METHOD SELECTION */}
+        {step === 'PAYMENT' && (
+          <div className="p-6 sm:p-10 space-y-6">
+            <div className="border-b border-stone-200 dark:border-stone-800 pb-4">
+              <h2 className="font-serif font-bold text-xl text-devotional-maroon dark:text-amber-400">
+                Select Secure Payment Method
+              </h2>
+              <p className="text-xs text-stone-500 mt-1">
+                Paying ₹{amount.toLocaleString('en-IN')} to {currentTemple.name} ({purpose})
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('UPI')}
+                className={`p-4 rounded-2xl border flex items-center gap-3 text-left transition-all ${
+                  paymentMethod === 'UPI'
+                    ? 'border-devotional-maroon bg-amber-50 dark:bg-stone-800 shadow-md'
+                    : 'border-stone-200 dark:border-stone-700'
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-devotional-maroon text-amber-300 flex items-center justify-center font-bold text-xs">
+                  UPI
+                </div>
+                <div>
+                  <p className="font-bold text-xs text-stone-900 dark:text-stone-100">UPI Instant Pay</p>
+                  <p className="text-[10px] text-stone-500">GPay, PhonePe, Paytm, BHIM</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('QR')}
+                className={`p-4 rounded-2xl border flex items-center gap-3 text-left transition-all ${
+                  paymentMethod === 'QR'
+                    ? 'border-devotional-maroon bg-amber-50 dark:bg-stone-800 shadow-md'
+                    : 'border-stone-200 dark:border-stone-700'
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-devotional-maroon text-amber-300 flex items-center justify-center font-bold text-xs">
+                  <QrCode className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-bold text-xs text-stone-900 dark:text-stone-100">Scan Dynamic QR</p>
+                  <p className="text-[10px] text-stone-500">Scan & pay from any mobile app</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('CARD')}
+                className={`p-4 rounded-2xl border flex items-center gap-3 text-left transition-all ${
+                  paymentMethod === 'CARD'
+                    ? 'border-devotional-maroon bg-amber-50 dark:bg-stone-800 shadow-md'
+                    : 'border-stone-200 dark:border-stone-700'
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-devotional-maroon text-amber-300 flex items-center justify-center font-bold text-xs">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-bold text-xs text-stone-900 dark:text-stone-100">Credit / Debit Cards</p>
+                  <p className="text-[10px] text-stone-500">Visa, MasterCard, RuPay</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('NETBANKING')}
+                className={`p-4 rounded-2xl border flex items-center gap-3 text-left transition-all ${
+                  paymentMethod === 'NETBANKING'
+                    ? 'border-devotional-maroon bg-amber-50 dark:bg-stone-800 shadow-md'
+                    : 'border-stone-200 dark:border-stone-700'
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-devotional-maroon text-amber-300 flex items-center justify-center font-bold text-xs">
+                  <Building className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-bold text-xs text-stone-900 dark:text-stone-100">Net Banking</p>
+                  <p className="text-[10px] text-stone-500">All major Indian banks</p>
+                </div>
+              </button>
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <button
+                type="button"
+                onClick={() => setStep('DETAILS')}
+                className="px-6 py-3 rounded-2xl border border-stone-300 text-stone-700 dark:text-stone-300 font-bold text-xs"
+              >
+                Back to Details
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmPayment}
+                className="flex-1 py-3 rounded-2xl bg-devotional-maroon text-white font-bold text-xs hover:bg-devotional-maroon-dark transition-colors shadow-lg"
+              >
+                PAY NOW (₹{amount.toLocaleString('en-IN')})
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: SERVER-SIDE VERIFICATION IN PROGRESS */}
+        {step === 'VERIFYING' && (
+          <div className="p-12 text-center space-y-6">
+            <div className="w-16 h-16 rounded-full bg-amber-100 text-devotional-maroon flex items-center justify-center mx-auto animate-spin">
+              <RefreshCw className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-serif font-bold text-devotional-maroon dark:text-amber-400">
+                Verifying Payment Server-Side...
+              </h2>
+              <p className="text-xs text-stone-500 max-w-sm mx-auto">
+                Requirement #12 Safety Protocol: Verifying transaction signature & bank response before generating digital receipt...
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 4: DONATION SUCCESS */}
+        {step === 'SUCCESS' && receiptData && (
+          <div className="p-10 text-center space-y-6 bg-emerald-950/10 dark:bg-stone-900">
+            <div className="w-20 h-20 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center mx-auto border-4 border-emerald-400 shadow-xl">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
+                TRANSACTION CONFIRMED
+              </span>
+              <h2 className="text-3xl font-serif font-bold text-emerald-900 dark:text-emerald-400">
+                Your Offering Has Been Received
+              </h2>
+              <p className="text-stone-600 dark:text-stone-300 text-xs">
+                May your devotion bring peace, health, and prosperity to your family.
+              </p>
+            </div>
+
+            <div className="max-w-md mx-auto p-4 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-700 text-xs text-left space-y-2">
+              <div className="flex justify-between">
+                <span className="text-stone-500">Temple:</span>
+                <span className="font-bold text-stone-900 dark:text-stone-100">{receiptData.templeName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-500">Amount:</span>
+                <span className="font-bold text-devotional-maroon dark:text-amber-400">₹{receiptData.amount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-500">Receipt No:</span>
+                <span className="font-mono font-bold text-stone-800 dark:text-stone-200">{receiptData.receiptNo}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-4 pt-2">
+              <button
+                onClick={() => setReceiptData(receiptData)}
+                className="px-6 py-3 rounded-2xl bg-devotional-maroon text-white font-bold text-xs shadow-md hover:bg-devotional-maroon-dark"
+              >
+                View / Print 80G Digital Receipt
+              </button>
+              <button
+                onClick={() => router.push('/devotee/dashboard')}
+                className="px-6 py-3 rounded-2xl border border-devotional-maroon text-devotional-maroon dark:text-amber-400 font-bold text-xs hover:bg-amber-50"
+              >
+                Go to Devotee Dashboard
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Receipt Modal Trigger */}
+      {receiptData && (
+        <ReceiptViewModal receiptData={receiptData} onClose={() => setReceiptData(null)} />
+      )}
+    </div>
+  );
+}
+
+export default function SmartDonationPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs">Loading donation gateway...</div>}>
+      <DonationFormContent />
+    </Suspense>
+  );
+}

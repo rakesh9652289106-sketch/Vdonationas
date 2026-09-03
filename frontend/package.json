@@ -1,0 +1,36 @@
+{
+  "name": "donations",
+  "version": "1.0.0",
+  "description": "Multi-Temple Digital Donation & Temple SaaS Platform",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.0.0",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/three": "^0.185.4",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.400.0",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "recharts": "^2.12.7",
+    "tailwind-merge": "^2.3.0",
+    "three": "^0.185.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "prisma": "^5.0.0",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.4.5"
+  }
+}

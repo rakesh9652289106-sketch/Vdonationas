@@ -1,0 +1,13 @@
+{
+  "name": "donations-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Multi-Temple Digital Donation & Temple SaaS Platform (Frontend & Backend)",
+  "scripts": {
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && python manage.py runserver",
+    "build:frontend": "cd frontend && npm run build",
+    "start:frontend": "cd frontend && npm run start",
+    "lint:frontend": "cd frontend && npm run lint"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "VD Multi-Temple Digital Platform",
+  "short_name": "VD",
+  "description": "Production Multi-Temple Digital Donation and Temple Management SaaS Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7F2",
+  "theme_color": "#6B1D2F",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
