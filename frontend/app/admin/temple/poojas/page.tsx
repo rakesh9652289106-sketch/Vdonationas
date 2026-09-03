@@ -40,6 +40,7 @@ import {
   saveBlockedDates,
   isWithin3MonthsLimit,
   isWithin4MonthsLimit,
+  isWithin4To7MonthsWindow,
   validateSequentialPreviousMonths,
   validateReleaseTimeAndGap,
   getRolling12MonthsStatus,
