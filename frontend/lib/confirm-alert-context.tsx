@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 
 export type ActionVariant = 'danger' | 'warning' | 'change' | 'info';
+export type AlertType = 'success' | 'warning' | 'error' | 'info' | 'change' | 'danger';
 
 export interface ConfirmOptions {
   title: string;
@@ -31,7 +32,7 @@ export interface ConfirmOptions {
 export interface AlertOptions {
   title: string;
   message: string;
-  type?: 'success' | 'warning' | 'error' | 'info';
+  type?: AlertType;
   duration?: number;
 }
 
@@ -250,7 +251,7 @@ export function ConfirmAlertProvider({ children }: { children: ReactNode }) {
       {/* TOAST NOTIFICATION STACK WITH SACRED DEVOTIONAL GLOW */}
       <div className="fixed top-20 right-4 sm:right-6 z-50 space-y-3 pointer-events-none max-w-sm w-full">
         {toasts.map((toast) => {
-          const isError = toast.type === 'error';
+          const isError = toast.type === 'error' || toast.type === 'danger';
           const isWarning = toast.type === 'warning';
           const isInfo = toast.type === 'info';
 

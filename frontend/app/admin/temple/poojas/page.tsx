@@ -381,7 +381,6 @@ export default function TemplePoojasAdminPage() {
 
     const currentMods = getSevaModifications();
     saveSevaModifications([newMod, ...currentMods]);
-    setDeleteConfirmId(null);
     showNotification(
       `✓ Deletion request for "${target.title}" submitted to Super Admin for authorization!`,
       'danger',
