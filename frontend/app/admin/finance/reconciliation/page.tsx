@@ -4,9 +4,11 @@ import React, { useState } from 'react';
 import { MOCK_RECONCILIATION, MOCK_OFFLINE_DONATIONS } from '@/lib/mock-data';
 import { TrendingUp, Plus, FileSpreadsheet, DollarSign, Flame } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
 export default function FinanceReconciliationPage() {
   const { t } = useLanguage();
+  const { confirmAction, showAlert } = useConfirmAlert();
   const [offlineList, setOfflineList] = useState(MOCK_OFFLINE_DONATIONS);
   const [showOfflineModal, setShowOfflineModal] = useState(false);
 
@@ -17,16 +19,25 @@ export default function FinanceReconciliationPage() {
   const [refNo, setRefNo] = useState('');
   const [notes, setNotes] = useState('');
 
-  const handleRecordOffline = (e: React.FormEvent) => {
+  const handleRecordOffline = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!donorName || !amount) return;
+
+    const parsedAmt = parseFloat(amount);
+    const confirmed = await confirmAction({
+      title: 'Record Offline Seva Donation?',
+      message: `Confirm recording ₹${parsedAmt.toLocaleString('en-IN')} received via ${method} from ${donorName}? This entry will be reconciled in the temple accounts ledger.`,
+      confirmText: 'Record Entry',
+      variant: 'change',
+    });
+    if (!confirmed) return;
 
     const newRec = {
       id: `off-${Date.now()}`,
       templeId: 'tpl-penugonda-01',
       templeName: 'Sri Vasavi Kanyaka Parameswari Matha',
       donorName,
-      amount: parseFloat(amount),
+      amount: parsedAmt,
       paymentMethod: method,
       referenceNo: refNo || 'OFFLINE-MANUAL-REC',
       date: new Date().toISOString().split('T')[0],
@@ -39,10 +50,19 @@ export default function FinanceReconciliationPage() {
     setAmount('');
     setNotes('');
     setShowOfflineModal(false);
+    showAlert({
+      type: 'change',
+      title: 'Offline Donation Recorded',
+      message: `₹${parsedAmt.toLocaleString('en-IN')} entry successfully added to offline ledger.`,
+    });
   };
 
   const handleExportCSV = () => {
-    alert('Exporting Financial Reconciliation Report as CSV / Excel format...');
+    showAlert({
+      type: 'info',
+      title: 'Reconciliation Report Exported',
+      message: 'Financial Reconciliation Report exported as CSV / Excel format.',
+    });
   };
 
   return (

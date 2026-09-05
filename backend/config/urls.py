@@ -10,6 +10,7 @@ urlpatterns = [
     path('api/v1/donations/', include('apps.donations.urls')),
     path('api/v1/recurring/', include('apps.recurring.urls')),
     path('api/v1/receipts/', include('apps.receipts.urls')),
+    path('api/v1/initiatives/', include('apps.initiatives.urls')),
 ]
 
 if settings.DEBUG:

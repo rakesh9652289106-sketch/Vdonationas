@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { MOCK_TEMPLES, MOCK_DONATIONS } from '@/lib/mock-data';
 import { useLanguage } from '@/lib/language-context';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 import {
   Building2,
   QrCode,
@@ -19,8 +20,34 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recha
 
 export default function TempleAdminDashboardPage() {
   const { t } = useLanguage();
+  const { confirmAction, showAlert } = useConfirmAlert();
   const activeTemple = MOCK_TEMPLES[0];
-  const [autoScaleSlots, setAutoScaleSlots] = useState(true);
+  const [autoScaleSlots, setAutoScaleSlots] = useState(false);
+
+  const handleToggleAutoScale = async () => {
+    const nextState = !autoScaleSlots;
+    const confirmed = await confirmAction({
+      title: nextState
+        ? 'Activate Festival Rush Auto-Scaling?'
+        : 'Switch to Manual Slot Limits?',
+      message: nextState
+        ? 'Enabling Brahmotsavam Auto-Scaling will dynamically increase Darshan, Suprabhatam, and queue capacities during peak crowd hours to prevent counter bottlenecks.'
+        : 'Switching to Manual Slots will disable automatic batch expansion and enforce strict predefined quota caps.',
+      confirmText: nextState ? 'Activate Auto-Scaling' : 'Switch to Manual',
+      variant: nextState ? 'change' : 'warning',
+    });
+
+    if (!confirmed) return;
+
+    setAutoScaleSlots(nextState);
+    showAlert({
+      type: nextState ? 'change' : 'warning',
+      title: nextState ? 'Auto-Scaling Activated' : 'Manual Mode Active',
+      message: nextState
+        ? 'Brahmotsavam festival queue auto-scaler is now active.'
+        : 'Devotee slots are now restricted to manual quotas.',
+    });
+  };
 
   const salesData = [
     { day: 'Mon', total: 12000 },
@@ -78,7 +105,7 @@ export default function TempleAdminDashboardPage() {
         </div>
 
         <button
-          onClick={() => setAutoScaleSlots(!autoScaleSlots)}
+          onClick={handleToggleAutoScale}
           className={`px-5 py-3 font-bold rounded-2xl text-xs transition-all shrink-0 shadow-md ${
             autoScaleSlots
               ? 'bg-emerald-600 text-white hover:bg-emerald-700'

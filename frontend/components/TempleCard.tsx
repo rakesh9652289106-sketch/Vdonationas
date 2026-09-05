@@ -66,16 +66,16 @@ export default function TempleCard({ temple }: TempleCardProps) {
           <div className="grid grid-cols-2 gap-2">
             <Link
               href={`/temples/${temple.id}`}
-              className="w-full py-2.5 rounded-xl border border-devotional-maroon text-devotional-maroon dark:text-amber-400 font-bold text-xs text-center hover:bg-amber-50 dark:hover:bg-stone-800 transition-colors"
+              className="w-full py-2.5 rounded-xl border border-devotional-maroon/80 dark:border-amber-400/60 text-devotional-maroon dark:text-amber-400 font-bold text-xs text-center hover:bg-amber-50 dark:hover:bg-stone-800 active-press transition-colors flex items-center justify-center"
             >
-              View Shrine
+              Visit
             </Link>
             <Link
               href={`/donate?templeId=${temple.id}`}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-devotional-saffron to-amber-600 text-white font-bold text-xs text-center flex items-center justify-center gap-1 hover:brightness-110 shadow-gold transition-all"
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-devotional-saffron to-amber-600 text-white font-bold text-xs text-center flex items-center justify-center gap-1.5 hover:brightness-110 shadow-gold active-press transition-all"
             >
               <Heart className="w-3.5 h-3.5 fill-current" />
-              Donate Now
+              Donate
             </Link>
           </div>
         </div>

@@ -1,87 +1,229 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Repeat, Play, Pause, XCircle, Flame, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
+import { Repeat, Play, Pause, Trash2, Edit3, Flame, ShieldCheck, Plus, Check } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
 export default function DevoteeRecurringDonationsPage() {
   const { t } = useLanguage();
-  const [status, setStatus] = useState<'ACTIVE' | 'PAUSED'>('ACTIVE');
+  const { confirmAction, showAlert } = useConfirmAlert();
+  const [status, setStatus] = useState<'ACTIVE' | 'PAUSED' | 'CANCELLED'>('ACTIVE');
+  const [amount, setAmount] = useState(1016);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editAmount, setEditAmount] = useState('1016');
+
+  const handleSaveEdit = async () => {
+    const parsed = parseInt(editAmount, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      const ok = await confirmAction({
+        title: 'Update Monthly Offering Amount?',
+        message: `Are you sure you want to change your recurring seva offering from ₹${amount.toLocaleString('en-IN')} to ₹${parsed.toLocaleString('en-IN')} per month?`,
+        itemName: `New Monthly Offering: ₹${parsed.toLocaleString('en-IN')}`,
+        variant: 'change',
+        confirmText: 'Yes, Update Amount',
+        cancelText: 'Keep Current Amount',
+      });
+      if (ok) {
+        setAmount(parsed);
+        setIsEditing(false);
+        showAlert({
+          title: 'AutoPay Amount Updated',
+          message: `Your sacred monthly donation has been adjusted to ₹${parsed.toLocaleString('en-IN')}.`,
+          type: 'success',
+        });
+      }
+    }
+  };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto font-sans">
+    <div className="space-y-6 max-w-4xl mx-auto font-sans px-3 sm:px-0">
       {/* 3D DEVOTIONAL HEADER BANNER */}
-      <div className="bg-gradient-to-r from-devotional-maroon via-devotional-maroon-dark to-stone-950 text-white p-8 rounded-3xl shadow-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-2 border-devotional-gold/60 relative overflow-hidden diya-glow-pulse">
+      <div className="bg-gradient-to-r from-devotional-maroon via-devotional-maroon-dark to-stone-950 text-white p-6 sm:p-8 rounded-3xl shadow-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-2 border-devotional-gold/60 relative overflow-hidden diya-glow-pulse">
         <div className="space-y-1 relative z-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold uppercase border border-amber-400/30">
-            <Flame className="w-3.5 h-3.5 text-devotional-saffron animate-pulse" /> {t('sidebarRecurringSeva')}
+            <Flame className="w-3.5 h-3.5 text-devotional-saffron animate-pulse" /> AutoPay
           </div>
           <h1 className="text-2xl sm:text-3xl font-serif font-bold text-amber-300">
-            {t('sidebarRecurringSeva')}
+            Recurring Seva Subscriptions
           </h1>
           <p className="text-amber-100/80 text-xs">
-            Automated Monthly Nitya Annadanam & Sacred Seva Subscriptions
+            Automated Monthly Nitya Annadanam & Sacred Seva via UPI AutoPay
           </p>
         </div>
       </div>
 
-      {/* 3D AUTOPAY CARD WITH HOVER MOTION */}
-      <div className="bg-white dark:bg-stone-900 p-8 rounded-3xl border-2 border-devotional-gold/40 shadow-2xl space-y-6 hover:border-amber-400 transition-all">
-        <div className="flex justify-between items-start">
+      {/* 3D AUTOPAY CARD */}
+      <div className="bg-white dark:bg-stone-900 p-6 sm:p-8 rounded-3xl border border-devotional-gold/40 shadow-xl space-y-5">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
-            <span className="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold uppercase border border-emerald-400/40">
-              {status} SUBSCRIPTION
-            </span>
-            <h3 className="font-serif font-bold text-xl text-stone-900 dark:text-stone-100 mt-2">
+            <div className="flex items-center gap-2">
+              <span
+                className={`px-3 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                  status === 'ACTIVE'
+                    ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-400/40'
+                    : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-400/40'
+                }`}
+              >
+                {status}
+              </span>
+              <span className="text-xs text-stone-500 font-medium">AutoPay Active</span>
+            </div>
+            <h3 className="font-serif font-bold text-lg sm:text-xl text-stone-900 dark:text-stone-100 mt-1">
               Monthly Nitya Annadanam Seva
             </h3>
-            <p className="text-xs text-stone-500 font-medium">Sri Vasavi Kanyaka Parameswari Matha, Penugonda</p>
+            <p className="text-xs text-stone-500">Sri Vasavi Kanyaka Parameswari Matha, Penugonda</p>
           </div>
-          <span className="font-serif font-bold text-2xl text-devotional-maroon dark:text-amber-400">
-            ₹1,016 <span className="text-xs font-sans text-stone-500">/ Month</span>
-          </span>
+
+          <div className="text-right">
+            {isEditing ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-stone-600">₹</span>
+                <input
+                  type="number"
+                  value={editAmount}
+                  onChange={(e) => setEditAmount(e.target.value)}
+                  className="w-24 px-2 py-1 text-sm font-bold border rounded-lg dark:bg-stone-800"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  className="p-1.5 rounded-lg bg-devotional-maroon text-white active-press"
+                  title="Save"
+                >
+                  <Check className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <span className="font-serif font-bold text-2xl text-devotional-maroon dark:text-amber-400">
+                ₹{amount.toLocaleString('en-IN')}{' '}
+                <span className="text-xs font-sans text-stone-500 font-normal">/ month</span>
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs bg-stone-50 dark:bg-stone-950 p-4 rounded-2xl border border-amber-400/30">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-stone-50 dark:bg-stone-950 p-4 rounded-2xl border border-stone-200 dark:border-stone-800">
           <div>
-            <span className="text-stone-500 block text-[10px] uppercase font-bold">INTERVAL</span>
-            <span className="font-bold text-stone-900 dark:text-stone-100">MONTHLY</span>
+            <span className="text-stone-500 block text-[10px] uppercase font-bold">Frequency</span>
+            <span className="font-bold text-stone-900 dark:text-stone-100">1st of Every Month</span>
           </div>
           <div>
-            <span className="text-stone-500 block text-[10px] uppercase font-bold">NEXT DEDUCTION</span>
-            <span className="font-bold text-stone-900 dark:text-stone-100">01 September 2026</span>
+            <span className="text-stone-500 block text-[10px] uppercase font-bold">Next Deduction</span>
+            <span className="font-bold text-stone-900 dark:text-stone-100">01 October 2026</span>
           </div>
-          <div>
-            <span className="text-stone-500 block text-[10px] uppercase font-bold">PAYMENT METHOD</span>
+          <div className="col-span-2 sm:col-span-1">
+            <span className="text-stone-500 block text-[10px] uppercase font-bold">Payment Method</span>
             <span className="font-bold text-emerald-600 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" /> UPI AutoPay Verified
+              <ShieldCheck className="w-3.5 h-3.5" /> vasavi@oksbi
             </span>
           </div>
         </div>
 
-        <div className="flex gap-3 pt-2">
+        {/* Action Buttons: Edit | Pause / Resume | Cancel */}
+        <div className="flex flex-wrap gap-2.5 pt-1">
+          <button
+            type="button"
+            onClick={() => {
+              setEditAmount(amount.toString());
+              setIsEditing(!isEditing);
+            }}
+            className="px-5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-stone-200 font-bold text-xs hover:bg-stone-100 dark:hover:bg-stone-800 active-press transition-colors flex items-center gap-1.5"
+          >
+            <Edit3 className="w-3.5 h-3.5 text-stone-600 dark:text-stone-300" />
+            Edit
+          </button>
+
           {status === 'ACTIVE' ? (
             <button
-              onClick={() => setStatus('PAUSED')}
-              className="px-5 py-2.5 bg-amber-500 text-stone-950 font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md hover:bg-amber-400 transition-colors"
+              type="button"
+              onClick={async () => {
+                const ok = await confirmAction({
+                  title: 'Pause Sacred Monthly AutoPay?',
+                  message: 'Your monthly contribution will be placed on temporary hold. You can resume at any sacred festival without re-entering UPI mandate details.',
+                  itemName: `Nitya Annadanam Seva (₹${amount.toLocaleString('en-IN')}/month)`,
+                  variant: 'change',
+                  confirmText: 'Yes, Pause Offering',
+                  cancelText: 'Keep Active',
+                });
+                if (ok) {
+                  setStatus('PAUSED');
+                  showAlert({
+                    title: 'AutoPay Offering Paused',
+                    message: 'Your recurring seva deduction has been placed on hold.',
+                    type: 'warning',
+                  });
+                }
+              }}
+              className="px-5 py-2.5 rounded-xl bg-amber-500 text-stone-950 font-bold text-xs flex items-center gap-1.5 shadow-xs hover:bg-amber-400 active-press transition-colors"
             >
-              <Pause className="w-4 h-4" /> Pause Subscription
+              <Pause className="w-3.5 h-3.5" />
+              Pause
             </button>
           ) : (
             <button
-              onClick={() => setStatus('ACTIVE')}
-              className="px-5 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md hover:bg-emerald-700 transition-colors"
+              type="button"
+              onClick={() => {
+                setStatus('ACTIVE');
+                showAlert({
+                  title: 'Sacred AutoPay Resumed!',
+                  message: 'Your recurring monthly seva offering is now active. May Sri Vasavi Matha bless you.',
+                  type: 'success',
+                });
+              }}
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs hover:bg-emerald-700 active-press transition-colors"
             >
-              <Play className="w-4 h-4" /> Resume Subscription
+              <Play className="w-3.5 h-3.5" />
+              Resume
             </button>
           )}
+
           <button
-            onClick={() => alert('Subscription cancelled.')}
-            className="px-5 py-2.5 border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 font-bold text-xs rounded-xl flex items-center gap-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+            type="button"
+            onClick={async () => {
+              const ok = await confirmAction({
+                title: 'Cancel Monthly AutoPay Mandate?',
+                message: 'Are you sure you want to permanently cancel your sacred monthly seva mandate? This action will terminate your UPI recurring auto-debit.',
+                itemName: `Nitya Annadanam Seva (₹${amount.toLocaleString('en-IN')}/month)`,
+                variant: 'danger',
+                confirmText: 'Yes, Cancel Mandate',
+                cancelText: 'Keep My Offering',
+              });
+              if (ok) {
+                setStatus('CANCELLED');
+                showAlert({
+                  title: 'AutoPay Subscription Cancelled',
+                  message: 'Your monthly recurring mandate has been successfully terminated.',
+                  type: 'info',
+                });
+              }
+            }}
+            className="px-5 py-2.5 rounded-xl border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center gap-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 active-press transition-colors ml-auto"
           >
-            <XCircle className="w-4 h-4" /> Cancel Subscription
+            <Trash2 className="w-3.5 h-3.5" />
+            Cancel
           </button>
         </div>
+      </div>
+
+      {/* ACTIVATE NEW AUTOPAY CARD */}
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-stone-900 dark:to-stone-900/80 p-6 rounded-3xl border border-devotional-gold/40 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="space-y-1 text-center sm:text-left">
+          <h4 className="font-serif font-bold text-base text-devotional-maroon dark:text-amber-400">
+            Sponsor Another Monthly Sacred Seva
+          </h4>
+          <p className="text-xs text-stone-600 dark:text-stone-400">
+            Set up automatic monthly contributions for Gau Seva, Vidyadanam, or Daily Kumkumarchana.
+          </p>
+        </div>
+        <Link
+          href="/donate/recurring"
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-devotional-saffron to-amber-600 text-white font-bold text-xs shadow-gold hover:brightness-110 active-press transition-all flex items-center gap-2 whitespace-nowrap"
+        >
+          <Plus className="w-4 h-4" />
+          Activate
+        </Link>
       </div>
     </div>
   );

@@ -55,9 +55,11 @@ import {
   getSevaModifications,
   saveSevaModifications,
 } from '@/lib/quota-store';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
 export default function TemplePoojasAdminPage() {
   const { t } = useLanguage();
+  const { confirmAction, showAlert } = useConfirmAlert();
   const [activeTab, setActiveTab] = useState<'catalog' | 'monthly-releases' | 'blocked-dates'>('catalog');
 
   // Pooja Catalog States
@@ -65,7 +67,6 @@ export default function TemplePoojasAdminPage() {
   const [modifications, setModifications] = useState<SevaModificationRecord[]>([]);
   const [editingPooja, setEditingPooja] = useState<PoojaItem | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Seva Suspension / Reactivation States (Same-Time Super Admin Request)
@@ -191,9 +192,18 @@ export default function TemplePoojasAdminPage() {
     setIsReleaseModalOpen(true);
   };
 
-  const showNotification = (msg: string) => {
+  const showNotification = (
+    msg: string,
+    type: 'info' | 'change' | 'warning' | 'danger' = 'info',
+    title = 'Temple Action Recorded'
+  ) => {
     setSuccessMessage(msg);
     setTimeout(() => setSuccessMessage(null), 4000);
+    showAlert({
+      type,
+      title,
+      message: msg.replace(/^[✓\s]+/, ''),
+    });
   };
 
   const handleOpenAddModal = () => {
@@ -336,9 +346,18 @@ export default function TemplePoojasAdminPage() {
     setEditingPooja(null);
   };
 
-  const handleDeletePooja = (id: string) => {
+  const handleDeletePooja = async (id: string) => {
     const target = poojas.find((p) => p.id === id);
     if (!target) return;
+
+    const confirmed = await confirmAction({
+      title: 'Request Decommissioning of Seva?',
+      message: `Are you sure you want to request the removal of "${target.title}" from the temple catalog? A formal decommission request will be sent to Super Admin for approval.`,
+      confirmText: 'Request Removal',
+      variant: 'danger',
+    });
+
+    if (!confirmed) return;
 
     const newMod: SevaModificationRecord = {
       id: `mod-${Date.now()}`,
@@ -363,7 +382,11 @@ export default function TemplePoojasAdminPage() {
     const currentMods = getSevaModifications();
     saveSevaModifications([newMod, ...currentMods]);
     setDeleteConfirmId(null);
-    showNotification(`✓ Deletion request for "${target.title}" submitted to Super Admin for authorization!`);
+    showNotification(
+      `✓ Deletion request for "${target.title}" submitted to Super Admin for authorization!`,
+      'danger',
+      'Deletion Request Submitted'
+    );
   };
 
   const handleOpenSuspensionModal = (pooja: PoojaItem, action: 'SUSPEND' | 'UNSUSPEND') => {
@@ -407,17 +430,26 @@ export default function TemplePoojasAdminPage() {
     saveSevaSuspensions(updated);
 
     showNotification(
-      `✓ Request to ${suspensionAction === 'SUSPEND' ? 'suspend' : 'reactivate'} "${suspensionTarget.title}" sent to Super Admin for same-time approval!`
+      `✓ Request to ${suspensionAction === 'SUSPEND' ? 'suspend' : 'reactivate'} "${suspensionTarget.title}" sent to Super Admin for same-time approval!`,
+      suspensionAction === 'SUSPEND' ? 'warning' : 'change',
+      'Suspension Request Filed'
     );
     setIsSuspensionModalOpen(false);
   };
 
-  const handleResetDefaults = () => {
-    if (confirm('Are you sure you want to reset the Pooja Catalog to the standard temple default sevas?')) {
-      setPoojas(DEFAULT_POOJA_CATALOG);
-      savePoojaCatalog(DEFAULT_POOJA_CATALOG);
-      showNotification('✓ Temple Pooja Catalog reset to default offerings.');
-    }
+  const handleResetDefaults = async () => {
+    const confirmed = await confirmAction({
+      title: 'Reset Pooja Catalog to Defaults?',
+      message: 'Are you sure you want to reset the Pooja Catalog to the standard temple default sevas? Any custom offerings or edits will be restored to baseline.',
+      confirmText: 'Yes, Restore Defaults',
+      variant: 'warning',
+    });
+
+    if (!confirmed) return;
+
+    setPoojas(DEFAULT_POOJA_CATALOG);
+    savePoojaCatalog(DEFAULT_POOJA_CATALOG);
+    showNotification('✓ Temple Pooja Catalog reset to default offerings.', 'warning', 'Catalog Restored');
   };
 
   // Monthly Release Submission with Specific Seva, Time Window & 3-Hour Gap Checks
@@ -613,18 +645,38 @@ export default function TemplePoojasAdminPage() {
     showNotification(`✓ Unblock request for "${record.sevaTitle}" submitted to Super Admin for authorization! (Unblocking can be requested on any day).`);
   };
 
-  const handleDeleteBlockedDate = (id: string) => {
+  const handleDeleteBlockedDate = async (id: string) => {
+    const target = blockedDates.find((b) => b.id === id);
+    const confirmed = await confirmAction({
+      title: 'Remove Blackout Request?',
+      message: `Are you sure you want to dismiss and delete the blackout request for "${target?.sevaTitle || 'this seva'}"?`,
+      confirmText: 'Delete Blackout',
+      variant: 'danger',
+    });
+
+    if (!confirmed) return;
+
     const updated = blockedDates.filter((b) => b.id !== id);
     setBlockedDates(updated);
     saveBlockedDates(updated);
-    showNotification('✓ Blackout request removed.');
+    showNotification('✓ Blackout request removed.', 'danger', 'Blackout Deleted');
   };
 
-  const handleDeleteRelease = (id: string) => {
+  const handleDeleteRelease = async (id: string) => {
+    const target = releases.find((r) => r.id === id);
+    const confirmed = await confirmAction({
+      title: 'Delete Release Request Record?',
+      message: `Are you sure you want to dismiss and delete this monthly release record for "${target?.sevaTitle || 'this seva'}"?`,
+      confirmText: 'Delete Record',
+      variant: 'danger',
+    });
+
+    if (!confirmed) return;
+
     const updated = releases.filter((r) => r.id !== id);
     setReleases(updated);
     saveMonthlyReleases(updated);
-    showNotification('✓ Removed rejected release request.');
+    showNotification('✓ Removed rejected release request.', 'danger', 'Release Deleted');
   };
 
   return (
@@ -800,7 +852,7 @@ export default function TemplePoojasAdminPage() {
                       </button>
 
                       <button
-                        onClick={() => setDeleteConfirmId(pooja.id)}
+                        onClick={() => handleDeletePooja(pooja.id)}
                         className="px-3 py-1.5 bg-red-100 dark:bg-red-950/60 hover:bg-red-600 hover:text-white text-red-700 dark:text-red-300 font-bold text-[11px] rounded-xl transition-colors flex items-center gap-1"
                       >
                         <Trash2 className="w-3.5 h-3.5" /> Delete
@@ -1664,38 +1716,7 @@ export default function TemplePoojasAdminPage() {
         </div>
       )}
 
-      {/* DELETE CONFIRMATION DIALOG */}
-      {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 max-w-md w-full rounded-3xl p-6 space-y-4 border-2 border-red-400 shadow-2xl animate-scale-up">
-            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950 text-red-600 flex items-center justify-center mx-auto">
-              <Trash2 className="w-6 h-6" />
-            </div>
-            <div className="text-center space-y-1">
-              <h3 className="font-serif font-bold text-lg text-stone-900 dark:text-stone-100">
-                Remove Seva Offering?
-              </h3>
-              <p className="text-xs text-stone-500">
-                Are you sure you want to remove this pooja from the temple catalog? Devotees will no longer be able to book this seva.
-              </p>
-            </div>
-            <div className="flex justify-center gap-3 pt-2">
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold text-xs rounded-xl"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDeletePooja(deleteConfirmId)}
-                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md"
-              >
-                Confirm Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
       {/* SEVA SUSPENSION / REACTIVATION MODAL (SAME-TIME SUPER ADMIN REQUEST) */}
       {isSuspensionModalOpen && suspensionTarget && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in">

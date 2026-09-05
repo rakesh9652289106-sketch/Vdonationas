@@ -23,6 +23,8 @@ import {
   Lock,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { DevotionalSelect } from '@/components/ui/DevotionalSelect';
+import { NakshatraSelect } from '@/components/ui/VedicSelects';
 import { PoojaItem, getPoojaCatalog } from '@/lib/pooja-store';
 import {
   isDateInApprovedRelease,
@@ -117,28 +119,6 @@ export default function DevoteePoojaBookingsPage() {
   const [mobile, setMobile] = useState('9123456789');
   const [email, setEmail] = useState('devotee@gmail.com');
   const [attendanceMode, setAttendanceMode] = useState<'IN_PERSON' | 'ONLINE_LIVE'>('IN_PERSON');
-
-  // Custom Dropdown UI States
-  const [isNakshatraOpen, setIsNakshatraOpen] = useState(false);
-  const [nakshatraSearch, setNakshatraSearch] = useState('');
-  const [isGotraOpen, setIsGotraOpen] = useState(false);
-  const [gotraSearch, setGotraSearch] = useState('');
-
-  const nakshatraRef = React.useRef<HTMLDivElement>(null);
-  const gotraRef = React.useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (nakshatraRef.current && !nakshatraRef.current.contains(e.target as Node)) {
-        setIsNakshatraOpen(false);
-      }
-      if (gotraRef.current && !gotraRef.current.contains(e.target as Node)) {
-        setIsGotraOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Error and Success handling
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -923,234 +903,32 @@ export default function DevoteePoojaBookingsPage() {
 
                 {/* Gotra & Nakshatra Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Custom Gotra Dropdown */}
-                  <div className="space-y-1 relative" ref={gotraRef}>
-                    <label className="block text-[11px] font-bold text-stone-600 dark:text-stone-400 uppercase">
-                      Gotra *
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsGotraOpen(!isGotraOpen);
-                        setIsNakshatraOpen(false);
-                        setGotraSearch('');
-                      }}
-                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all text-left ${
-                        isGotraOpen
-                          ? 'bg-stone-900 border-amber-400 text-amber-300 ring-2 ring-amber-400/30 shadow-lg'
-                          : 'bg-stone-50 dark:bg-stone-800 border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-100'
-                      }`}
-                    >
-                      <span className="truncate">{gotra}</span>
-                      <ChevronDown
-                        className={`w-4 h-4 text-stone-400 transition-transform duration-200 shrink-0 ${
-                          isGotraOpen ? 'rotate-180 text-amber-400' : ''
-                        }`}
-                      />
-                    </button>
+                  <DevotionalSelect
+                    label="Gotra"
+                    required
+                    value={gotra}
+                    onChange={setGotra}
+                    placeholder="Select Devotional Gotra"
+                    searchPlaceholder="Search Gotras..."
+                    footerText="Vedic Gotra Lineages"
+                    showBadge={true}
+                    showSparkle={true}
+                    options={POPULAR_GOTRAS.map((g) => ({
+                      value: g,
+                      label: g,
+                      badge: g.charAt(0).toUpperCase(),
+                    }))}
+                  />
 
-                    {isGotraOpen && (
-                      <div className="absolute z-50 left-0 right-0 mt-1.5 bg-stone-950/95 backdrop-blur-xl border-2 border-amber-500/70 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                        <div className="p-2.5 bg-stone-900/90 border-b border-stone-800 flex items-center gap-2">
-                          <Search className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                          <input
-                            type="text"
-                            autoFocus
-                            value={gotraSearch}
-                            onChange={(e) => setGotraSearch(e.target.value)}
-                            placeholder="Search Gotras..."
-                            className="w-full bg-transparent text-xs text-stone-100 placeholder-stone-500 focus:outline-none font-medium"
-                          />
-                          {gotraSearch && (
-                            <button
-                              type="button"
-                              onClick={() => setGotraSearch('')}
-                              className="p-0.5 text-stone-400 hover:text-stone-200"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="max-h-52 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin scrollbar-thumb-amber-600">
-                          {POPULAR_GOTRAS.filter((g) =>
-                            g.toLowerCase().includes(gotraSearch.toLowerCase())
-                          ).map((g) => {
-                            const isSelected = gotra === g;
-                            return (
-                              <button
-                                key={g}
-                                type="button"
-                                onClick={() => {
-                                  setGotra(g);
-                                  setIsGotraOpen(false);
-                                  setGotraSearch('');
-                                }}
-                                className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
-                                  isSelected
-                                    ? 'bg-gradient-to-r from-devotional-maroon to-amber-950 text-amber-300 border border-amber-400/50 shadow-sm'
-                                    : 'text-stone-300 hover:bg-stone-900 hover:text-amber-200'
-                                }`}
-                              >
-                                <span>{g}</span>
-                                {isSelected && <Check className="w-3.5 h-3.5 text-amber-300 shrink-0" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Custom Nakshatra Dropdown */}
-                  <div className="space-y-1 relative" ref={nakshatraRef}>
-                    <label className="block text-[11px] font-bold text-stone-600 dark:text-stone-400 uppercase flex items-center justify-between">
-                      <span>Janma Nakshatra <span className="text-stone-400 text-[10px] font-normal">(Optional)</span></span>
-                      {nakshatra && (
-                        <button
-                          type="button"
-                          onClick={() => setNakshatra('')}
-                          className="text-[10px] text-amber-500 hover:text-amber-400 font-bold flex items-center gap-0.5"
-                        >
-                          <X className="w-3 h-3" /> Clear
-                        </button>
-                      )}
-                    </label>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsNakshatraOpen(!isNakshatraOpen);
-                        setIsGotraOpen(false);
-                        setNakshatraSearch('');
-                      }}
-                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all text-left ${
-                        isNakshatraOpen
-                          ? 'bg-stone-900 border-amber-400 text-amber-300 ring-2 ring-amber-400/30 shadow-lg'
-                          : nakshatra
-                          ? 'bg-stone-50 dark:bg-stone-800/90 border-amber-400/60 text-stone-900 dark:text-amber-200'
-                          : 'bg-stone-50 dark:bg-stone-800 border-stone-300 dark:border-stone-700 text-stone-500 dark:text-stone-400'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2 truncate">
-                        <Sparkles className={`w-3.5 h-3.5 shrink-0 ${nakshatra ? 'text-devotional-saffron animate-pulse' : 'text-stone-400'}`} />
-                        <span className="truncate">{nakshatra ? nakshatra : 'Select Nakshatra (Optional)'}</span>
-                      </span>
-                      <ChevronDown
-                        className={`w-4 h-4 text-stone-400 transition-transform duration-200 shrink-0 ${
-                          isNakshatraOpen ? 'rotate-180 text-amber-400' : ''
-                        }`}
-                      />
-                    </button>
-
-                    {isNakshatraOpen && (
-                      <div className="absolute z-50 left-0 right-0 mt-1.5 bg-stone-950/95 backdrop-blur-xl border-2 border-amber-500/70 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                        {/* Quick Search Header */}
-                        <div className="p-2.5 bg-stone-900/90 border-b border-stone-800 flex items-center gap-2">
-                          <Search className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                          <input
-                            type="text"
-                            autoFocus
-                            value={nakshatraSearch}
-                            onChange={(e) => setNakshatraSearch(e.target.value)}
-                            placeholder="Search 27 Nakshatras..."
-                            className="w-full bg-transparent text-xs text-stone-100 placeholder-stone-500 focus:outline-none font-medium"
-                          />
-                          {nakshatraSearch && (
-                            <button
-                              type="button"
-                              onClick={() => setNakshatraSearch('')}
-                              className="p-0.5 text-stone-400 hover:text-stone-200"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Nakshatras Scrollable List */}
-                        <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin scrollbar-thumb-amber-600">
-                          {/* None / Optional Option */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setNakshatra('');
-                              setIsNakshatraOpen(false);
-                            }}
-                            className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors ${
-                              !nakshatra
-                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                                : 'text-stone-400 hover:bg-stone-900 hover:text-stone-200'
-                            }`}
-                          >
-                            <span className="flex items-center gap-2">
-                              <span className="text-stone-500 text-[10px]">✕</span>
-                              <span>Not Specified / Skip (Optional)</span>
-                            </span>
-                            {!nakshatra && <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
-                          </button>
-
-                          <div className="my-1 border-t border-stone-800/80" />
-
-                          {/* Filtered 27 Nakshatras */}
-                          {(() => {
-                            const filtered = NAKSHATRAS.filter((n) =>
-                              n.toLowerCase().includes(nakshatraSearch.toLowerCase())
-                            );
-
-                            if (filtered.length === 0) {
-                              return (
-                                <div className="py-4 text-center text-xs text-stone-500 font-medium">
-                                  No matching Nakshatra found
-                                </div>
-                              );
-                            }
-
-                            return filtered.map((n) => {
-                              const isSelected = nakshatra === n;
-                              const firstLetter = n.charAt(0);
-
-                              return (
-                                <button
-                                  key={n}
-                                  type="button"
-                                  onClick={() => {
-                                    setNakshatra(n);
-                                    setIsNakshatraOpen(false);
-                                    setNakshatraSearch('');
-                                  }}
-                                  className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-all group ${
-                                    isSelected
-                                      ? 'bg-gradient-to-r from-devotional-maroon to-amber-950 text-amber-300 border border-amber-400/50 shadow-sm'
-                                      : 'text-stone-300 hover:bg-stone-900/90 hover:text-amber-200 hover:translate-x-0.5'
-                                  }`}
-                                >
-                                  <span className="flex items-center gap-2.5">
-                                    <span className="w-5 h-5 rounded-md bg-stone-800/80 group-hover:bg-amber-950/80 text-[10px] font-bold text-amber-400/80 flex items-center justify-center border border-stone-700/50">
-                                      {firstLetter}
-                                    </span>
-                                    <span className="text-left font-serif font-medium">{n}</span>
-                                  </span>
-
-                                  {isSelected ? (
-                                    <Check className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                                  ) : (
-                                    <span className="text-[10px] text-stone-600 group-hover:text-amber-500/70 font-mono">
-                                      ✨
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            });
-                          })()}
-                        </div>
-
-                        {/* Dropdown Footer Notice */}
-                        <div className="px-3 py-1.5 bg-stone-900/60 border-t border-stone-800 text-[10px] font-semibold text-stone-400 flex items-center justify-center">
-                          <span>27 Vedic Janma Nakshatras</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <NakshatraSelect
+                    label="Janma Nakshatra"
+                    value={nakshatra}
+                    onChange={setNakshatra}
+                    placeholder="Select Nakshatra (Optional)"
+                    searchPlaceholder="Search 27 Nakshatras..."
+                    footerText="27 Vedic Janma Nakshatras"
+                    allowClear={true}
+                  />
                 </div>
 
                 {gotra === 'Other Gotra' && (

@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { templeAudio } from '@/lib/templeAudio';
 import { Landmark, Sparkles, Compass, Eye, Info, MapPin } from 'lucide-react';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
 interface Hotspot {
   id: string;
@@ -23,24 +24,24 @@ const TEMPLE_HOTSPOTS: Hotspot[] = [
   },
   {
     id: 'gopuram',
-    name: 'Rajagopuram (Tower)',
+    name: 'Rajagopuram (Spire)',
     sanskrit: 'राजगोपुरम्',
-    desc: 'Tiered multi-storey gateway tower symbolizing the cosmic mountain Meru.',
-    pos: [0, 3.8, 0],
+    desc: 'Multi-tiered pyramidal Dravidian vimana decorated with sculptural vignettes of Goddess Vasavi Matha.',
+    pos: [0, 3.2, 0],
   },
   {
-    id: 'garbhagriha',
-    name: 'Garbhagriha (Sanctum)',
+    id: 'sanctum',
+    name: 'Garbhagriha (Inner Sanctum)',
     sanskrit: 'गर्भगृह',
-    desc: 'The innermost sacred womb chamber housing the consecrated Moolavar Sri Vasavi Matha.',
-    pos: [0, 1.4, -0.4],
+    desc: 'The innermost sanctuary consecrated with the divine moola vigraha of Sri Vasavi Kanyaka Parameswari.',
+    pos: [0, 0.8, -0.2],
   },
   {
-    id: 'dhwaja',
-    name: 'Dhwajasthambam (Flagmast)',
+    id: 'dhwajasthambham',
+    name: 'Dhwajasthambham (Flagstaff)',
     sanskrit: 'ध्वजस्तम्भ',
-    desc: 'The sacred golden flagpost representing the human spine (Sushumna Nadi) connecting earth to heaven.',
-    pos: [0, 1.8, 2.8],
+    desc: 'The cosmic axis pillar connecting Earthly prayers with celestial blessings, covered in brass & gold.',
+    pos: [0, 1.6, 2.5],
   },
   {
     id: 'mandapam',
@@ -53,8 +54,24 @@ const TEMPLE_HOTSPOTS: Hotspot[] = [
 
 export default function TempleGopuram3D() {
   const mountRef = useRef<HTMLDivElement>(null);
+  const { confirmAction, showAlert } = useConfirmAlert();
   const [selectedHotspot, setSelectedHotspot] = useState<Hotspot>(TEMPLE_HOTSPOTS[0]);
   const [autoRotate, setAutoRotate] = useState(true);
+
+  const handleSponsorSeva = async () => {
+    const confirmed = await confirmAction({
+      title: `Sponsor ${selectedHotspot.name} Seva?`,
+      message: `Are you sure you want to sponsor the seva dedicated to ${selectedHotspot.name} (${selectedHotspot.sanskrit}) for ₹2,501?`,
+      confirmText: 'Sponsor Seva (₹2,501)',
+      variant: 'change',
+    });
+    if (!confirmed) return;
+    showAlert({
+      type: 'change',
+      title: 'Seva Dedicated',
+      message: `🛕 Seva dedicated to ${selectedHotspot.name}! May Sri Vasavi Matha bless your family.`,
+    });
+  };
 
   const selectHotspot = (spot: Hotspot) => {
     setSelectedHotspot(spot);
@@ -338,9 +355,7 @@ export default function TempleGopuram3D() {
           </div>
 
           <button
-            onClick={() => {
-              alert(`🛕 Seva dedicated to ${selectedHotspot.name}! Thank you for your devotion.`);
-            }}
+            onClick={handleSponsorSeva}
             className="w-full py-3 rounded-xl bg-gradient-to-r from-devotional-saffron via-amber-400 to-amber-500 text-stone-950 font-bold text-xs shadow-gold hover:brightness-110 transition-all flex items-center justify-center gap-2"
           >
             <Landmark className="w-4 h-4 text-devotional-maroon" />

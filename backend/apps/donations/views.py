@@ -15,11 +15,15 @@ class DonationListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         don_id = f"DON-2026-{random.randint(10000, 99999)}"
         tx_id = f"TXN-PG-{random.randint(100000, 999999)}"
-        serializer.save(
+        donation = serializer.save(
             donation_id=don_id,
             transaction_id=tx_id,
             status='SUCCESS'
         )
+        if donation.initiative:
+            donation.initiative.current_raised += donation.amount
+            donation.initiative.donor_count += 1
+            donation.initiative.save(update_fields=['current_raised', 'donor_count'])
 
 class DonationDetailView(generics.RetrieveAPIView):
     queryset = Donation.objects.all()

@@ -5,11 +5,21 @@ import { MOCK_DONATIONS } from '@/lib/mock-data';
 import ReceiptViewModal from '@/components/ReceiptViewModal';
 import { FileText, Search, Download, Flame } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
 export default function TempleDonationsAdminPage() {
   const { t } = useLanguage();
+  const { showAlert } = useConfirmAlert();
   const [activeReceipt, setActiveReceipt] = useState<any | null>(null);
   const [search, setSearch] = useState('');
+
+  const handleExport = () => {
+    showAlert({
+      type: 'info',
+      title: 'Donations Exported',
+      message: 'Temple donation records exported as CSV / Excel format.',
+    });
+  };
 
   const filtered = MOCK_DONATIONS.filter(
     (d) =>
@@ -35,7 +45,7 @@ export default function TempleDonationsAdminPage() {
         </div>
 
         <button
-          onClick={() => alert('Exporting Donation Report in CSV / Excel format...')}
+          onClick={handleExport}
           className="px-5 py-3 rounded-2xl bg-gradient-to-r from-devotional-saffron via-amber-400 to-amber-500 text-stone-950 font-serif font-bold text-xs shadow-gold hover:scale-105 transition-transform flex items-center gap-1.5 border border-amber-300 shrink-0 relative z-10"
         >
           <Download className="w-4 h-4 text-devotional-maroon" /> Export CSV / Excel

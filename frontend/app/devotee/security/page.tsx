@@ -3,12 +3,61 @@
 import React, { useState } from 'react';
 import { Shield, ShieldCheck, Key, Smartphone, LogOut, Flame, Lock, Download, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
 export default function DevoteeSecurityAndPrivacyPage() {
   const { t } = useLanguage();
+  const { confirmAction, showAlert } = useConfirmAlert();
   const [is2FA, setIs2FA] = useState(true);
   const [isAnon, setIsAnon] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+
+  const handleToggle2FA = async () => {
+    const nextState = !is2FA;
+    const confirmed = await confirmAction({
+      title: nextState ? 'Enable Two-Factor Authentication?' : 'Disable Two-Factor Authentication?',
+      message: nextState
+        ? 'Enabling 2FA adds SMS OTP security before accessing tax certificates and changing bank details.'
+        : 'Disabling 2FA will reduce account security. Are you sure you want to proceed?',
+      confirmText: nextState ? 'Enable 2FA' : 'Disable 2FA',
+      variant: nextState ? 'change' : 'warning',
+    });
+    if (!confirmed) return;
+
+    setIs2FA(nextState);
+    showAlert({
+      type: nextState ? 'change' : 'warning',
+      title: '2FA Setting Updated',
+      message: `Two-Factor Authentication is now ${nextState ? 'enabled' : 'disabled'}.`,
+    });
+  };
+
+  const handleTerminateOtherSessions = async () => {
+    const confirmed = await confirmAction({
+      title: 'Terminate All Other Sessions?',
+      message: 'Are you sure you want to sign out all secondary phones, tablets, and computers currently logged into your devotee account?',
+      confirmText: 'Yes, Sign Out Others',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    showAlert({
+      type: 'danger',
+      title: 'Secondary Sessions Terminated',
+      message: 'All other active devices have been securely signed out.',
+    });
+  };
+
+  const handleToggleAnon = (checked: boolean) => {
+    setIsAnon(checked);
+    showAlert({
+      type: 'change',
+      title: 'Privacy Setting Saved',
+      message: checked
+        ? 'Your name will now be hidden from public temple donor rolls.'
+        : 'Your name will be visible on public donor rolls and live screens.',
+    });
+  };
 
   const handleDownloadArchive = () => {
     setDownloadSuccess(true);
@@ -31,6 +80,11 @@ export default function DevoteeSecurityAndPrivacyPage() {
     a.href = url;
     a.download = `vasavi_devotee_data_archive_${Date.now()}.json`;
     a.click();
+    showAlert({
+      type: 'info',
+      title: 'Archive Exported',
+      message: 'Devotee records archive downloaded in JSON format.',
+    });
   };
 
   return (
@@ -64,7 +118,7 @@ export default function DevoteeSecurityAndPrivacyPage() {
               <p className="text-stone-500 text-[11px]">Require OTP verification upon login to protect your 80G tax receipts.</p>
             </div>
             <button
-              onClick={() => setIs2FA(!is2FA)}
+              onClick={handleToggle2FA}
               className={`px-4 py-2 font-bold rounded-xl text-xs transition-all shadow-sm shrink-0 ${
                 is2FA
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
@@ -81,7 +135,7 @@ export default function DevoteeSecurityAndPrivacyPage() {
               <p className="text-stone-500 text-[11px]">Currently logged in on Chrome / Windows 11 (Penugonda Devotee Portal).</p>
             </div>
             <button
-              onClick={() => alert('Successfully logged out of all secondary devices.')}
+              onClick={handleTerminateOtherSessions}
               className="w-full py-2.5 border border-rose-300 dark:border-rose-800/80 text-rose-600 dark:text-rose-400 font-bold rounded-xl text-xs flex items-center justify-center gap-2 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
             >
               <LogOut className="w-4 h-4" /> Terminate Other Sessions
@@ -105,7 +159,7 @@ export default function DevoteeSecurityAndPrivacyPage() {
               <input
                 type="checkbox"
                 checked={isAnon}
-                onChange={(e) => setIsAnon(e.target.checked)}
+                onChange={(e) => handleToggleAnon(e.target.checked)}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-stone-300 peer-focus:outline-none rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-devotional-saffron"></div>

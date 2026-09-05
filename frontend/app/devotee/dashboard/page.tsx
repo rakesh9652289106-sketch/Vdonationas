@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MOCK_DONATIONS } from '@/lib/mock-data';
 import ReceiptViewModal from '@/components/ReceiptViewModal';
@@ -9,8 +9,11 @@ import DevaAIAssistantModal from '@/components/DevaAIAssistantModal';
 import Medal3DCard from '@/components/3d/Medal3DCard';
 import MedalDetailModal from '@/components/3d/MedalDetailModal';
 import PanchangamCalculator from '@/components/devotional/PanchangamCalculator';
+import AuspiciousMuhurthamTeaser from '@/components/initiatives/AuspiciousMuhurthamTeaser';
+import { getInitiatives, Initiative } from '@/lib/initiatives-data';
 import { calculateDevoteeMedals, MEDAL_TIERS, MedalTier } from '@/lib/medals';
 import { useLanguage } from '@/lib/language-context';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 import {
   Heart,
   FileText,
@@ -38,10 +41,25 @@ import {
 
 export default function DevoteeDashboardPage() {
   const { t } = useLanguage();
+  const { showAlert } = useConfirmAlert();
   const [activeReceipt, setActiveReceipt] = useState<any | null>(null);
   const [activeCertificate, setActiveCertificate] = useState<any | null>(null);
   const [showDevaAI, setShowDevaAI] = useState(false);
   const [selectedMedalTier, setSelectedMedalTier] = useState<MedalTier | null>(null);
+  const [scheduledInitiatives, setScheduledInitiatives] = useState<Initiative[]>([]);
+
+  useEffect(() => {
+    async function loadInitiatives() {
+      try {
+        const list = await getInitiatives();
+        const scheduled = list.filter((i) => i.status === 'SCHEDULED' && i.is_teaser_enabled);
+        setScheduledInitiatives(scheduled);
+      } catch {
+        // fallback
+      }
+    }
+    loadInitiatives();
+  }, []);
 
   const medalProgress = calculateDevoteeMedals(MOCK_DONATIONS);
 
@@ -64,7 +82,11 @@ export default function DevoteeDashboardPage() {
   ];
 
   const handleDownloadAnnualStatement = () => {
-    alert('Generating 80G Annual Tax Statement for Financial Year 2025-2026... PDF download initialized.');
+    showAlert({
+      type: 'info',
+      title: '80G Tax Statement Initialized',
+      message: 'Generating verified 80G Annual Tax Exemption Statement for FY 2025-2026. PDF download initialized.',
+    });
   };
 
   return (
@@ -157,6 +179,27 @@ export default function DevoteeDashboardPage() {
 
       {/* SMART DAILY PANCHANGAM & MUHURTHAM CALCULATOR */}
       <PanchangamCalculator />
+
+      {/* AUSPICIOUS UPCOMING MUHURTHAM RELEASES & TEASERS */}
+      {scheduledInitiatives.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-serif font-bold text-devotional-maroon dark:text-amber-300 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-devotional-saffron animate-pulse" />
+              Upcoming Sacred Launches & Auspicious Muhurtham
+            </h2>
+            <Link
+              href="/initiatives"
+              className="text-xs text-devotional-saffron font-bold hover:underline"
+            >
+              Explore All Initiatives →
+            </Link>
+          </div>
+          {scheduledInitiatives.map((ini) => (
+            <AuspiciousMuhurthamTeaser key={ini.code} initiative={ini} />
+          ))}
+        </div>
+      )}
 
       {/* 3D DEVOTEE MEDAL SYSTEM WIDGET */}
       <div className="bg-gradient-to-b from-stone-950 via-devotional-maroon-dark to-stone-950 p-6 sm:p-8 rounded-3xl border-2 border-devotional-gold/60 shadow-2xl space-y-6 text-white">

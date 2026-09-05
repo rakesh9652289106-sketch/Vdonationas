@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import VasaviGoddess3DCanvas from './VasaviGoddess3DCanvas';
 import { X, Sparkles, Flame, Heart, ShieldCheck, Video, BellRing, Volume2, QrCode } from 'lucide-react';
+import { GotraSelect, NakshatraSelect } from '@/components/ui/VedicSelects';
 
 interface VasaviVirtualDarshanModalProps {
   onClose: () => void;
@@ -11,6 +12,7 @@ interface VasaviVirtualDarshanModalProps {
 export default function VasaviVirtualDarshanModal({ onClose }: VasaviVirtualDarshanModalProps) {
   const [devoteeName, setDevoteeName] = useState('');
   const [gothram, setGothram] = useState('');
+  const [nakshatram, setNakshatram] = useState('');
   const [eHundiAmount, setEHundiAmount] = useState(501);
   const [isOfferingAarti, setIsOfferingAarti] = useState(false);
   const [isHundiPaid, setIsHundiPaid] = useState(false);
@@ -113,14 +115,18 @@ export default function VasaviVirtualDarshanModal({ onClose }: VasaviVirtualDars
                   />
                 </div>
 
-                <div>
-                  <label className="block text-stone-400 font-semibold mb-1">Gothram (Optional)</label>
-                  <input
-                    type="text"
+                <div className="space-y-2 text-xs">
+                  <GotraSelect
+                    label="Gothram (Optional)"
                     value={gothram}
-                    onChange={(e) => setGothram(e.target.value)}
-                    placeholder="e.g. Maharshi Gothram"
-                    className="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-white font-semibold"
+                    onChange={setGothram}
+                    placeholder="Select Gotram (Optional)"
+                  />
+                  <NakshatraSelect
+                    label="Janma Nakshatra (Optional)"
+                    value={nakshatram}
+                    onChange={setNakshatram}
+                    placeholder="Select Nakshatra (Optional)"
                   />
                 </div>
 

@@ -91,6 +91,7 @@ export const memoryStore = {
   recurring: [] as any[],
   receipts: [] as any[],
   users: [] as any[],
+  initiatives: [] as any[],
 };
 
 // Initialize Supabase PostgreSQL Tables Automatically (Zero Manual Migration Errors)

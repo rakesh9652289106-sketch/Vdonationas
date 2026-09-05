@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { Sparkles, Heart, Repeat, ShieldCheck, CheckCircle2, Calendar, ArrowRight, Coins } from 'lucide-react';
 import { MOCK_TEMPLES } from '@/lib/mock-data';
 import { useLanguage } from '@/lib/language-context';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
 export default function RecurringSevaPage() {
   const { t } = useLanguage();
+  const { confirmAction, showAlert } = useConfirmAlert();
   const [selectedPlan, setSelectedPlan] = useState(116);
   const [customAmount, setCustomAmount] = useState('');
   const [category, setCategory] = useState('Nitya Annadanam Seva');
@@ -32,13 +34,32 @@ export default function RecurringSevaPage() {
     }
   };
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedPlan <= 0 || isNaN(selectedPlan)) {
-      alert('Autopay monthly donation amount must be a positive number (minimum ₹1).');
+      showAlert({
+        type: 'warning',
+        title: 'Valid Amount Required',
+        message: 'Autopay monthly donation amount must be a positive number (minimum ₹1).',
+      });
       return;
     }
+
+    const confirmed = await confirmAction({
+      title: 'Confirm Monthly AutoPay Mandate?',
+      message: `You are scheduling an automatic monthly pledge of ₹${selectedPlan.toLocaleString('en-IN')} towards "${category}". You can pause, modify, or cancel this pledge at any time from your Devotee Dashboard.`,
+      confirmText: `Confirm ₹${selectedPlan}/month`,
+      variant: 'change',
+    });
+
+    if (!confirmed) return;
+
     setIsSubscribed(true);
+    showAlert({
+      type: 'change',
+      title: 'AutoPay Mandate Registered',
+      message: `Monthly offering of ₹${selectedPlan.toLocaleString('en-IN')} for ${category} successfully scheduled.`,
+    });
   };
 
   return (
@@ -66,18 +87,18 @@ export default function RecurringSevaPage() {
           <p className="text-xs text-stone-600 dark:text-stone-300">
             Your monthly contribution of <strong>₹{selectedPlan.toLocaleString('en-IN')}/month</strong> to Sri Vasavi Matha Penugonda has been authorized. Official 80G receipts will be sent to your WhatsApp and Email automatically every month.
           </p>
-          <div className="pt-2 flex justify-center gap-4 text-xs">
+          <div className="pt-2 flex justify-center gap-3 text-xs">
             <Link
               href="/devotee/recurring"
-              className="px-5 py-2.5 rounded-xl bg-emerald-700 text-white font-bold hover:bg-emerald-800 transition-colors"
+              className="px-6 py-2.5 rounded-xl bg-devotional-maroon text-white font-bold hover:brightness-110 active-press transition-colors shadow-sm"
             >
-              View Active Subscription
+              Manage
             </Link>
             <Link
               href="/"
-              className="px-5 py-2.5 rounded-xl bg-stone-200 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-bold hover:bg-stone-300 transition-colors"
+              className="px-6 py-2.5 rounded-xl bg-stone-200 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-bold hover:bg-stone-300 active-press transition-colors"
             >
-              {t('navHome')}
+              Home
             </Link>
           </div>
         </div>
@@ -95,7 +116,7 @@ export default function RecurringSevaPage() {
                   key={amt}
                   type="button"
                   onClick={() => handleSelectPlan(amt)}
-                  className={`py-3 rounded-2xl font-bold text-sm transition-all border transform ${
+                  className={`py-3 rounded-2xl font-bold text-sm transition-all border transform active-press ${
                     selectedPlan === amt && !customAmount
                       ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 border-amber-300 shadow-gold scale-105 font-bold ring-2 ring-amber-300'
                       : 'bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border-stone-200 dark:border-stone-700 hover:border-amber-400'
@@ -119,9 +140,11 @@ export default function RecurringSevaPage() {
 
           <button
             type="submit"
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-devotional-maroon via-devotional-saffron to-amber-600 text-white font-serif font-bold text-base shadow-xl hover:shadow-2xl hover:brightness-110 active:scale-98 transition-all flex items-center justify-center gap-2 border border-devotional-gold/60"
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-devotional-maroon via-devotional-saffron to-amber-600 text-white font-serif font-bold text-base shadow-xl hover:shadow-2xl hover:brightness-110 active-press transition-all flex items-center justify-center gap-2 border border-devotional-gold/60"
           >
-            <Heart className="w-5 h-5 fill-current text-amber-300" /> {t('autopayBtnSubscribe')} (₹{selectedPlan.toLocaleString('en-IN')}/month)
+            <Heart className="w-5 h-5 fill-current text-amber-300" />
+            <span>Activate</span>
+            <span className="font-mono text-sm font-sans">₹{selectedPlan.toLocaleString('en-IN')}/mo</span>
           </button>
         </form>
       )}

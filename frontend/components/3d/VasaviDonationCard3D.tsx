@@ -6,8 +6,10 @@ import { calculateDevoteeMedals, MedalTier } from '@/lib/medals';
 import { Heart, Sparkles, ShieldCheck, Check, Lock, Flame } from 'lucide-react';
 import VasaviDonationSuccessModal from './VasaviDonationSuccessModal';
 import MedalUnlockCelebrationModal from './MedalUnlockCelebrationModal';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
 export default function VasaviDonationCard3D() {
+  const { showAlert } = useConfirmAlert();
   const [selectedTempleId, setSelectedTempleId] = useState(MOCK_TEMPLES[0].id);
   const [selectedCategory, setSelectedCategory] = useState('Annadanam Seva');
   const [amount, setAmount] = useState(1001);
@@ -50,7 +52,11 @@ export default function VasaviDonationCard3D() {
   const handleDonateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (amount <= 0 || isNaN(amount)) {
-      alert('Donation amount must be a positive number (minimum ₹1).');
+      showAlert({
+        type: 'warning',
+        title: 'Valid Amount Required',
+        message: 'Donation amount must be a positive number (minimum ₹1).',
+      });
       return;
     }
     setIsProcessing(true);

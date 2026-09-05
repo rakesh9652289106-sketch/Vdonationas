@@ -26,6 +26,7 @@ class Donation(models.Model):
     temple = models.ForeignKey(Temple, on_delete=models.CASCADE, related_name='donations')
     category = models.ForeignKey(DonationCategory, on_delete=models.SET_NULL, null=True, blank=True)
     campaign = models.ForeignKey(Campaign, on_delete=models.SET_NULL, null=True, blank=True)
+    initiative = models.ForeignKey('initiatives.Initiative', on_delete=models.SET_NULL, null=True, blank=True, related_name='donations')
     amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('1.00'))])
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='UPI')
     transaction_id = models.CharField(max_length=100, unique=True)

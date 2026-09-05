@@ -9,7 +9,7 @@ export default function Footer() {
   const { t } = useLanguage();
 
   return (
-    <footer className="bg-stone-900 text-stone-300 border-t border-devotional-gold/30">
+    <footer className="hidden md:block bg-stone-900 text-stone-300 border-t border-devotional-gold/30">
       {/* Top Trust Section */}
       <div className="border-b border-stone-800 py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center md:text-left">

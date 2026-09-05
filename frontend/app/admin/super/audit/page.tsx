@@ -4,9 +4,19 @@ import React from 'react';
 import { MOCK_AUDIT_LOGS } from '@/lib/mock-data';
 import { Lock, Download, Flame } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
 export default function AuditLogsPage() {
   const { t } = useLanguage();
+  const { showAlert } = useConfirmAlert();
+
+  const handleExport = () => {
+    showAlert({
+      type: 'info',
+      title: 'Audit Log Exported',
+      message: 'Cryptographic Immutable Audit Log trail exported in JSON / CSV format.',
+    });
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 font-sans">
@@ -25,7 +35,7 @@ export default function AuditLogsPage() {
         </div>
 
         <button
-          onClick={() => alert('Exporting Immutable Audit Log in JSON / CSV format...')}
+          onClick={handleExport}
           className="px-5 py-3 rounded-2xl bg-gradient-to-r from-devotional-saffron via-amber-400 to-amber-500 text-stone-950 font-serif font-bold text-xs shadow-gold hover:scale-105 transition-transform flex items-center gap-1.5 border border-amber-300 shrink-0 relative z-10"
         >
           <Download className="w-4 h-4 text-devotional-maroon" /> Export Cryptographic Audit CSV

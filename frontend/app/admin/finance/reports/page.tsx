@@ -2,8 +2,19 @@
 
 import React from 'react';
 import { Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
 export default function FinanceReportsPage() {
+  const { showAlert } = useConfirmAlert();
+
+  const handleExport = (title: string, format: 'PDF' | 'Excel') => {
+    showAlert({
+      type: 'info',
+      title: `${format} Export Generated`,
+      message: `Exporting "${title}" in ${format} format. Download initiated.`,
+    });
+  };
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div>
@@ -31,13 +42,13 @@ export default function FinanceReportsPage() {
             <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">{title}</h3>
             <div className="flex gap-2">
               <button
-                onClick={() => alert(`Exporting ${title} as PDF...`)}
+                onClick={() => handleExport(title, 'PDF')}
                 className="px-3 py-1.5 bg-emerald-900 text-white font-bold text-xs rounded-xl flex items-center gap-1"
               >
                 <FileText className="w-3.5 h-3.5" /> PDF
               </button>
               <button
-                onClick={() => alert(`Exporting ${title} as Excel...`)}
+                onClick={() => handleExport(title, 'Excel')}
                 className="px-3 py-1.5 bg-stone-900 text-amber-300 font-bold text-xs rounded-xl flex items-center gap-1"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" /> Excel / CSV

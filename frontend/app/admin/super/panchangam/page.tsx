@@ -5,9 +5,13 @@ import { MOCK_TEMPLES, MOCK_PANCHANGAM } from '@/lib/mock-data';
 import { PanchangamData } from '@/lib/types';
 import { Sun, Edit3, Plus, Save, Flame, MapPin, Building2, ExternalLink } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { DevotionalSelect } from '@/components/ui/DevotionalSelect';
+import { NakshatraSelect } from '@/components/ui/VedicSelects';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
 export default function SuperAdminPanchangamPage() {
   const { t } = useLanguage();
+  const { showAlert } = useConfirmAlert();
   const [panchangamList, setPanchangamList] = useState<PanchangamData[]>(MOCK_PANCHANGAM);
   const [editingItem, setEditingItem] = useState<PanchangamData | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -102,7 +106,11 @@ export default function SuperAdminPanchangamPage() {
     }
 
     setShowEditModal(false);
-    alert(`✅ Panchangam for "${targetTemple.name}" saved & linked successfully!`);
+    showAlert({
+      type: 'change',
+      title: 'Panchangam Saved',
+      message: `Daily Panchangam for "${targetTemple.name}" saved & linked successfully.`,
+    });
   };
 
   return (
@@ -204,20 +212,21 @@ export default function SuperAdminPanchangamPage() {
 
             <form onSubmit={handleSavePanchangam} className="space-y-4 text-xs">
               <div>
-                <label className="block font-bold text-stone-700 dark:text-stone-300 mb-1">
-                  Link to Shrine Devasthanam *
-                </label>
-                <select
+                <DevotionalSelect
+                  label="Link to Shrine Devasthanam"
+                  required
                   value={selectedTempleId}
-                  onChange={(e) => setSelectedTempleId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 font-bold"
-                >
-                  {MOCK_TEMPLES.map((tpl) => (
-                    <option key={tpl.id} value={tpl.id}>
-                      {tpl.name} ({tpl.city}, {tpl.state})
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedTempleId}
+                  placeholder="Select Devasthanam"
+                  searchPlaceholder="Search holy shrines..."
+                  footerText="Registered Temple Devasthanams"
+                  options={MOCK_TEMPLES.map((tpl) => ({
+                    value: tpl.id,
+                    label: tpl.name,
+                    sublabel: `${tpl.city}, ${tpl.state}`,
+                    badge: tpl.name.charAt(0),
+                  }))}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -261,15 +270,14 @@ export default function SuperAdminPanchangamPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-stone-700 dark:text-stone-300 mb-1">
-                    Nakshatram (నక్షత్రం) *
-                  </label>
-                  <input
-                    type="text"
+                  <NakshatraSelect
+                    label="Nakshatram (నక్షత్రం)"
                     required
                     value={nakshatram}
-                    onChange={(e) => setNakshatram(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800"
+                    onChange={setNakshatram}
+                    placeholder="Select Nakshatram"
+                    searchPlaceholder="Search 27 Nakshatras..."
+                    footerText="27 Vedic Janma Nakshatras"
                   />
                 </div>
               </div>

@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'apps.donations',
     'apps.recurring',
     'apps.receipts',
+    'apps.initiatives',
 ]
 
 MIDDLEWARE = [

@@ -1,9 +1,10 @@
 {
-  "name": "VD Multi-Temple Digital Platform",
-  "short_name": "VD",
-  "description": "Production Multi-Temple Digital Donation and Temple Management SaaS Platform",
+  "name": "Sri Vasavi Temple - Digital Seva & Donations",
+  "short_name": "Vasavi Seva",
+  "description": "Official digital donation, pooja slot scheduling, and devotional platform for Sri Vasavi Kanyaka Parameswari Matha, Penugonda.",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#FAF7F2",
   "theme_color": "#6B1D2F",
   "icons": [

@@ -3,16 +3,30 @@
 import React, { useState } from 'react';
 import { Settings, ShieldCheck, Flame } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
 export default function SaasSettingsPage() {
   const { t } = useLanguage();
+  const { confirmAction, showAlert } = useConfirmAlert();
   const [saasEnabled, setSaasEnabled] = useState(true);
   const [razorpayKey, setRazorpayKey] = useState('rzp_live_10928301982');
   const [phonePeKey, setPhonePeKey] = useState('M10293849102');
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('SaaS Subscription & Gateway API credentials saved securely to server environment!');
+    const confirmed = await confirmAction({
+      title: 'Update SaaS & Gateway Settings?',
+      message: 'Are you sure you want to update SaaS multi-tenant settings and payment gateway API credentials? Live merchant routing will reflect these changes.',
+      confirmText: 'Save Settings',
+      variant: 'change',
+    });
+    if (!confirmed) return;
+
+    showAlert({
+      type: 'change',
+      title: 'Settings Saved',
+      message: 'SaaS Subscription & Gateway API credentials saved securely to server environment.',
+    });
   };
 
   return (

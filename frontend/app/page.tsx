@@ -14,8 +14,10 @@ import NavagrahaYantra3D from '@/components/3d/NavagrahaYantra3D';
 import TempleGopuram3D from '@/components/3d/TempleGopuram3D';
 import InteractiveAartiThali3D from '@/components/3d/InteractiveAartiThali3D';
 import PanchangamCalculator from '@/components/devotional/PanchangamCalculator';
+import MobileHomeScreen from '@/components/mobile/MobileHomeScreen';
 import { MEDAL_TIERS, MedalTier } from '@/lib/medals';
 import { useLanguage } from '@/lib/language-context';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 import {
   Heart,
   Sparkles,
@@ -33,6 +35,7 @@ import {
 
 export default function HomePage() {
   const { t } = useLanguage();
+  const { showAlert } = useConfirmAlert();
   const [selectedMedal, setSelectedMedal] = useState<MedalTier | null>(null);
   const [showVirtualDarshan, setShowVirtualDarshan] = useState(false);
 
@@ -89,13 +92,24 @@ export default function HomePage() {
   ];
 
   const handleRingTempleBell = () => {
-    alert('🔔 Sacred Temple Bell Ringing... May Sri Vasavi Matha bless your family with peace and prosperity!');
+    showAlert({
+      type: 'info',
+      title: 'Sacred Temple Bell Ringing',
+      message: '🔔 Om Sri Vasavi Kanyaka Parameswaryai Namaha! May the divine temple bell resonance bless your family with peace and abundance.',
+    });
   };
 
   return (
-    <div className="space-y-16 pb-16 bg-[#FAF7F2] dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans">
-      {/* PANCHANGAM TICKER BANNER */}
-      <div className="bg-amber-100 dark:bg-stone-900 border-b border-amber-300 dark:border-stone-800 text-xs py-2 px-4 text-center text-amber-900 dark:text-amber-300 font-medium flex items-center justify-center gap-3 overflow-x-auto">
+    <>
+      {/* NATIVE MOBILE APP HOME VIEW (< md) */}
+      <div className="md:hidden">
+        <MobileHomeScreen />
+      </div>
+
+      {/* DESKTOP FULL HOME EXPERIENCE (>= md) */}
+      <div className="hidden md:block space-y-16 pb-16 bg-[#FAF7F2] dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans">
+        {/* PANCHANGAM TICKER BANNER */}
+        <div className="bg-amber-100 dark:bg-stone-900 border-b border-amber-300 dark:border-stone-800 text-xs py-2 px-4 text-center text-amber-900 dark:text-amber-300 font-medium flex items-center justify-center gap-3 overflow-x-auto">
         <span className="font-bold flex items-center gap-1">
           <Sun className="w-3.5 h-3.5 text-devotional-saffron" /> TODAY'S SACRED PANCHANGAM:
         </span>
@@ -281,6 +295,25 @@ export default function HomePage() {
         <InteractiveTempleMap3D />
       </section>
 
+      {/* Mobile Native In-App Bottom Card */}
+      <div className="md:hidden px-4 pt-4 pb-2 text-center">
+        <div className="p-4 rounded-2xl bg-white/80 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-800 shadow-xs space-y-2">
+          <div className="flex items-center justify-center gap-1.5 text-xs font-serif font-bold text-devotional-maroon dark:text-amber-400">
+            <span>🛕</span>
+            <span>Sri Vasavi Kanyaka Parameswari Matha</span>
+          </div>
+          <p className="text-[10px] text-stone-500 dark:text-stone-400">
+            Penugonda Devasthanam • 80G Tax-Exempt Digital Seva Platform
+          </p>
+          <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-center gap-3 text-[10px] text-stone-400">
+            <span>Official Mobile App</span>
+            <span>•</span>
+            <span>256-Bit SSL Encrypted</span>
+          </div>
+        </div>
+      </div>
+      </div>
+
       {/* Modal Dialogs */}
       {selectedMedal && (
         <MedalDetailModal
@@ -296,6 +329,6 @@ export default function HomePage() {
       {showVirtualDarshan && (
         <VasaviVirtualDarshanModal onClose={() => setShowVirtualDarshan(false)} />
       )}
-    </div>
+    </>
   );
 }

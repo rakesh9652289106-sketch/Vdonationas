@@ -150,3 +150,43 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #E06D29;
 }
+
+/* NATIVE MOBILE APP SHELL OPTIMIZATIONS */
+html, body {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior-y: contain;
+}
+
+/* iOS & Android Safe Area Utilities */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.h-safe-bottom {
+  height: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile App Bar Elevated Bottom Blur */
+.mobile-nav-blur {
+  background: rgba(255, 253, 249, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.dark .mobile-nav-blur {
+  background: rgba(18, 18, 18, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Native Mobile Tap Scaling */
+.active-press:active {
+  transform: scale(0.92);
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+

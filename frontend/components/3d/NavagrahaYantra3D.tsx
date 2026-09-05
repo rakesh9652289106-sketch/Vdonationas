@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { templeAudio } from '@/lib/templeAudio';
 import { Sparkles, Sun, Shield, Orbit, HeartHandshake, Compass } from 'lucide-react';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
 interface PlanetInfo {
   id: string;
@@ -151,8 +152,25 @@ const PLANETS: PlanetInfo[] = [
 
 export default function NavagrahaYantra3D() {
   const mountRef = useRef<HTMLDivElement>(null);
+  const { confirmAction, showAlert } = useConfirmAlert();
   const [selectedPlanet, setSelectedPlanet] = useState<PlanetInfo>(PLANETS[0]);
   const [isRotating, setIsRotating] = useState(true);
+
+  const handleBookShantiPooja = async () => {
+    const confirmed = await confirmAction({
+      title: `Book ${selectedPlanet.name} Shanti Pooja?`,
+      message: `Dedicate a sacred Navagraha Shanti Pooja for ${selectedPlanet.name} (Presiding Deity: ${selectedPlanet.deity}) for ₹501? Astrological blessing: ${selectedPlanet.benefit}.`,
+      confirmText: 'Confirm Pooja (₹501)',
+      variant: 'change',
+    });
+    if (!confirmed) return;
+
+    showAlert({
+      type: 'change',
+      title: 'Navagraha Pooja Dedicated',
+      message: `🙏 Navagraha Shanti Pooja booked for ${selectedPlanet.name}! May ${selectedPlanet.deity} shower divine grace and protection.`,
+    });
+  };
 
   const selectPlanet = (planet: PlanetInfo) => {
     setSelectedPlanet(planet);
@@ -382,9 +400,7 @@ export default function NavagrahaYantra3D() {
           </div>
 
           <button
-            onClick={() => {
-              alert(`🙏 Navagraha Shanti Pooja booked for ${selectedPlanet.name}! May ${selectedPlanet.deity} bless you.`);
-            }}
+            onClick={handleBookShantiPooja}
             className="w-full py-3 rounded-xl bg-gradient-to-r from-devotional-maroon via-devotional-saffron to-amber-600 text-white font-bold text-xs shadow-gold hover:brightness-110 transition-all flex items-center justify-center gap-2"
           >
             <HeartHandshake className="w-4 h-4 text-amber-300" />

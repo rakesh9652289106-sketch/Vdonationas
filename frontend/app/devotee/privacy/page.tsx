@@ -3,10 +3,31 @@
 import React, { useState } from 'react';
 import { Lock, Download, Flame } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
 export default function DevoteePrivacyPage() {
   const { t } = useLanguage();
+  const { showAlert } = useConfirmAlert();
   const [isAnon, setIsAnon] = useState(false);
+
+  const handleAnonToggle = (checked: boolean) => {
+    setIsAnon(checked);
+    showAlert({
+      type: 'change',
+      title: 'Anonymous Setting Updated',
+      message: checked
+        ? 'Your name will now be hidden from public temple donor rolls.'
+        : 'Your name will be visible on public donor rolls.',
+    });
+  };
+
+  const handleDownloadArchive = () => {
+    showAlert({
+      type: 'info',
+      title: 'Archive Exported',
+      message: 'Downloading GDPR JSON personal data archive.',
+    });
+  };
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto font-sans">
@@ -35,7 +56,7 @@ export default function DevoteePrivacyPage() {
           <input
             type="checkbox"
             checked={isAnon}
-            onChange={(e) => setIsAnon(e.target.checked)}
+            onChange={(e) => handleAnonToggle(e.target.checked)}
             className="w-6 h-6 rounded-lg accent-devotional-saffron cursor-pointer"
           />
         </div>
@@ -46,7 +67,7 @@ export default function DevoteePrivacyPage() {
             <p className="text-stone-500 mt-0.5">Export verified JSON archive of your devotional contributions and tax statements.</p>
           </div>
           <button
-            onClick={() => alert('Downloading GDPR JSON data archive...')}
+            onClick={handleDownloadArchive}
             className="px-5 py-2.5 bg-gradient-to-r from-devotional-maroon to-devotional-maroon-dark text-amber-300 font-bold rounded-2xl text-xs flex items-center gap-2 shadow-md hover:brightness-110 transition-all border border-amber-400/40"
           >
             <Download className="w-4 h-4 text-devotional-saffron" /> Download Archive (JSON)

@@ -13,6 +13,7 @@ import {
   PieChart,
   Flame,
   Sun,
+  Sparkles,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
 
@@ -22,6 +23,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
   const navItems = [
     { name: t('sidebarSuperDashboard'), href: '/admin/super/dashboard', icon: PieChart },
+    { name: 'Initiatives & Fundraising', href: '/admin/super/initiatives', icon: Sparkles },
     { name: 'Seva Quota Approvals', href: '/admin/super/seva-approvals', icon: ShieldCheck },
     { name: t('sidebarManageTemples'), href: '/admin/super/temples', icon: Building2 },
     { name: t('sidebarUserMatrix'), href: '/admin/super/users', icon: Users },

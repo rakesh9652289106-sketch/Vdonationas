@@ -70,7 +70,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-devotional-cream/95 dark:bg-stone-950/95 backdrop-blur-md border-b border-devotional-gold/40 dark:border-stone-800 transition-colors shadow-sm font-sans">
+    <header className="hidden md:block sticky top-0 z-50 bg-devotional-cream/95 dark:bg-stone-950/95 backdrop-blur-md border-b border-devotional-gold/40 dark:border-stone-800 transition-colors shadow-sm font-sans">
       {/* Top Banner Notice */}
       <div className="bg-devotional-maroon text-amber-100 text-xs py-1.5 px-4 text-center flex items-center justify-center gap-3">
         <Flame className="w-3.5 h-3.5 text-devotional-saffron animate-pulse" />
@@ -148,6 +148,16 @@ export default function Navbar() {
               }`}
             >
               {t('navFestivals')}
+            </Link>
+            <Link
+              href="/initiatives"
+              className={`hover:text-devotional-maroon dark:hover:text-amber-400 transition-colors whitespace-nowrap ${
+                pathname.startsWith('/initiatives')
+                  ? 'text-devotional-maroon dark:text-amber-400 font-extrabold border-b-2 border-devotional-maroon pb-0.5'
+                  : ''
+              }`}
+            >
+              Initiatives
             </Link>
           </nav>
 

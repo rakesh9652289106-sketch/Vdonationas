@@ -7,6 +7,7 @@ import NavagrahaYantra3D from '@/components/3d/NavagrahaYantra3D';
 import InteractiveAartiThali3D from '@/components/3d/InteractiveAartiThali3D';
 import TempleGopuram3D from '@/components/3d/TempleGopuram3D';
 import PanchangamCalculator from '@/components/devotional/PanchangamCalculator';
+import { NakshatraSelect, GotraSelect } from '@/components/ui/VedicSelects';
 import { templeAudio } from '@/lib/templeAudio';
 import {
   Sparkles,
@@ -133,37 +134,19 @@ export default function DarshanPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
-                        Gothram
-                      </label>
-                      <input
-                        type="text"
-                        value={gothram}
-                        onChange={(e) => setGothram(e.target.value)}
-                        placeholder="e.g. Maharshi"
-                        className="w-full px-3 py-2 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-white font-medium"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
-                        Nakshatram
-                      </label>
-                      <select
-                        value={nakshatram}
-                        onChange={(e) => setNakshatram(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-white font-medium"
-                      >
-                        {['Rohini', 'Ashwini', 'Krittika', 'Mrigashira', 'Uttara', 'Hastha', 'Swathi', 'Anuradha', 'Revathi'].map(
-                          (n) => (
-                            <option key={n} value={n}>
-                              {n}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <GotraSelect
+                      label="Gothram"
+                      value={gothram}
+                      onChange={setGothram}
+                      placeholder="Select Gotram (Optional)"
+                    />
+                    <NakshatraSelect
+                      label="Nakshatram"
+                      value={nakshatram}
+                      onChange={setNakshatram}
+                      placeholder="Select Nakshatra (Optional)"
+                    />
                   </div>
 
                   <div>

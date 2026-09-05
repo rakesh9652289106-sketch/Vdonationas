@@ -4,6 +4,8 @@ from .models import Donation
 class DonationSerializer(serializers.ModelSerializer):
     temple_name = serializers.ReadOnlyField(source='temple.name')
     category_name = serializers.ReadOnlyField(source='category.name', default='General Seva')
+    initiative_title = serializers.ReadOnlyField(source='initiative.title')
+    initiative_code = serializers.ReadOnlyField(source='initiative.code')
 
     class Meta:
         model = Donation

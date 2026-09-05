@@ -5,10 +5,20 @@ import { MOCK_DONATIONS } from '@/lib/mock-data';
 import ReceiptViewModal from '@/components/ReceiptViewModal';
 import { FileText, Download, ShieldCheck, Flame } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
 export default function DevoteeReceiptsCenterPage() {
   const { t } = useLanguage();
+  const { showAlert } = useConfirmAlert();
   const [activeReceipt, setActiveReceipt] = useState<any | null>(null);
+
+  const handleDownloadAll = () => {
+    showAlert({
+      type: 'info',
+      title: 'Receipts Download Initialized',
+      message: 'Packaging all historical 80G tax receipts and digital donation slips into a ZIP archive...',
+    });
+  };
 
   return (
     <div className="space-y-6 font-sans">
@@ -27,7 +37,7 @@ export default function DevoteeReceiptsCenterPage() {
         </div>
 
         <button
-          onClick={() => alert('Downloading all historical receipts as ZIP archive...')}
+          onClick={handleDownloadAll}
           className="px-5 py-3 rounded-2xl bg-gradient-to-r from-devotional-saffron via-amber-400 to-amber-500 text-stone-950 font-serif font-bold text-xs shadow-gold hover:scale-105 transition-transform flex items-center gap-1.5 border border-amber-300 shrink-0 relative z-10"
         >
           <Download className="w-4 h-4 text-devotional-maroon" /> Download All Receipts (ZIP)

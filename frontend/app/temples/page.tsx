@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { MOCK_TEMPLES } from '@/lib/mock-data';
 import TempleCard from '@/components/TempleCard';
 import { Search, Filter, MapPin, Sparkles, Building2 } from 'lucide-react';
+import { DevotionalSelect } from '@/components/ui/DevotionalSelect';
 
 function TempleDiscoveryContent() {
   const searchParams = useSearchParams();
@@ -63,40 +64,48 @@ function TempleDiscoveryContent() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by temple name, deity, city, code, or PIN..."
+              placeholder="Search Matha, Deity, City, State, PIN..."
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-devotional-maroon font-medium"
             />
           </div>
 
           {/* State Filter */}
           <div>
-            <select
+            <DevotionalSelect
               value={selectedState}
-              onChange={(e) => setSelectedState(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-devotional-maroon font-medium"
-            >
-              <option value="ALL">All States (India)</option>
-              <option value="Andhra Pradesh">Andhra Pradesh</option>
-              <option value="Telangana">Telangana</option>
-              <option value="Tamil Nadu">Tamil Nadu</option>
-              <option value="Karnataka">Karnataka</option>
-            </select>
+              onChange={setSelectedState}
+              placeholder="All States (India)"
+              searchPlaceholder="Filter Indian States..."
+              footerText="5 States Configured"
+              showSparkle={true}
+              options={[
+                { value: 'ALL', label: 'All States (India)', badge: '🇮🇳' },
+                { value: 'Andhra Pradesh', label: 'Andhra Pradesh', badge: 'AP' },
+                { value: 'Telangana', label: 'Telangana', badge: 'TS' },
+                { value: 'Tamil Nadu', label: 'Tamil Nadu', badge: 'TN' },
+                { value: 'Karnataka', label: 'Karnataka', badge: 'KA' },
+              ]}
+            />
           </div>
 
           {/* Deity Filter */}
           <div>
-            <select
+            <DevotionalSelect
               value={selectedDeity}
-              onChange={(e) => setSelectedDeity(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-devotional-maroon font-medium"
-            >
-              <option value="ALL">All Deities</option>
-              <option value="Venkateswara">Lord Venkateswara</option>
-              <option value="Narasimha">Lord Narasimha</option>
-              <option value="Rama">Lord Sita Rama</option>
-              <option value="Durga">Goddess Durga</option>
-              <option value="Hanuman">Lord Anjaneya</option>
-            </select>
+              onChange={setSelectedDeity}
+              placeholder="All Deities"
+              searchPlaceholder="Filter Sacred Deities..."
+              footerText="6 Deities Configured"
+              showSparkle={true}
+              options={[
+                { value: 'ALL', label: 'All Deities', badge: '🕉️' },
+                { value: 'Venkateswara', label: 'Lord Venkateswara', badge: 'V' },
+                { value: 'Narasimha', label: 'Lord Narasimha', badge: 'N' },
+                { value: 'Rama', label: 'Lord Sita Rama', badge: 'R' },
+                { value: 'Durga', label: 'Goddess Durga', badge: 'D' },
+                { value: 'Hanuman', label: 'Lord Anjaneya', badge: 'H' },
+              ]}
+            />
           </div>
         </div>
 

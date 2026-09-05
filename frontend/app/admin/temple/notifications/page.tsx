@@ -21,6 +21,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { useConfirmAlert } from '@/lib/confirm-alert-context';
 import {
   TempleAdminNotification,
   getTempleAdminNotifications,
@@ -32,10 +33,10 @@ import {
 
 export default function TempleAdminNotificationsPage() {
   const { t } = useLanguage();
+  const { confirmAction, showAlert } = useConfirmAlert();
   const [notifications, setNotifications] = useState<TempleAdminNotification[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const loadNotifications = () => {
     setNotifications(getTempleAdminNotifications());
@@ -49,35 +50,60 @@ export default function TempleAdminNotificationsPage() {
     };
   }, []);
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
-  };
-
   const handleMarkAsRead = (id: string) => {
     markTempleAdminNotificationRead(id);
     loadNotifications();
-    showToast('✓ Marked notification as read.');
+    showAlert({
+      type: 'info',
+      title: 'Marked Read',
+      message: 'Notification marked as read.',
+    });
   };
 
   const handleMarkAllRead = () => {
     markAllTempleAdminNotificationsRead();
     loadNotifications();
-    showToast('✓ Marked all notifications as read.');
+    showAlert({
+      type: 'info',
+      title: 'All Marked Read',
+      message: 'All administrative notifications marked as read.',
+    });
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    const confirmed = await confirmAction({
+      title: 'Delete Notification?',
+      message: 'Are you sure you want to remove this administrative notice from your dashboard? This action cannot be reversed.',
+      confirmText: 'Delete Notification',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
     deleteTempleAdminNotification(id);
     loadNotifications();
-    showToast('✓ Notification deleted.');
+    showAlert({
+      type: 'danger',
+      title: 'Notification Deleted',
+      message: 'Notification removed successfully.',
+    });
   };
 
-  const handleClearAll = () => {
-    if (confirm('Are you sure you want to clear all notifications?')) {
-      clearAllTempleAdminNotifications();
-      loadNotifications();
-      showToast('✓ Cleared all notifications.');
-    }
+  const handleClearAll = async () => {
+    const confirmed = await confirmAction({
+      title: 'Clear All Notifications?',
+      message: 'Are you sure you want to clear all administrative notifications, Super Admin approvals, and decision logs? This cannot be undone.',
+      confirmText: 'Yes, Clear All',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    clearAllTempleAdminNotifications();
+    loadNotifications();
+    showAlert({
+      type: 'danger',
+      title: 'Notifications Cleared',
+      message: 'All notifications have been cleared from your records.',
+    });
   };
 
   // Filtered list
@@ -148,13 +174,6 @@ export default function TempleAdminNotificationsPage() {
         </div>
       </div>
 
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/80 border-2 border-emerald-400 rounded-2xl text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-2 shadow-lg animate-fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
 
       {/* SEARCH & FILTER CONTROLS */}
       <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-xl space-y-4">

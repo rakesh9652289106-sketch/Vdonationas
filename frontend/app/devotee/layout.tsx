@@ -34,9 +34,11 @@ export default function DevoteeLayout({ children }: { children: React.ReactNode 
   const navItems = [
     { name: t('sidebarDevoteeHome'), href: '/devotee/dashboard', icon: LayoutDashboard },
     { name: t('sidebarMyDonations'), href: '/devotee/donations', icon: Heart },
+    { name: 'Devotee Rewards', href: '/devotee/rewards', icon: Sparkles },
     { name: t('sidebarMyReceipts'), href: '/devotee/receipts', icon: FileText },
     { name: t('sidebarDonationAnalytics'), href: '/devotee/analytics', icon: BarChart3, aliases: ['/devotee/annual-statement'] },
     { name: t('sidebarMyTemples'), href: '/devotee/temples', icon: Building2 },
+    { name: 'Sacred Initiatives', href: '/initiatives', icon: Sparkles },
     // { name: t('sidebarFavoriteShrines'), href: '/devotee/favorites', icon: Bookmark }, // Hidden for now
     { name: t('sidebarRecurringSeva'), href: '/devotee/recurring', icon: Repeat },
     { name: t('sidebarFamilyOccasions'), href: '/devotee/family', icon: Users },
@@ -50,8 +52,8 @@ export default function DevoteeLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="min-h-screen bg-devotional-cream dark:bg-stone-900 flex flex-col md:flex-row font-sans">
-      {/* Devotee 3D Dedicated Sidebar */}
-      <aside className="w-full md:w-64 bg-white dark:bg-stone-950 border-r border-stone-200 dark:border-stone-800 p-6 space-y-6 shrink-0 shadow-lg">
+      {/* Devotee 3D Dedicated Sidebar (Desktop Only) */}
+      <aside className="hidden md:block w-64 bg-white dark:bg-stone-950 border-r border-stone-200 dark:border-stone-800 p-6 space-y-6 shrink-0 shadow-lg">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1 text-devotional-saffron text-[10px] font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-950 px-2.5 py-0.5 rounded-full border border-amber-300">
             <Flame className="w-3 h-3 text-devotional-saffron animate-pulse" /> {t('navDevoteeDashboard')}

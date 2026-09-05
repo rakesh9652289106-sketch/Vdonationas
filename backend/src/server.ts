@@ -7,6 +7,7 @@ import donationRoutes from './routes/donations.routes.js';
 import recurringRoutes from './routes/recurring.routes.js';
 import receiptsRoutes from './routes/receipts.routes.js';
 import userRoutes from './routes/users.routes.js';
+import initiativeRoutes from './routes/initiatives.routes.js';
 
 dotenv.config();
 
@@ -59,6 +60,7 @@ app.use('/api/v1/donations', donationRoutes);
 app.use('/api/v1/recurring', recurringRoutes);
 app.use('/api/v1/receipts', receiptsRoutes);
 app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/initiatives', initiativeRoutes);
 
 // 404 Handler
 app.use((req: Request, res: Response) => {
