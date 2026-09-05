@@ -9,10 +9,13 @@ import {
   INITIATIVE_TYPE_LABELS,
   registerDevoteeMuhurthamReminder,
   isInitiativeReminderSet,
+  isInitiativeTeaserVisible,
 } from '@/lib/initiatives-data';
 import InitiativeTimeline3D from '@/components/3d/InitiativeTimeline3D';
 import InitiativeFundsBreakdown3D from '@/components/3d/InitiativeFundsBreakdown3D';
 import InitiativeElevation3D from '@/components/3d/InitiativeElevation3D';
+import SacredAkhandaDiya3D from '@/components/3d/SacredAkhandaDiya3D';
+import SacredSwarnaHundi3D from '@/components/3d/SacredSwarnaHundi3D';
 import ShareInitiativeModal from '@/components/initiatives/ShareInitiativeModal';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
 import {
@@ -43,7 +46,7 @@ export default function InitiativeDetailPage() {
 
   const [initiative, setInitiative] = useState<Initiative | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PROGRESS' | 'FUNDS' | 'UPDATES'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PROGRESS' | 'FUNDS' | 'UPDATES' | '3D_CHAMBER'>('OVERVIEW');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [activeGalleryImg, setActiveGalleryImg] = useState<string | null>(null);
   const [reminderSet, setReminderSet] = useState(false);
@@ -207,8 +210,8 @@ export default function InitiativeDetailPage() {
           </div>
         </div>
 
-        {/* Sacred Auspicious Launch Countdown Banner (When SCHEDULED) */}
-        {initiative.status === 'SCHEDULED' && (
+        {/* Sacred Auspicious Launch Countdown Banner (When SCHEDULED and Teaser Visible) */}
+        {initiative.status === 'SCHEDULED' && isInitiativeTeaserVisible(initiative) && (
           <div className="relative rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-amber-950 via-stone-900 to-red-950 text-white border-2 border-devotional-gold/60 shadow-2xl overflow-hidden">
             {/* Ambient Background Vedic Glow */}
             <div className="absolute -right-16 -top-16 w-64 h-64 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -350,6 +353,7 @@ export default function InitiativeDetailPage() {
           <div className="flex items-center gap-2 bg-stone-200/80 dark:bg-stone-800/80 p-1.5 rounded-2xl overflow-x-auto no-scrollbar">
             {[
               { key: 'OVERVIEW', label: 'Overview' },
+              { key: '3D_CHAMBER', label: '🪔 3D Sacred Chamber' },
               { key: 'PROGRESS', label: 'Milestones' },
               { key: 'FUNDS', label: 'Financials' },
               { key: 'UPDATES', label: `Updates (${initiative.updates?.length || 0})` },
@@ -417,6 +421,31 @@ export default function InitiativeDetailPage() {
 
               {/* Right Column: Location & Documents */}
               <div className="space-y-6">
+                {/* 3D Virtual Sacred Chamber Teaser Card */}
+                <div className="bg-gradient-to-br from-stone-900 via-amber-950 to-stone-900 rounded-3xl p-6 border-2 border-devotional-gold/70 shadow-2xl text-stone-100 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 rounded-xl bg-amber-500/20 text-xl border border-amber-500/30">🪔</span>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-devotional-gold tracking-wider block">
+                        IMMERSIVE 3D EXPERIENCE
+                      </span>
+                      <h4 className="font-serif font-bold text-sm text-amber-200">
+                        Virtual Sacred Chamber
+                      </h4>
+                    </div>
+                  </div>
+                  <p className="text-xs text-stone-300 leading-relaxed">
+                    Light a dedicated 3D Akhanda Deepam and drop sacred gold coins in the 3D Swarna Hundi for this initiative.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('3D_CHAMBER')}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-devotional-saffron to-amber-600 text-white font-bold text-xs shadow-gold hover:brightness-110 transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-200" /> Enter 3D Sacred Chamber
+                  </button>
+                </div>
+
                 {/* Location Card */}
                 <div className="bg-white dark:bg-stone-900 rounded-3xl p-6 border border-stone-200 dark:border-stone-800 shadow-xl space-y-4">
                   <h3 className="font-serif font-bold text-base text-stone-900 dark:text-stone-100 flex items-center gap-2">
@@ -474,7 +503,51 @@ export default function InitiativeDetailPage() {
             </div>
           )}
 
-          {/* TAB 2: PROGRESS / MILESTONES */}
+          {/* TAB 2: 3D SACRED CHAMBER (AKHANDA DEEPAM & SWARNA HUNDI) */}
+          {activeTab === '3D_CHAMBER' && (
+            <div className="space-y-10 animate-fadeIn">
+              {/* 3D Sacred Akhanda Diya */}
+              <SacredAkhandaDiya3D
+                initiativeTitle={initiative.title}
+                initiativeCode={initiative.code}
+                onDeepamLit={(devotee, wish) => {
+                  showAlert({
+                    type: 'success',
+                    title: 'Akhanda Deepam Consecrated! 🪔',
+                    message: `May Sri Vasavi Matha shower divine blessings upon ${devotee} for dedicating an eternal deepam to "${initiative.title}". Sankalpam: "${wish}"`,
+                  });
+                }}
+              />
+
+              {/* 3D Swarna Hundi Vessel */}
+              <div className="space-y-4">
+                <div className="text-center space-y-1.5 max-w-xl mx-auto">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-devotional-saffron text-xs font-bold uppercase tracking-wider border border-devotional-gold/40">
+                    🪙 SACRED INITIATIVE E-HUNDI
+                  </div>
+                  <h4 className="text-xl sm:text-2xl font-serif font-bold text-devotional-maroon dark:text-amber-400">
+                    Offer Digital Gold Coins to Swarna Hundi
+                  </h4>
+                  <p className="text-xs text-stone-600 dark:text-stone-300">
+                    Click any coin or enter a custom sum to hear the divine resonance and offer your seva directly to this initiative.
+                  </p>
+                </div>
+
+                <SacredSwarnaHundi3D
+                  templeName="Sri Vasavi Matha Devasthanam"
+                  onCoinDropped={(amt) => {
+                    showAlert({
+                      type: 'success',
+                      title: 'Sacred Coin Drop Confirmed! 🙏',
+                      message: `Auspicious offering of ₹${amt.toLocaleString('en-IN')} dropped into the Swarna Hundi for "${initiative.title}". May peace and abundance fill your home!`,
+                    });
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: PROGRESS / MILESTONES */}
           {activeTab === 'PROGRESS' && (
             <div className="space-y-8">
               <InitiativeElevation3D

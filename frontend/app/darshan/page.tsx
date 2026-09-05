@@ -6,6 +6,8 @@ import InteractiveDarshanSanctum3D from '@/components/3d/InteractiveDarshanSanct
 import NavagrahaYantra3D from '@/components/3d/NavagrahaYantra3D';
 import InteractiveAartiThali3D from '@/components/3d/InteractiveAartiThali3D';
 import TempleGopuram3D from '@/components/3d/TempleGopuram3D';
+import SacredAkhandaDiya3D from '@/components/3d/SacredAkhandaDiya3D';
+import SacredSwarnaHundi3D from '@/components/3d/SacredSwarnaHundi3D';
 import PanchangamCalculator from '@/components/devotional/PanchangamCalculator';
 import { NakshatraSelect, GotraSelect } from '@/components/ui/VedicSelects';
 import { templeAudio } from '@/lib/templeAudio';
@@ -205,7 +207,45 @@ export default function DarshanPage() {
           </div>
         </section>
 
-        {/* 4. 3D INTERACTIVE NAVAGRAHA PLANETARY CHAKRA */}
+        {/* 4. 3D AKHANDA DEEPAM SANCTUM */}
+        <section className="space-y-6">
+          <div className="text-center space-y-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-devotional-saffron flex items-center justify-center gap-1">
+              <Flame className="w-4 h-4 text-devotional-saffron" /> ETERNAL SACRED FLAME
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-devotional-maroon dark:text-amber-400">
+              Offer 3D Akhanda Deepam & Pushparchana
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 max-w-xl mx-auto">
+              Rotate the eternal brass lamp, offer golden ghee to intensify the sacred flame, shower flower petals, and consecrate your family sankalpam.
+            </p>
+          </div>
+
+          <div className="max-w-4xl mx-auto">
+            <SacredAkhandaDiya3D />
+          </div>
+        </section>
+
+        {/* 5. 3D SWARNA HUNDI INTERACTIVE VESSEL */}
+        <section className="space-y-6">
+          <div className="text-center space-y-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-devotional-saffron flex items-center justify-center gap-1">
+              <Sparkles className="w-4 h-4 text-amber-400" /> REAL-TIME E-HUNDI COIN OFFERING
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-devotional-maroon dark:text-amber-400">
+              Interactive 3D Swarna Hundi
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 max-w-xl mx-auto">
+              Experience the divine joy of dropping gold coins with authentic temple resonance into the sacred Sri Vasavi Matha Hundi.
+            </p>
+          </div>
+
+          <div className="max-w-3xl mx-auto">
+            <SacredSwarnaHundi3D />
+          </div>
+        </section>
+
+        {/* 6. 3D INTERACTIVE NAVAGRAHA PLANETARY CHAKRA */}
         <section className="space-y-6">
           <NavagrahaYantra3D />
         </section>

@@ -24,6 +24,8 @@ import { DevotionalSelect } from '@/components/ui/DevotionalSelect';
 import { NakshatraSelect, GotraSelect } from '@/components/ui/VedicSelects';
 import { recordInitiativeDonation } from '@/lib/initiatives-data';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
+import SacredSwarnaHundi3D from '@/components/3d/SacredSwarnaHundi3D';
+import DonationSuccess3DModal from '@/components/3d/DonationSuccess3DModal';
 
 function DonationFormContent() {
   const searchParams = useSearchParams();
@@ -62,6 +64,8 @@ function DonationFormContent() {
 
   // Checkout Steps
   const [step, setStep] = useState<'DETAILS' | 'PAYMENT' | 'VERIFYING' | 'SUCCESS'>('DETAILS');
+  const [viewMode, setViewMode] = useState<'FORM' | '3D_HUNDI'>('FORM');
+  const [show3DSuccessModal, setShow3DSuccessModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
 
@@ -166,6 +170,7 @@ function DonationFormContent() {
 
         setReceiptData(receipt);
         setStep('SUCCESS');
+        setShow3DSuccessModal(true);
       }
     }, 2000);
   };
@@ -183,11 +188,82 @@ function DonationFormContent() {
         <p className="text-stone-600 dark:text-stone-300 text-xs">
           Your offering is 100% server-verified and generates an official 80G digital receipt immediately.
         </p>
+
+        {/* 3D Mode vs Standard Form Switcher */}
+        {step === 'DETAILS' && (
+          <div className="inline-flex bg-stone-200/80 dark:bg-stone-800/80 p-1 rounded-2xl border border-devotional-gold/30 shadow-sm mt-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('FORM')}
+              className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                viewMode === 'FORM'
+                  ? 'bg-devotional-maroon text-amber-200 shadow'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+              }`}
+            >
+              📋 Standard Seva Form
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('3D_HUNDI')}
+              className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === '3D_HUNDI'
+                  ? 'bg-gradient-to-r from-devotional-saffron to-amber-600 text-white shadow'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+              }`}
+            >
+              🪙 3D Interactive Swarna Hundi
+            </button>
+          </div>
+        )}
       </div>
 
       {/* STEP CONTENT CONTAINER */}
       <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-xl overflow-hidden">
-        {step === 'DETAILS' && (
+        {step === 'DETAILS' && viewMode === '3D_HUNDI' && (
+          <div className="p-4 sm:p-8 space-y-6 animate-fadeIn">
+            <SacredSwarnaHundi3D
+              templeName={currentTemple.name}
+              onCoinDropped={(dropAmt) => {
+                setAmount(dropAmt);
+                setCustomAmount('');
+              }}
+            />
+            {/* 3D Offering Summary & Quick Actions */}
+            <div className="p-5 rounded-2xl bg-amber-50 dark:bg-stone-800/70 border border-devotional-gold/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="space-y-1 text-center sm:text-left">
+                <span className="text-[10px] uppercase font-bold text-devotional-saffron tracking-wider">
+                  Selected Seva Offering
+                </span>
+                <p className="text-2xl font-serif font-black text-devotional-maroon dark:text-amber-400">
+                  ₹{amount.toLocaleString('en-IN')}
+                </p>
+                <p className="text-xs text-stone-500">
+                  For: <strong>{purpose}</strong> • {currentTemple.name}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2.5 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('FORM')}
+                  className="flex-1 sm:flex-none px-5 py-3 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-bold text-xs hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                >
+                  Edit Devotee / Gotra Info
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep('PAYMENT')}
+                  className="flex-1 sm:flex-none px-6 py-3 rounded-xl bg-gradient-to-r from-devotional-saffron to-amber-600 text-white font-bold text-xs shadow-gold hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                >
+                  Proceed with ₹{amount.toLocaleString('en-IN')} Offering →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 'DETAILS' && viewMode === 'FORM' && (
           <form onSubmit={handleProceedToPayment} className="p-4 sm:p-10 space-y-6 sm:space-y-8">
             {/* Sacred Initiative Highlight Banner */}
             {initialInitiativeId && (
@@ -291,6 +367,14 @@ function DonationFormContent() {
                   className="w-full px-4 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-xs text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-devotional-maroon"
                 />
               </div>
+              <button
+                type="button"
+                onClick={() => setViewMode('3D_HUNDI')}
+                className="w-full py-2.5 px-3 rounded-xl bg-amber-500/10 dark:bg-amber-400/10 border border-devotional-gold/60 text-devotional-maroon dark:text-amber-300 font-bold text-xs hover:bg-amber-500/20 transition-all flex items-center justify-center gap-2 shadow-sm"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-devotional-saffron" />
+                Drop this ₹{amount.toLocaleString('en-IN')} offering into 3D Interactive Swarna Hundi 🪙
+              </button>
             </div>
 
             {/* Step 4: Donor Information */}
@@ -583,6 +667,14 @@ function DonationFormContent() {
             <div className="flex flex-wrap justify-center items-center gap-3 pt-2">
               <button
                 type="button"
+                onClick={() => setShow3DSuccessModal(true)}
+                className="px-6 py-3 rounded-xl bg-devotional-maroon text-amber-300 font-bold text-xs hover:bg-devotional-maroon-dark active-press transition-all flex items-center gap-1.5 shadow-md border border-devotional-gold/40"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                3D Aarti Blessing
+              </button>
+              <button
+                type="button"
                 onClick={() => setReceiptData(receiptData)}
                 className="px-6 py-3 rounded-xl bg-gradient-to-r from-devotional-saffron to-amber-600 text-white font-bold text-xs shadow-gold hover:brightness-110 active-press transition-all flex items-center gap-1.5"
               >
@@ -627,6 +719,22 @@ function DonationFormContent() {
             {isProcessing ? 'Processing...' : 'Pay'}
           </button>
         </div>
+      )}
+
+      {/* 3D Success Aarti Blessing Modal */}
+      {show3DSuccessModal && receiptData && (
+        <DonationSuccess3DModal
+          donationData={{
+            donationId: receiptData.donationId || `DON-${Date.now()}`,
+            receiptNo: receiptData.receiptNo || 'REC-VASAVI',
+            templeName: receiptData.templeName || currentTemple.name,
+            amount: receiptData.amount || amount,
+            categoryName: receiptData.categoryName || purpose,
+            paymentMethod: receiptData.paymentMethod || paymentMethod,
+            date: receiptData.date || new Date().toLocaleString(),
+          }}
+          onClose={() => setShow3DSuccessModal(false)}
+        />
       )}
 
       {/* Receipt Modal Trigger */}
