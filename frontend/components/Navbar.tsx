@@ -18,6 +18,7 @@ import {
   Coins,
   Shield,
   Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 import { MOCK_USERS, MOCK_DONATIONS } from '@/lib/mock-data';
 import { calculateDevoteeMedals } from '@/lib/medals';
@@ -149,6 +150,8 @@ export default function Navbar() {
             >
               {t('navFestivals')}
             </Link>
+            <Link
+              href="/login">102 Gotras Portal</Link>
             <Link
               href="/initiatives"
               className={`hover:text-devotional-maroon dark:hover:text-amber-400 transition-colors whitespace-nowrap ${
@@ -313,6 +316,19 @@ export default function Navbar() {
                         <span>👑 {t('sidebarSuperDashboard')}</span>
                       </div>
                     </Link>
+                    <div className="pt-2 border-t border-stone-100 dark:border-stone-800">
+                      <Link
+                        href="/login"
+                        onClick={() => setIsRoleDropdownOpen(false)}
+                        className="w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-colors bg-gradient-to-r from-amber-500/10 to-devotional-maroon/10 hover:from-amber-500/20 hover:to-devotional-maroon/20 text-devotional-maroon dark:text-amber-300 font-bold border border-amber-300/40"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-amber-500" />
+                          <span>🔱 102 Gotras Login Portal</span>
+                        </div>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
                   </div>
                 </div>
               )}

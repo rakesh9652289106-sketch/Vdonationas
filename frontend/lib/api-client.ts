@@ -48,4 +48,19 @@ export const DjangoAPI = {
 
   // Receipt Verification
   verifyReceipt: (code: string) => fetchFromDjango<any>(`/receipts/verify/${code}/`),
+  // Authentication & Users
+  loginUser: (credentials: { email?: string; mobile?: string; password?: string }) =>
+    fetchFromDjango<any>('/users/login/', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    }),
+  registerUser: (userData: any) =>
+    fetchFromDjango<any>('/users/register/', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    }),
+  getUserProfile: (token: string) =>
+    fetchFromDjango<any>('/users/profile/', {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
 };
