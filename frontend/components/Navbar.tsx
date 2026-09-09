@@ -18,17 +18,19 @@ import {
   Coins,
   Shield,
   Sparkles,
-  ArrowRight,
+  LogOut,
 } from 'lucide-react';
 import { MOCK_USERS, MOCK_DONATIONS } from '@/lib/mock-data';
 import { calculateDevoteeMedals } from '@/lib/medals';
 import { UserRoleType } from '@/lib/types';
 import { useLanguage } from '@/lib/language-context';
+import { useAuth } from '@/lib/auth-context';
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
+  const { user, logout } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentUser, setCurrentUser] = useState(MOCK_USERS[0]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -151,8 +153,6 @@ export default function Navbar() {
               {t('navFestivals')}
             </Link>
             <Link
-              href="/login">102 Gotras Portal</Link>
-            <Link
               href="/initiatives"
               className={`hover:text-devotional-maroon dark:hover:text-amber-400 transition-colors whitespace-nowrap ${
                 pathname.startsWith('/initiatives')
@@ -240,7 +240,7 @@ export default function Navbar() {
                   <div className="px-4 py-2 border-b border-stone-100 dark:border-stone-800 space-y-1">
                     <div className="flex justify-between items-center gap-2">
                       <p className="font-serif font-bold text-sm text-stone-900 dark:text-stone-100 truncate">
-                        {currentUser.fullName}
+                        {user?.fullName || currentUser.fullName}
                       </p>
                       {medalProgress.currentMedal && (
                         <span className="px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-300 via-amber-200 to-amber-300 text-amber-950 font-bold text-[10px] border border-amber-400/80 shadow-sm inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 leading-none">
@@ -249,7 +249,13 @@ export default function Navbar() {
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-stone-500">{currentUser.email}</p>
+                    {user?.gotram ? (
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400 font-serif font-semibold">
+                        Gotram: {user.gotram}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-stone-500">{user?.email || currentUser.email}</p>
+                    )}
                   </div>
 
                   <div className="py-2 px-1 space-y-1">
@@ -316,18 +322,20 @@ export default function Navbar() {
                         <span>👑 {t('sidebarSuperDashboard')}</span>
                       </div>
                     </Link>
-                    <div className="pt-2 border-t border-stone-100 dark:border-stone-800">
-                      <Link
-                        href="/login"
-                        onClick={() => setIsRoleDropdownOpen(false)}
-                        className="w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-colors bg-gradient-to-r from-amber-500/10 to-devotional-maroon/10 hover:from-amber-500/20 hover:to-devotional-maroon/20 text-devotional-maroon dark:text-amber-300 font-bold border border-amber-300/40"
+
+                    {/* Return to Login Gateway / Sign Out */}
+                    <div className="pt-2 mt-1 border-t border-stone-100 dark:border-stone-800">
+                      <button
+                        onClick={() => {
+                          logout();
+                          setIsRoleDropdownOpen(false);
+                          router.push('/login');
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors text-xs font-semibold cursor-pointer"
                       >
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-amber-500" />
-                          <span>🔱 102 Gotras Login Portal</span>
-                        </div>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
+                        <LogOut className="w-3.5 h-3.5 text-red-500" />
+                        <span>Sign Out / Switch Devotee</span>
+                      </button>
                     </div>
                   </div>
                 </div>

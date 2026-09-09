@@ -7,9 +7,12 @@ import {
   Initiative,
   InitiativeStage,
   InitiativeStatus,
+  InitiativePriority,
   getInitiativeByCode,
   updateInitiativeStatus,
   updateInitiativeStage,
+  updateInitiative,
+  toggleInitiativeUrgent,
   addInitiativeExpense,
   addInitiativeUpdate,
   INITIATIVE_TYPE_LABELS,
@@ -30,6 +33,10 @@ import {
   TrendingUp,
   MapPin,
   RefreshCw,
+  Edit3,
+  X,
+  Save,
+  AlertTriangle,
 } from 'lucide-react';
 
 export default function AdminInitiativeManagePage() {
@@ -41,6 +48,21 @@ export default function AdminInitiativeManagePage() {
   const [initiative, setInitiative] = useState<Initiative | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'EXPENSES' | 'UPDATES' | 'AUDIT'>('OVERVIEW');
+
+  // Edit initiative details & urgent modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    short_title: '',
+    objective: '',
+    description: '',
+    target_amount: 0,
+    city: '',
+    state: '',
+    is_urgent: false,
+    priority: 'NORMAL' as InitiativePriority,
+    teaser_start_at: '',
+  });
 
   // Expense form state
   const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -168,6 +190,84 @@ export default function AdminInitiativeManagePage() {
     await loadData();
   };
 
+  const handleToggleUrgent = async () => {
+    if (!initiative) return;
+    const willBeUrgent = !initiative.is_urgent;
+
+    const confirmed = await confirmAction({
+      title: willBeUrgent ? 'Elevate to Urgent Emergency Appeal?' : 'Remove Urgent Appeal Status?',
+      message: willBeUrgent
+        ? `Elevating "${initiative.title}" to Urgent will feature it prominently with glowing red emergency banners and top ranking across the Devotee portal (even while ${initiative.status}).`
+        : `Are you sure you want to remove the Urgent appeal designation for "${initiative.title}" and return it to standard priority?`,
+      confirmText: willBeUrgent ? 'Yes, Elevate to Urgent' : 'Yes, Revert to Normal',
+      variant: willBeUrgent ? 'warning' : 'change',
+    });
+
+    if (!confirmed) return;
+
+    await toggleInitiativeUrgent(initiative.code, willBeUrgent);
+    showAlert({
+      type: willBeUrgent ? 'warning' : 'info',
+      title: willBeUrgent ? 'Marked as Urgent Appeal' : 'Urgent Status Removed',
+      message: willBeUrgent
+        ? `Initiative "${initiative.title}" is now active as an Urgent Emergency Appeal.`
+        : `Initiative "${initiative.title}" reverted to standard priority.`,
+    });
+    await loadData();
+  };
+
+  const handleOpenEditModal = () => {
+    if (!initiative) return;
+    setEditForm({
+      title: initiative.title,
+      short_title: initiative.short_title || initiative.title,
+      objective: initiative.objective || '',
+      description: initiative.description || '',
+      target_amount: initiative.target_amount,
+      city: initiative.city,
+      state: initiative.state,
+      is_urgent: initiative.is_urgent,
+      priority: initiative.priority || 'NORMAL',
+      teaser_start_at: initiative.teaser_start_at || '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!initiative) return;
+
+    const confirmed = await confirmAction({
+      title: 'Save Initiative Modifications?',
+      message: `Apply updated parameters (Urgent: ${editForm.is_urgent ? 'YES' : 'NO'}, Priority: ${editForm.priority}, Budget: ₹${Number(editForm.target_amount).toLocaleString('en-IN')}) for "${editForm.title}"? Changes take effect immediately across devotee feeds.`,
+      confirmText: 'Yes, Save Changes',
+      variant: 'change',
+    });
+
+    if (!confirmed) return;
+
+    await updateInitiative(initiative.code, {
+      title: editForm.title,
+      short_title: editForm.short_title,
+      objective: editForm.objective,
+      description: editForm.description,
+      target_amount: Number(editForm.target_amount),
+      city: editForm.city,
+      state: editForm.state,
+      is_urgent: editForm.is_urgent,
+      priority: editForm.priority,
+      teaser_start_at: editForm.teaser_start_at.trim() ? editForm.teaser_start_at : undefined,
+    });
+
+    setShowEditModal(false);
+    showAlert({
+      type: 'change',
+      title: 'Initiative Updated',
+      message: `Modifications for "${editForm.title}" have been saved successfully with audit record.`,
+    });
+    await loadData();
+  };
+
   const handleCreateExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsedAmount = parseFloat(expenseAmount);
@@ -238,7 +338,7 @@ export default function AdminInitiativeManagePage() {
       <div className="bg-stone-950 p-6 sm:p-8 rounded-3xl border border-stone-800 shadow-2xl space-y-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-stone-800 pb-6">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-devotional-maroon text-amber-300 border border-amber-400/30">
                 {initiative.initiative_type}
               </span>
@@ -253,9 +353,36 @@ export default function AdminInitiativeManagePage() {
               }`}>
                 {initiative.status}
               </span>
+
+              {/* Interactive Urgent Status Switch Chip */}
+              {initiative.is_urgent ? (
+                <button
+                  type="button"
+                  onClick={handleToggleUrgent}
+                  title="Click to remove Urgent Emergency Appeal status"
+                  className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-red-600 hover:bg-red-700 text-white shadow-md flex items-center gap-1 animate-pulse transition-all cursor-pointer"
+                >
+                  <Flame className="w-3 h-3 fill-current" /> Urgent Appeal Active
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleToggleUrgent}
+                  title="Click to elevate to Urgent Emergency Appeal"
+                  className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-stone-900 hover:bg-red-950/60 text-stone-400 hover:text-red-300 border border-stone-800 hover:border-red-600 flex items-center gap-1 transition-all cursor-pointer"
+                >
+                  <Flame className="w-3 h-3 text-stone-500" /> + Mark Urgent
+                </button>
+              )}
+
               {initiative.status === 'SCHEDULED' && initiative.scheduled_publish_at && (
                 <span className="text-[10px] text-amber-400 font-mono">
                   ⏰ Scheduled for {new Date(initiative.scheduled_publish_at).toLocaleString('en-IN')}
+                </span>
+              )}
+              {initiative.status === 'SCHEDULED' && initiative.teaser_start_at && (
+                <span className="text-[10px] text-amber-300/90 font-mono bg-stone-900 px-2 py-0.5 rounded border border-amber-500/30">
+                  👀 Countdown visible from: {new Date(initiative.teaser_start_at).toLocaleString('en-IN')}
                 </span>
               )}
               {initiative.status === 'PAUSED' && initiative.scheduled_publish_at && (
@@ -362,6 +489,14 @@ export default function AdminInitiativeManagePage() {
                 Close
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={handleOpenEditModal}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-devotional-maroon to-stone-900 hover:brightness-110 text-amber-300 border border-amber-400/50 font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+            >
+              <Edit3 className="w-3.5 h-3.5" /> Edit Initiative
+            </button>
           </div>
         </div>
 
@@ -462,6 +597,58 @@ export default function AdminInitiativeManagePage() {
         {/* TAB: OVERVIEW */}
         {activeTab === 'OVERVIEW' && (
           <div className="space-y-6 pt-2">
+            {/* Urgent Appeal & Priority Governance Card */}
+            <div className={`p-5 rounded-2xl border transition-all ${
+              initiative.is_urgent
+                ? 'bg-gradient-to-r from-red-950/60 via-stone-900 to-stone-950 border-red-500/70 shadow-[0_0_20px_rgba(239,68,68,0.2)]'
+                : 'bg-stone-900/80 border-stone-800'
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Flame className={`w-4 h-4 ${initiative.is_urgent ? 'text-red-500 fill-red-500 animate-pulse' : 'text-stone-400'}`} />
+                      Emergency & Urgent Appeal Governance
+                    </span>
+                    {initiative.is_urgent ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-red-600 text-white shadow-md animate-pulse flex items-center gap-1">
+                        <Flame className="w-2.5 h-2.5 fill-current" /> Urgent Appeal Active
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-stone-800 text-stone-400 border border-stone-700">
+                        Priority: {initiative.priority || 'NORMAL'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-stone-300 max-w-xl leading-relaxed">
+                    Super Admin can toggle emergency appeal status anytime (even while published). When active, this initiative is highlighted with glowing emergency banners and automatically prioritized in devotee feeds and search filters.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleToggleUrgent}
+                    className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-md ${
+                      initiative.is_urgent
+                        ? 'bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-600'
+                        : 'bg-gradient-to-r from-red-600 to-rose-700 hover:brightness-110 text-white shadow-red-950/50'
+                    }`}
+                  >
+                    <Flame className="w-3.5 h-3.5" />
+                    {initiative.is_urgent ? 'Remove Urgent Status' : '⚡ Elevate to Urgent Appeal'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenEditModal}
+                    className="px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-300 border border-stone-700 font-bold text-xs flex items-center gap-1 transition-colors"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" /> Edit
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <h4 className="font-serif font-bold text-sm text-stone-200">Description</h4>
               <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-line">{initiative.description}</p>
@@ -702,6 +889,228 @@ export default function AdminInitiativeManagePage() {
                   className="flex-1 py-2.5 rounded-xl bg-devotional-saffron hover:bg-amber-600 text-white font-bold"
                 >
                   Post
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Initiative Details & Urgent Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-xl bg-stone-950 p-6 sm:p-7 rounded-3xl border-2 border-devotional-gold/60 shadow-2xl space-y-5 text-xs text-stone-200 my-8">
+            <div className="flex items-center justify-between border-b border-stone-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center border border-amber-500/30">
+                  <Edit3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-serif font-bold text-base text-amber-200">
+                    Edit Initiative Parameters
+                  </h3>
+                  <p className="text-[10px] text-stone-400 font-mono">
+                    {initiative.code} • Status: {initiative.status}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="p-1 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              {/* URGENT EMERGENCY APPEAL CONTROLLER */}
+              <div className={`p-4 rounded-2xl border transition-all ${
+                editForm.is_urgent
+                  ? 'bg-red-950/40 border-red-500/80 shadow-[0_0_15px_rgba(239,68,68,0.2)]'
+                  : 'bg-stone-900 border-stone-800'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-xs text-white flex items-center gap-1.5">
+                      <Flame className={`w-4 h-4 ${editForm.is_urgent ? 'text-red-500 fill-red-500 animate-pulse' : 'text-stone-500'}`} />
+                      Urgent Emergency Appeal
+                    </span>
+                    <p className="text-[10px] text-stone-400">
+                      Feature with urgent red banner across devotee portals and boost to top of giving drives.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !editForm.is_urgent;
+                      setEditForm((prev) => ({
+                        ...prev,
+                        is_urgent: next,
+                        priority: next ? 'URGENT' : (prev.priority === 'URGENT' ? 'NORMAL' : prev.priority),
+                      }));
+                    }}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      editForm.is_urgent ? 'bg-red-600' : 'bg-stone-700'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        editForm.is_urgent ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Priority Level */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-stone-400 uppercase">Priority Ranking</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['NORMAL', 'HIGH', 'URGENT'] as InitiativePriority[]).map((p) => (
+                    <button
+                      type="button"
+                      key={p}
+                      onClick={() => setEditForm((prev) => ({ ...prev, priority: p, is_urgent: p === 'URGENT' ? true : prev.is_urgent }))}
+                      className={`py-2 px-3 rounded-xl border text-center font-bold text-xs transition-all ${
+                        editForm.priority === p
+                          ? p === 'URGENT'
+                            ? 'bg-red-600 text-white border-red-500 shadow-md'
+                            : 'bg-amber-600 text-white border-amber-500 shadow-md'
+                          : 'bg-stone-900 border-stone-800 text-stone-400 hover:text-stone-200'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Optional Countdown Display Start Time if SCHEDULED */}
+              {initiative.status === 'SCHEDULED' && (
+                <div className="p-3.5 rounded-2xl bg-stone-900 border border-amber-500/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-amber-300 uppercase flex items-center gap-1.5">
+                      <Clock className="w-3 h-3 text-devotional-saffron" />
+                      Countdown Display Start Time (Optional)
+                    </label>
+                    {editForm.teaser_start_at && (
+                      <button
+                        type="button"
+                        onClick={() => setEditForm((prev) => ({ ...prev, teaser_start_at: '' }))}
+                        className="text-[9px] text-amber-400 hover:text-red-400 font-bold underline"
+                      >
+                        Clear (Show Immediately)
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="datetime-local"
+                    value={editForm.teaser_start_at}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, teaser_start_at: e.target.value }))}
+                    className="w-full p-2.5 rounded-xl bg-stone-950 border border-stone-800 text-stone-100 text-xs focus:border-amber-400 outline-none font-mono"
+                  />
+                  <p className="text-[10px] text-stone-400">
+                    Devotees will only see the countdown clock in their portal starting from this timestamp. If cleared, countdown is visible immediately upon scheduling.
+                  </p>
+                </div>
+              )}
+
+              {/* Title & Short Title */}
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-stone-400 uppercase">Initiative Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.title}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, title: e.target.value }))}
+                    className="w-full p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-stone-100 focus:border-amber-400 outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-stone-400 uppercase">Short Title (Card Heading)</label>
+                  <input
+                    type="text"
+                    value={editForm.short_title}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, short_title: e.target.value }))}
+                    className="w-full p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-stone-100 focus:border-amber-400 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Target Sanctioned Budget */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1 sm:col-span-1">
+                  <label className="text-[10px] font-bold text-stone-400 uppercase">Target Budget (₹)</label>
+                  <input
+                    type="number"
+                    required
+                    min={1000}
+                    value={editForm.target_amount}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, target_amount: parseFloat(e.target.value) || 0 }))}
+                    className="w-full p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-stone-100 focus:border-amber-400 outline-none font-mono"
+                  />
+                </div>
+                <div className="space-y-1 sm:col-span-1">
+                  <label className="text-[10px] font-bold text-stone-400 uppercase">City</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.city}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, city: e.target.value }))}
+                    className="w-full p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-stone-100 focus:border-amber-400 outline-none"
+                  />
+                </div>
+                <div className="space-y-1 sm:col-span-1">
+                  <label className="text-[10px] font-bold text-stone-400 uppercase">State</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.state}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, state: e.target.value }))}
+                    className="w-full p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-stone-100 focus:border-amber-400 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Objective */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-stone-400 uppercase">Objective / Emergency Purpose</label>
+                <textarea
+                  rows={2}
+                  value={editForm.objective}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, objective: e.target.value }))}
+                  placeholder="Sanctum consecration, urgent flood rehabilitation..."
+                  className="w-full p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-stone-100 focus:border-amber-400 outline-none"
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-stone-400 uppercase">Full Description</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={editForm.description}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
+                  className="w-full p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-stone-100 focus:border-amber-400 outline-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-stone-800">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-800 text-stone-400 font-bold hover:bg-stone-900 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-devotional-saffron to-amber-600 hover:brightness-110 text-white font-bold flex items-center justify-center gap-1.5 shadow-gold transition-all"
+                >
+                  <Save className="w-4 h-4" /> Save Changes
                 </button>
               </div>
             </form>

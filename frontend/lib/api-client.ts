@@ -1,9 +1,15 @@
-// Django REST API Client Service Layer
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+// Django REST API Client Service Layer (Connected to Django Backend on localhost:6000 via /api/proxy)
+const API_BASE_URL = typeof window !== 'undefined'
+  ? '/api/proxy'
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:6000/api/v1');
 
 export async function fetchFromDjango<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
   try {
-    const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    let clean = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    if (!clean.includes('?') && !clean.endsWith('/')) {
+      clean += '/';
+    }
+    const url = `${API_BASE_URL}${clean}`;
     const res = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
@@ -48,6 +54,11 @@ export const DjangoAPI = {
 
   // Receipt Verification
   verifyReceipt: (code: string) => fetchFromDjango<any>(`/receipts/verify/${code}/`),
+  // Initiatives & Dharma Projects
+  getInitiatives: () => fetchFromDjango<any>('/initiatives/'),
+  getInitiativeStats: () => fetchFromDjango<any>('/initiatives/stats/'),
+  getInitiativeByCode: (code: string) => fetchFromDjango<any>(`/initiatives/${code}/`),
+
   // Authentication & Users
   loginUser: (credentials: { email?: string; mobile?: string; password?: string }) =>
     fetchFromDjango<any>('/users/login/', {

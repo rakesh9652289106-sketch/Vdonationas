@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -11,11 +12,14 @@ import MobileAppDrawer from '@/components/mobile/MobileAppDrawer';
 import MobileNotificationSheet from '@/components/mobile/MobileNotificationSheet';
 import { LanguageProvider } from '@/lib/language-context';
 import { ConfirmAlertProvider } from '@/lib/confirm-alert-context';
+import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { MOCK_USERS } from '@/lib/mock-data';
 import { UserRoleType } from '@/lib/types';
 import { Sparkles } from 'lucide-react';
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+function LayoutShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const { isAuthenticated, isHydrated, user } = useAuth();
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -27,6 +31,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       setIsDarkMode(true);
     }
   }, []);
+
+  // Sync authenticated user with layout state
+  useEffect(() => {
+    if (user) {
+      setCurrentUser((prev) => ({
+        ...prev,
+        fullName: user.fullName || prev.fullName,
+        email: user.email || prev.email,
+        phone: user.mobile || prev.phone,
+      }));
+    }
+  }, [user]);
 
   const toggleDarkMode = () => {
     if (typeof window !== 'undefined') {
@@ -47,6 +63,71 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }
   };
 
+  // Pure login gateway check: Hide inner navigation on /login or on / when unauthenticated
+  const isAuthGate = pathname === '/login' || (pathname === '/' && (!isAuthenticated || !isHydrated));
+
+  if (isAuthGate) {
+    return (
+      <main className="min-h-screen w-full bg-stone-950 overflow-x-hidden">
+        {children}
+      </main>
+    );
+  }
+
+  return (
+    <>
+      {/* Mobile Native Top Header (Visible on < md) */}
+      <MobileTopBar
+        onOpenDrawer={() => setIsDrawerOpen(true)}
+        onOpenNotifications={() => setIsNotificationOpen(true)}
+        currentUser={currentUser}
+      />
+
+      {/* Desktop Full Navigation Bar (Visible on >= md) */}
+      <Navbar />
+
+      {/* Main Application Viewport with Bottom Padding for Mobile Nav Bar */}
+      <main className="flex-1 pb-24 md:pb-0">{children}</main>
+
+      {/* Desktop Footer (Visible on >= md) */}
+      <Footer />
+
+      {/* Native Mobile Bottom Navigation Bar (Fixed at bottom on < md) */}
+      <MobileBottomNav />
+
+      {/* Native Slide-Over App Drawer */}
+      <MobileAppDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        currentUser={currentUser}
+        onSwitchUser={handleSwitchUser}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={toggleDarkMode}
+      />
+
+      {/* Native Slide-Up Notification Sheet */}
+      <MobileNotificationSheet
+        isOpen={isNotificationOpen}
+        onClose={() => setIsNotificationOpen(false)}
+      />
+
+      {/* Floating DevaAI Assistant Button */}
+      <button
+        onClick={() => setIsAiOpen(true)}
+        className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 p-3 sm:p-3.5 bg-gradient-to-r from-devotional-maroon via-devotional-saffron to-amber-600 text-white rounded-full shadow-2xl hover:scale-105 active-press transition-all flex items-center gap-2 border-2 border-amber-300 group cursor-pointer"
+        title="Open DevaAI Assistant"
+      >
+        <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300 group-hover:rotate-12 transition-transform" />
+        <span className="text-xs font-bold font-serif hidden sm:inline">Ask DevaAI</span>
+      </button>
+
+      {/* DevaAI Modal */}
+      <DevaAIAssistantModal isOpen={isAiOpen} onClose={() => setIsAiOpen(false)} />
+    </>
+  );
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
@@ -68,53 +149,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen flex flex-col bg-devotional-cream dark:bg-stone-900 text-stone-900 dark:text-stone-100 transition-colors antialiased">
         <LanguageProvider>
           <ConfirmAlertProvider>
-            {/* Mobile Native Top Header (Visible on < md) */}
-          <MobileTopBar
-            onOpenDrawer={() => setIsDrawerOpen(true)}
-            onOpenNotifications={() => setIsNotificationOpen(true)}
-            currentUser={currentUser}
-          />
-
-          {/* Desktop Full Navigation Bar (Visible on >= md) */}
-          <Navbar />
-
-          {/* Main Application Viewport with Bottom Padding for Mobile Nav Bar */}
-          <main className="flex-1 pb-24 md:pb-0">{children}</main>
-
-          {/* Desktop Footer (Visible on >= md) */}
-          <Footer />
-
-          {/* Native Mobile Bottom Navigation Bar (Fixed at bottom on < md) */}
-          <MobileBottomNav />
-
-          {/* Native Slide-Over App Drawer */}
-          <MobileAppDrawer
-            isOpen={isDrawerOpen}
-            onClose={() => setIsDrawerOpen(false)}
-            currentUser={currentUser}
-            onSwitchUser={handleSwitchUser}
-            isDarkMode={isDarkMode}
-            onToggleDarkMode={toggleDarkMode}
-          />
-
-          {/* Native Slide-Up Notification Sheet */}
-          <MobileNotificationSheet
-            isOpen={isNotificationOpen}
-            onClose={() => setIsNotificationOpen(false)}
-          />
-
-          {/* Floating DevaAI Assistant Button - Cleanly positioned above mobile bottom nav */}
-          <button
-            onClick={() => setIsAiOpen(true)}
-            className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 p-3 sm:p-3.5 bg-gradient-to-r from-devotional-maroon via-devotional-saffron to-amber-600 text-white rounded-full shadow-2xl hover:scale-105 active-press transition-all flex items-center gap-2 border-2 border-amber-300 group"
-            title="Open DevaAI Assistant"
-          >
-            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300 group-hover:rotate-12 transition-transform" />
-            <span className="text-xs font-bold font-serif hidden sm:inline">Ask DevaAI</span>
-          </button>
-
-          {/* DevaAI Modal */}
-          <DevaAIAssistantModal isOpen={isAiOpen} onClose={() => setIsAiOpen(false)} />
+            <AuthProvider>
+              <LayoutShell>{children}</LayoutShell>
+            </AuthProvider>
           </ConfirmAlertProvider>
         </LanguageProvider>
       </body>

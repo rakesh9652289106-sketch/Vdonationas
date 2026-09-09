@@ -8,6 +8,7 @@ import {
   InitiativeStatus,
   getInitiatives,
   updateInitiativeStatus,
+  toggleInitiativeUrgent,
   INITIATIVE_TYPE_LABELS,
 } from '@/lib/initiatives-data';
 import {
@@ -119,6 +120,35 @@ export default function SuperAdminInitiativesDashboard() {
           ? `Initiative "${itemTitle}" has been unpaused and restored to SCHEDULED mode.`
           : `Initiative ${code} has been successfully updated to ${newStatus}.`,
       type: variant,
+    });
+  };
+
+  const handleToggleUrgent = async (code: string, makeUrgent: boolean) => {
+    const item = initiatives.find((i) => i.code === code);
+    const itemTitle = item ? item.title : code;
+
+    const confirmed = await confirmAction({
+      title: makeUrgent ? 'Elevate to Urgent Emergency Appeal?' : 'Remove Urgent Appeal Status?',
+      message: makeUrgent
+        ? `Elevate "${itemTitle}" (${code}) to Urgent Appeal? It will immediately feature with glowing red emergency banners and top ranking on devotee feeds (even while ${item?.status}).`
+        : `Remove Urgent Appeal status from "${itemTitle}" (${code}) and return to standard priority?`,
+      confirmText: makeUrgent ? 'Yes, Elevate to Urgent' : 'Yes, Revert to Normal',
+      variant: makeUrgent ? 'warning' : 'change',
+    });
+
+    if (!confirmed) return;
+
+    setActionInProgress(code);
+    await toggleInitiativeUrgent(code, makeUrgent);
+    await loadData();
+    setActionInProgress(null);
+
+    showAlert({
+      type: makeUrgent ? 'warning' : 'info',
+      title: makeUrgent ? 'Marked as Urgent Appeal' : 'Urgent Status Removed',
+      message: makeUrgent
+        ? `"${itemTitle}" is now active as an Urgent Emergency Appeal.`
+        : `"${itemTitle}" reverted to standard priority.`,
     });
   };
 
@@ -318,10 +348,32 @@ export default function SuperAdminInitiativesDashboard() {
                           <span className="font-mono text-[11px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/30">
                             {item.code}
                           </span>
-                          {item.is_urgent && (
-                            <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-red-950 text-red-400 border border-red-800">
-                              Urgent
-                            </span>
+                          {item.is_urgent ? (
+                            <button
+                              type="button"
+                              disabled={actionInProgress === item.code}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleUrgent(item.code, false);
+                              }}
+                              title="Click to remove Urgent Emergency Appeal status"
+                              className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-sm flex items-center gap-1 animate-pulse transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              <Flame className="w-2.5 h-2.5 fill-current" /> Urgent
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={actionInProgress === item.code}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleUrgent(item.code, true);
+                              }}
+                              title="Click to elevate to Urgent Emergency Appeal"
+                              className="text-[9px] font-semibold text-stone-500 hover:text-red-400 hover:border-red-800 px-1.5 py-0.5 rounded border border-stone-800 hover:border-red-700 bg-stone-900/60 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              + Urgent
+                            </button>
                           )}
                         </div>
                         <p className="font-bold text-stone-100 line-clamp-1 text-sm">{item.title}</p>
@@ -376,7 +428,12 @@ export default function SuperAdminInitiativesDashboard() {
                         </span>
                         {item.status === 'SCHEDULED' && item.scheduled_publish_at && (
                           <p className="text-[9px] text-amber-400 font-mono mt-1">
-                            ⏰ {new Date(item.scheduled_publish_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} {new Date(item.scheduled_publish_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                            ⏰ Launch: {new Date(item.scheduled_publish_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} {new Date(item.scheduled_publish_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        )}
+                        {item.status === 'SCHEDULED' && item.teaser_start_at && (
+                          <p className="text-[8px] text-amber-300/80 font-mono">
+                            👀 Countdown from: {new Date(item.teaser_start_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} {new Date(item.teaser_start_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                           </p>
                         )}
                         {item.status === 'PAUSED' && item.scheduled_publish_at && (

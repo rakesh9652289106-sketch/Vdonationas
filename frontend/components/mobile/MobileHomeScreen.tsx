@@ -96,54 +96,96 @@ export default function MobileHomeScreen() {
   ];
 
   return (
-    <div className="space-y-5 pb-6 text-stone-900 dark:text-stone-100 font-sans">
-      {/* 2. WELCOME SECTION */}
-      <section className="px-4 pt-3">
-        <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 shadow-xs">
-          <div className="space-y-1">
-            <h2 className="font-serif font-bold text-base text-devotional-maroon dark:text-amber-300">
+    <div className="space-y-4 pb-6 text-stone-900 dark:text-stone-100 font-sans">
+      {/* 1. SACRED GODDESS MOBILE HERO (SECOND IMAGE - FIRST VISIBLE TO DEVOTEES) */}
+      <section className="px-4 pt-2">
+        <div className="relative overflow-hidden rounded-3xl bg-stone-950 text-white border-2 border-devotional-gold/70 shadow-2xl space-y-3">
+          {/* Main Mobile Sacred Image Container */}
+          <div className="relative w-full aspect-[4/5] overflow-hidden bg-stone-900">
+            <img
+              src="/welcome/welcome-mobile.jpg"
+              alt="Sri Vasavi Kanyaka Parameswari Ammavaru"
+              className="w-full h-full object-cover object-[center_20%] brightness-[0.92] contrast-[1.05]"
+            />
+            {/* Vignette Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/20 to-stone-950/60 pointer-events-none" />
+
+            {/* Sacred Badges */}
+            <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+              <span className="px-2.5 py-1 rounded-full bg-stone-950/80 backdrop-blur-md border border-amber-400/50 text-amber-300 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-gold">
+                <Sparkles className="w-3 h-3 text-amber-400" /> Penugonda Matha
+              </span>
+              <span className="px-2.5 py-1 rounded-full bg-emerald-950/80 backdrop-blur-md border border-emerald-400/50 text-emerald-300 text-[10px] font-bold tracking-wider flex items-center gap-1">
+                🟢 DB Live (Port 6000)
+              </span>
+            </div>
+
+            {/* Bottom Inscription on Image */}
+            <div className="absolute bottom-3 left-3 right-3 text-center space-y-1">
+              <h1 className="text-xl font-serif font-bold text-gold-gradient tracking-tight drop-shadow-lg">
+                శ్రీ వాసవీ కన్యకా పరమేశ్వరి మాతా
+              </h1>
+              <p className="text-xs font-serif text-amber-100/90 italic drop-shadow-md">
+                Sri Vasavi Kanyaka Parameswari Matha • Penugonda
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Action Buttons Row */}
+          <div className="p-3 pt-0 space-y-2.5">
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                href="/donate"
+                className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-devotional-saffron via-amber-400 to-amber-500 text-stone-950 font-serif font-bold text-xs shadow-gold flex items-center justify-center gap-1.5 active-press"
+              >
+                <Heart className="w-3.5 h-3.5 fill-current text-devotional-maroon" />
+                <span>Digital Sevas</span>
+              </Link>
+              <Link
+                href="/darshan"
+                className="py-2.5 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-serif font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 border border-emerald-400/40 active-press"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Live Darshan</span>
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                href="/donate/recurring"
+                className="py-2 px-3 rounded-xl bg-stone-900 border border-amber-500/30 text-amber-300 font-serif font-medium text-[11px] flex items-center justify-center gap-1.5 active-press"
+              >
+                <Repeat className="w-3 h-3 text-amber-400" />
+                <span>Monthly AutoPay</span>
+              </Link>
+              <Link
+                href="/login"
+                className="py-2 px-3 rounded-xl bg-stone-900 border border-amber-500/30 text-amber-300 font-serif font-medium text-[11px] flex items-center justify-center gap-1.5 active-press"
+              >
+                <Award className="w-3 h-3 text-amber-400" />
+                <span>102 Gotras Portal</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. DEVOTEE GREETING SECTION */}
+      <section className="px-4">
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 shadow-xs">
+          <div className="space-y-0.5">
+            <h2 className="font-serif font-bold text-sm text-devotional-maroon dark:text-amber-300">
               Namaste, {currentUser.fullName.split(' ')[0]} 🙏
             </h2>
-            <p className="text-xs text-stone-600 dark:text-stone-300 leading-snug">
+            <p className="text-[11px] text-stone-600 dark:text-stone-300 leading-snug">
               May Sri Vasavi Kanyaka Parameswari bless you and your family.
             </p>
           </div>
           <Link href="/devotee/profile" className="shrink-0 ml-3 active-press">
-            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-devotional-maroon to-devotional-saffron text-amber-200 flex items-center justify-center font-bold text-base border-2 border-devotional-gold/70 shadow-sm">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-devotional-maroon to-devotional-saffron text-amber-200 flex items-center justify-center font-bold text-sm border-2 border-devotional-gold/70 shadow-sm">
               {currentUser.fullName.charAt(0)}
             </div>
           </Link>
-        </div>
-      </section>
-
-      {/* 3. MATHA / GODDESS HERO SECTION */}
-      <section className="px-4">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-stone-950 via-devotional-maroon-dark to-stone-950 text-white p-4 border-2 border-devotional-gold/60 shadow-xl space-y-4">
-          <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-stone-900/60 border border-amber-400/30">
-            <VasaviGoddess3DCanvas className="w-full h-full min-h-0" />
-            <div className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md border border-amber-400/40 text-amber-300 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm">
-              <Sparkles className="w-3 h-3 text-amber-400" /> Matha Darshan
-            </div>
-          </div>
-
-          <div className="text-center space-y-1">
-            <h1 className="text-xl font-serif font-bold text-gold-gradient tracking-tight leading-tight">
-              Sri Vasavi Kanyaka Parameswari Matha
-            </h1>
-            <p className="text-xs font-serif text-amber-200/90 italic">
-              Seva • Dharma • Community
-            </p>
-          </div>
-
-          <div className="pt-1">
-            <Link
-              href="/donate"
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-devotional-saffron via-amber-500 to-amber-600 text-white font-serif font-bold text-sm shadow-gold flex items-center justify-center gap-2 active-press transition-transform"
-            >
-              <Heart className="w-4 h-4 fill-current" />
-              <span>Donate</span>
-            </Link>
-          </div>
         </div>
       </section>
 

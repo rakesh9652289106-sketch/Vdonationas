@@ -89,7 +89,17 @@ router.get('/', (req: Request, res: Response) => {
 
   if (status && status !== 'ALL') {
     if (status === 'PUBLISHED') {
-      list = list.filter((i) => i.status === 'PUBLISHED' || (i.status === 'SCHEDULED' && i.is_teaser_enabled));
+      const now = Date.now();
+      list = list.filter((i) => {
+        if (i.status === 'PUBLISHED') return true;
+        if (i.status === 'SCHEDULED' && i.is_teaser_enabled) {
+          if (i.teaser_start_at && new Date(i.teaser_start_at).getTime() > now) {
+            return false;
+          }
+          return true;
+        }
+        return false;
+      });
     } else {
       list = list.filter((i) => i.status === status);
     }
@@ -156,6 +166,34 @@ router.post('/:code/status', (req: Request, res: Response) => {
   }
 
   item.status = status;
+  res.json({ success: true, initiative: item });
+});
+
+// PATCH /api/v1/initiatives/:code (for updating urgent status, priority, and details)
+router.patch('/:code', (req: Request, res: Response) => {
+  ensureInitiatives();
+  const code = req.params.code;
+
+  const item = memoryStore.initiatives.find((i: any) => i.code === code || i.id === code);
+  if (!item) {
+    return res.status(404).json({ error: 'Initiative not found' });
+  }
+
+  Object.assign(item, req.body, { updated_at: new Date().toISOString() });
+  res.json({ success: true, initiative: item });
+});
+
+// PUT /api/v1/initiatives/:code
+router.put('/:code', (req: Request, res: Response) => {
+  ensureInitiatives();
+  const code = req.params.code;
+
+  const item = memoryStore.initiatives.find((i: any) => i.code === code || i.id === code);
+  if (!item) {
+    return res.status(404).json({ error: 'Initiative not found' });
+  }
+
+  Object.assign(item, req.body, { updated_at: new Date().toISOString() });
   res.json({ success: true, initiative: item });
 });
 

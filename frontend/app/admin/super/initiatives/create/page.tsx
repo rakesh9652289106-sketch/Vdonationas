@@ -117,6 +117,7 @@ export default function CreateInitiativeWizardPage() {
   const [scheduledDateTime, setScheduledDateTime] = useState(getTomorrowMorning());
   const [muhurthamName, setMuhurthamName] = useState('Brahma Muhurtham (04:30 AM - 06:00 AM)');
   const [isTeaserEnabled, setIsTeaserEnabled] = useState(true);
+  const [teaserStartDateTime, setTeaserStartDateTime] = useState('');
   const [broadcastOnPublish, setBroadcastOnPublish] = useState(true);
 
   // Quick Auspicious Muhurtham Presets
@@ -230,6 +231,7 @@ export default function CreateInitiativeWizardPage() {
         scheduled_publish_at: finalStatus === 'SCHEDULED' ? scheduledDateTime : undefined,
         muhurtham_name: finalStatus === 'SCHEDULED' ? muhurthamName : undefined,
         is_teaser_enabled: isTeaserEnabled,
+        teaser_start_at: (finalStatus === 'SCHEDULED' && isTeaserEnabled && teaserStartDateTime.trim()) ? teaserStartDateTime : undefined,
         broadcast_on_publish: broadcastOnPublish,
       });
 
@@ -1146,7 +1148,7 @@ export default function CreateInitiativeWizardPage() {
                 {/* Devotional Features Toggle Strip */}
                 <div className="pt-3 border-t border-stone-800/80 space-y-3 text-xs">
                   {/* Feature 1: Pre-Launch Teaser */}
-                  <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl bg-stone-950 border border-stone-800/80 hover:border-stone-700">
+                  <label className="flex items-start gap-3 cursor-pointer p-3.5 rounded-2xl bg-stone-950 border border-stone-800/80 hover:border-stone-700 transition-colors">
                     <input
                       type="checkbox"
                       checked={isTeaserEnabled}
@@ -1162,6 +1164,54 @@ export default function CreateInitiativeWizardPage() {
                       </p>
                     </div>
                   </label>
+
+                  {/* Optional: Countdown Display Start Time Controller */}
+                  {isTeaserEnabled && (
+                    <div className="ml-2 sm:ml-6 p-4 rounded-2xl bg-stone-950/90 border border-amber-500/40 space-y-3 shadow-inner animate-in fade-in duration-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <label className="block text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-devotional-saffron" />
+                            Countdown Display Start Time (Optional)
+                          </label>
+                          <p className="text-[11px] text-stone-400 mt-0.5 leading-relaxed">
+                            Specify from when devotees can start seeing the countdown in their portal. If left blank, devotees see the countdown immediately upon scheduling.
+                          </p>
+                        </div>
+                        {teaserStartDateTime && (
+                          <button
+                            type="button"
+                            onClick={() => setTeaserStartDateTime('')}
+                            className="text-[10px] text-amber-400 hover:text-red-400 font-bold underline transition-colors shrink-0"
+                          >
+                            Clear (Show Countdown Immediately)
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div>
+                          <input
+                            type="datetime-local"
+                            value={teaserStartDateTime}
+                            onChange={(e) => setTeaserStartDateTime(e.target.value)}
+                            className="w-full p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-stone-100 text-xs focus:ring-2 focus:ring-devotional-gold focus:outline-none font-mono"
+                          />
+                        </div>
+                        <div className="flex items-center text-[10px]">
+                          {teaserStartDateTime ? (
+                            <span className="p-2 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-mono w-full">
+                              ✓ Devotees see countdown starting: <strong className="text-white">{new Date(teaserStartDateTime).toLocaleString('en-IN')}</strong>
+                            </span>
+                          ) : (
+                            <span className="p-2 rounded-lg bg-stone-900/60 border border-stone-800 text-stone-400 w-full">
+                              ℹ️ Optional unset: Countdown clock will be visible immediately to devotees upon scheduling.
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Feature 2: Automated Broadcast */}
                   <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl bg-stone-950 border border-stone-800/80 hover:border-stone-700">

@@ -6,6 +6,7 @@ import {
   Initiative,
   InitiativeType,
   getInitiatives,
+  isInitiativeTeaserVisible,
   INITIATIVE_TYPE_LABELS,
 } from '@/lib/initiatives-data';
 import InitiativeCard3D from '@/components/3d/InitiativeCard3D';
@@ -48,9 +49,9 @@ export default function InitiativesCatalogPage() {
 
   // Filter & Sort
   const filteredInitiatives = useMemo(() => {
-    // Include PUBLISHED as well as SCHEDULED initiatives that have is_teaser_enabled: true
+    // Include PUBLISHED as well as SCHEDULED initiatives that have teaser visible to devotees
     let list = initiatives.filter(
-      (item) => item.status === 'PUBLISHED' || (item.status === 'SCHEDULED' && item.is_teaser_enabled)
+      (item) => item.status === 'PUBLISHED' || isInitiativeTeaserVisible(item)
     );
 
     if (urgentOnly) {
@@ -90,9 +91,9 @@ export default function InitiativesCatalogPage() {
     });
   }, [initiatives, selectedCategory, urgentOnly, searchQuery, sortBy]);
 
-  // Extract active scheduled initiatives with teaser enabled
+  // Extract active scheduled initiatives with teaser enabled and visible
   const activeTeasers = useMemo(() => {
-    return initiatives.filter((i) => i.status === 'SCHEDULED' && i.is_teaser_enabled);
+    return initiatives.filter((i) => isInitiativeTeaserVisible(i));
   }, [initiatives]);
 
   // Aggregate stats

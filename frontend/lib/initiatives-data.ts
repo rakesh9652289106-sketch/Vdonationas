@@ -124,6 +124,7 @@ export interface Initiative {
   status: InitiativeStatus;
   scheduled_publish_at?: string;
   is_teaser_enabled?: boolean;
+  teaser_start_at?: string; // Optional: time from which devotees can see the countdown in portal
   muhurtham_name?: string;
   broadcast_on_publish?: boolean;
   excess_funds_policy: string;
@@ -724,6 +725,7 @@ export function normalizeInitiative(raw: any): Initiative {
     status: computedStatus,
     scheduled_publish_at: raw.scheduled_publish_at || undefined,
     is_teaser_enabled: raw.is_teaser_enabled !== false,
+    teaser_start_at: raw.teaser_start_at || undefined,
     muhurtham_name: raw.muhurtham_name || undefined,
     broadcast_on_publish: raw.broadcast_on_publish !== false,
     excess_funds_policy: raw.excess_funds_policy || 'Excess funds will be directed to temple Annadanam and devotee welfare.',
@@ -766,6 +768,25 @@ function setStoredInitiatives(list: Initiative[]) {
   }
 }
 
+// Determines if a scheduled initiative's countdown teaser is currently visible to devotees
+export function isInitiativeTeaserVisible(initiative: Initiative): boolean {
+  if (initiative.status !== 'SCHEDULED' || !initiative.is_teaser_enabled) {
+    return false;
+  }
+  const now = Date.now();
+  if (initiative.scheduled_publish_at && new Date(initiative.scheduled_publish_at).getTime() <= now) {
+    return false;
+  }
+  // Optional countdown start time: only visible to devotees from that timestamp onwards
+  if (initiative.teaser_start_at) {
+    const startMs = new Date(initiative.teaser_start_at).getTime();
+    if (now < startMs) {
+      return false; // Not yet time for devotees to see the countdown
+    }
+  }
+  return true;
+}
+
 // Service methods with network first, fallback to store
 export async function getInitiatives(filters?: { status?: string; type?: string; urgent?: boolean; search?: string }): Promise<Initiative[]> {
   try {
@@ -795,7 +816,7 @@ export async function getInitiatives(filters?: { status?: string; type?: string;
   let list = getStoredInitiatives();
   if (filters?.status && filters.status !== 'ALL') {
     if (filters.status === 'PUBLISHED') {
-      list = list.filter((i) => i.status === 'PUBLISHED' || (i.status === 'SCHEDULED' && i.is_teaser_enabled));
+      list = list.filter((i) => i.status === 'PUBLISHED' || isInitiativeTeaserVisible(i));
     } else {
       list = list.filter((i) => i.status === filters.status);
     }
@@ -884,6 +905,7 @@ export async function createInitiative(payload: Partial<Initiative>): Promise<In
     status: statusToSet,
     scheduled_publish_at: payload.scheduled_publish_at,
     is_teaser_enabled: payload.is_teaser_enabled ?? true,
+    teaser_start_at: payload.teaser_start_at || undefined,
     muhurtham_name: payload.muhurtham_name,
     broadcast_on_publish: payload.broadcast_on_publish ?? true,
     excess_funds_policy: payload.excess_funds_policy || 'Excess funds will be utilized for continuous Matha Annadanam and educational scholarships.',
@@ -975,6 +997,78 @@ export async function updateInitiativeStatus(code: string, newStatus: Initiative
     return true;
   }
   return false;
+}
+
+// Allow Super Admin to edit initiative fields (urgent status, priority, description, etc.) even after publishing
+export async function updateInitiative(
+  code: string,
+  updates: Partial<Initiative>
+): Promise<Initiative | null> {
+  try {
+    await fetch(`http://127.0.0.1:8000/api/v1/initiatives/${encodeURIComponent(code)}/`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+  } catch {
+    // fallback to local storage
+  }
+
+  const list = getStoredInitiatives();
+  const index = list.findIndex((i) => i.code === code || i.id === code);
+  if (index !== -1) {
+    const prev = { ...list[index] };
+    const updated: Initiative = {
+      ...list[index],
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Ensure audit trail captures changes
+    if (updates.is_urgent !== undefined && updates.is_urgent !== prev.is_urgent) {
+      updated.audit_logs = updated.audit_logs || [];
+      updated.audit_logs.unshift({
+        id: `aud-${Date.now()}`,
+        action: 'URGENT_STATUS_CHANGED',
+        user_name: 'Super Admin',
+        previous_value: prev.is_urgent ? 'URGENT APPEAL (Active)' : 'STANDARD PRIORITY',
+        new_value: updates.is_urgent ? 'ELEVATED TO URGENT EMERGENCY APPEAL' : 'REVERTED TO STANDARD PRIORITY',
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      updated.audit_logs = updated.audit_logs || [];
+      updated.audit_logs.unshift({
+        id: `aud-${Date.now()}`,
+        action: 'INITIATIVE_EDITED',
+        user_name: 'Super Admin',
+        previous_value: `Priority: ${prev.priority}, Target: ₹${prev.target_amount}`,
+        new_value: `Updated by Super Admin`,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    list[index] = updated;
+    setStoredInitiatives(list);
+    return updated;
+  }
+  return null;
+}
+
+// 1-Click quick toggle for Urgent Emergency Appeal status
+export async function toggleInitiativeUrgent(code: string, isUrgent?: boolean): Promise<boolean> {
+  const list = getStoredInitiatives();
+  const item = list.find((i) => i.code === code || i.id === code);
+  if (!item) return false;
+
+  const newUrgent = isUrgent !== undefined ? isUrgent : !item.is_urgent;
+  const newPriority: InitiativePriority = newUrgent ? 'URGENT' : (item.priority === 'URGENT' ? 'NORMAL' : item.priority);
+
+  const res = await updateInitiative(code, {
+    is_urgent: newUrgent,
+    priority: newPriority,
+  });
+
+  return Boolean(res);
 }
 
 // Trigger and persist Automated Devotee Broadcast Notification (Push, SMS, WhatsApp)
