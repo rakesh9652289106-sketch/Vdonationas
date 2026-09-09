@@ -2,6 +2,7 @@ export interface GothiramItem {
   id: number;
   name: string;
   sankethanamams: string[];
+  telugu?: string;
 }
 
 /**
@@ -527,7 +528,7 @@ export const GOTHIRAM_DATA: GothiramItem[] = [
 
 // Attach globally for browser usage and support ES module export
 if (typeof window !== 'undefined') {
-  window.GOTHIRAM_DATA = GOTHIRAM_DATA;
+  (window as any).GOTHIRAM_DATA = GOTHIRAM_DATA;
 }
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { GOTHIRAM_DATA };

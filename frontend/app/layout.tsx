@@ -39,7 +39,7 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
         ...prev,
         fullName: user.fullName || prev.fullName,
         email: user.email || prev.email,
-        phone: user.mobile || prev.phone,
+        mobile: user.mobile || prev.mobile,
       }));
     }
   }, [user]);
