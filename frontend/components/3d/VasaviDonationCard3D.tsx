@@ -12,7 +12,7 @@ export default function VasaviDonationCard3D() {
   const { showAlert } = useConfirmAlert();
   const [selectedTempleId, setSelectedTempleId] = useState(MOCK_TEMPLES[0].id);
   const [selectedCategory, setSelectedCategory] = useState('Annadanam Seva');
-  const [amount, setAmount] = useState(1001);
+  const [amount, setAmount] = useState(102);
   const [customAmount, setCustomAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -20,7 +20,7 @@ export default function VasaviDonationCard3D() {
   const [lastDonation, setLastDonation] = useState<any>(null);
   const [unlockedMedalAlert, setUnlockedMedalAlert] = useState<MedalTier | null>(null);
 
-  const presetAmounts = [1, 116, 216, 516, 1016, 2116];
+  const presetAmounts = [102, 516, 1116, 2116, 5116, 10116];
 
   const sevaCategories = [
     { name: 'Annadanam Seva', desc: 'Offer food to devotees' },
@@ -45,7 +45,7 @@ export default function VasaviDonationCard3D() {
     if (!isNaN(parsed) && parsed > 0) {
       setAmount(parsed);
     } else if (val === '' || parsed <= 0) {
-      setAmount(1);
+      setAmount(102);
     }
   };
 

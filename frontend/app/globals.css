@@ -151,6 +151,15 @@ body {
   background: #E06D29;
 }
 
+/* Hide scrollbar for Chrome, Safari, Opera, Edge, Firefox */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* NATIVE MOBILE APP SHELL OPTIMIZATIONS */
 html, body {
   -webkit-tap-highlight-color: transparent;
@@ -190,3 +199,38 @@ html, body {
   transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ==========================================================================
+   BROWSER AUTOFILL OVERRIDE (ERADICATE WHITE LINES / LIGHT-BLUE BOXES)
+   Prevents Chrome, Edge, Safari, Brave from injecting stark #e8f0fe autofill
+   backgrounds over dark devotional containers.
+   ========================================================================== */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+textarea:-webkit-autofill:active,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus,
+select:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #130205 inset !important;
+  box-shadow: 0 0 0 1000px #130205 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  color: #ffffff !important;
+  caret-color: #ffe494 !important;
+  background-color: #130205 !important;
+  border-radius: 8px !important;
+  transition: background-color 500000s ease-in-out 0s, color 500000s ease-in-out 0s;
+}
+
+.bg-white input:-webkit-autofill,
+.bg-white input:-webkit-autofill:hover,
+.bg-white input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #1c1917 !important;
+  color: #1c1917 !important;
+}

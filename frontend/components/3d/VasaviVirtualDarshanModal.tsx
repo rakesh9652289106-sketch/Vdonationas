@@ -1,21 +1,37 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import VasaviGoddess3DCanvas from './VasaviGoddess3DCanvas';
 import { X, Sparkles, Flame, Heart, ShieldCheck, Video, BellRing, Volume2, QrCode } from 'lucide-react';
-import { GotraSelect, NakshatraSelect } from '@/components/ui/VedicSelects';
+import { useAuth } from '@/lib/auth-context';
 
 interface VasaviVirtualDarshanModalProps {
   onClose: () => void;
 }
 
 export default function VasaviVirtualDarshanModal({ onClose }: VasaviVirtualDarshanModalProps) {
-  const [devoteeName, setDevoteeName] = useState('');
-  const [gothram, setGothram] = useState('');
-  const [nakshatram, setNakshatram] = useState('');
-  const [eHundiAmount, setEHundiAmount] = useState(501);
+  const { user } = useAuth();
+  const [devoteeName, setDevoteeName] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_name') || '' : ''));
+  const [gothram, setGothram] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_selected_gotram') || '' : ''));
+  const [sankethanamam, setSankethanamam] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_selected_sankethanamam') || '' : ''));
+  const [eHundiAmount, setEHundiAmount] = useState(10);
   const [isOfferingAarti, setIsOfferingAarti] = useState(false);
   const [isHundiPaid, setIsHundiPaid] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      if (user.fullName) setDevoteeName(user.fullName);
+      if (user.gotram) setGothram(user.gotram);
+      if (user.sankethanamam) setSankethanamam(user.sankethanamam);
+    } else if (typeof window !== 'undefined') {
+      const n = localStorage.getItem('vdonations_devotee_name');
+      const g = localStorage.getItem('vdonations_selected_gotram');
+      const s = localStorage.getItem('vdonations_selected_sankethanamam');
+      if (n) setDevoteeName(n);
+      if (g) setGothram(g);
+      if (s) setSankethanamam(s);
+    }
+  }, [user]);
 
   const handleOfferAarti = () => {
     setIsOfferingAarti(true);
@@ -93,7 +109,7 @@ export default function VasaviVirtualDarshanModal({ onClose }: VasaviVirtualDars
                   E-Hundi Offering Received!
                 </p>
                 <p className="text-[11px] text-stone-300">
-                  May Sri Vasavi Matha bless {devoteeName || 'your family'} ({gothram || 'Vysya Gothram'}).
+                  May Sri Vasavi Matha bless {devoteeName || 'your family'} ({gothram ? `${gothram} Gotram` : 'Vysya Gothram'}{sankethanamam ? ` • ${sankethanamam}` : ''}).
                 </p>
                 <button
                   onClick={() => setIsHundiPaid(false)}
@@ -115,25 +131,33 @@ export default function VasaviVirtualDarshanModal({ onClose }: VasaviVirtualDars
                   />
                 </div>
 
-                <div className="space-y-2 text-xs">
-                  <GotraSelect
-                    label="Gothram (Optional)"
-                    value={gothram}
-                    onChange={setGothram}
-                    placeholder="Select Gotram (Optional)"
-                  />
-                  <NakshatraSelect
-                    label="Janma Nakshatra (Optional)"
-                    value={nakshatram}
-                    onChange={setNakshatram}
-                    placeholder="Select Nakshatra (Optional)"
-                  />
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <label className="block text-stone-400 font-semibold mb-1">Devotee Gotram</label>
+                    <input
+                      type="text"
+                      value={gothram}
+                      onChange={(e) => setGothram(e.target.value)}
+                      placeholder="e.g. 1 - ACHAYANASA"
+                      className="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-white font-medium text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-stone-400 font-semibold mb-1">Sankethanamam</label>
+                    <input
+                      type="text"
+                      value={sankethanamam}
+                      onChange={(e) => setSankethanamam(e.target.value.toUpperCase())}
+                      placeholder="e.g. NAABILLA"
+                      className="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-white font-mono uppercase text-xs"
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-stone-400 font-semibold mb-1">E-Hundi Amount (₹)</label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[101, 501, 1001].map((amt) => (
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[1, 10, 50, 100].map((amt) => (
                       <button
                         key={amt}
                         type="button"
@@ -154,7 +178,7 @@ export default function VasaviVirtualDarshanModal({ onClose }: VasaviVirtualDars
                   type="submit"
                   className="w-full py-3 rounded-xl bg-gradient-to-r from-devotional-maroon via-devotional-saffron to-amber-600 text-white font-bold text-xs shadow-lg hover:brightness-110 transition-all flex items-center justify-center gap-1.5"
                 >
-                  <Heart className="w-4 h-4 fill-current text-amber-300" /> Drop ₹{eHundiAmount} in E-Hundi
+                  <Heart className="w-4 h-4 fill-current text-amber-300" /> Drop ₹{eHundiAmount} into 3D E-Hundi
                 </button>
               </form>
             )}

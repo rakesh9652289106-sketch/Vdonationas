@@ -526,10 +526,79 @@ export const GOTHIRAM_DATA: GothiramItem[] = [
   }
 ];
 
+export interface SankethanamamEntry {
+  sankethanamam: string;
+  gotraId: number;
+  gotraName: string;
+}
+
+/**
+ * Returns all unique Sankethanamam entries across all 102 Gotras with their parent Gotram.
+ */
+export function getAllSankethanamamEntries(): SankethanamamEntry[] {
+  const entries: SankethanamamEntry[] = [];
+  for (const g of GOTHIRAM_DATA) {
+    for (const s of g.sankethanamams) {
+      entries.push({
+        sankethanamam: s,
+        gotraId: g.id,
+        gotraName: g.name,
+      });
+    }
+  }
+  return entries;
+}
+
+/**
+ * Find parent Gotram for a given Sankethanamam (case-insensitive)
+ */
+export function findGotramBySankethanamam(sankethanamam: string): GothiramItem | undefined {
+  if (!sankethanamam) return undefined;
+  const target = sankethanamam.trim().toUpperCase();
+  return GOTHIRAM_DATA.find((g) =>
+    g.sankethanamams.some((s) => s.trim().toUpperCase() === target)
+  );
+}
+
+/**
+ * Unified search matching Gotram names/IDs AND Sankethanamams
+ */
+export function searchGotramAndSankethanamam(rawQuery: string): {
+  matchingGotras: GothiramItem[];
+  matchingSankethanamams: SankethanamamEntry[];
+} {
+  const q = rawQuery.trim().toUpperCase();
+  if (!q) {
+    return {
+      matchingGotras: GOTHIRAM_DATA,
+      matchingSankethanamams: [],
+    };
+  }
+
+  const matchingGotras = GOTHIRAM_DATA.filter((g) =>
+    g.name.toUpperCase().includes(q) ||
+    g.id.toString() === q ||
+    `GOTRA ${g.id}`.includes(q) ||
+    (g.telugu && g.telugu.includes(rawQuery.trim()))
+  );
+
+  const allEntries = getAllSankethanamamEntries();
+  const matchingSankethanamams = allEntries.filter((e) =>
+    e.sankethanamam.toUpperCase().includes(q)
+  );
+
+  return { matchingGotras, matchingSankethanamams };
+}
+
 // Attach globally for browser usage and support ES module export
 if (typeof window !== 'undefined') {
   (window as any).GOTHIRAM_DATA = GOTHIRAM_DATA;
 }
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { GOTHIRAM_DATA };
+  module.exports = {
+    GOTHIRAM_DATA,
+    getAllSankethanamamEntries,
+    findGotramBySankethanamam,
+    searchGotramAndSankethanamam,
+  };
 }

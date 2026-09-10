@@ -23,6 +23,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { useAuth } from '@/lib/auth-context';
 import { DevotionalSelect } from '@/components/ui/DevotionalSelect';
 import { NakshatraSelect } from '@/components/ui/VedicSelects';
 import { PoojaItem, getPoojaCatalog } from '@/lib/pooja-store';
@@ -79,6 +80,7 @@ interface BookedPooja {
   slot: string;
   devoteeName: string;
   gotra: string;
+  sankethanamam?: string;
   nakshatra: string;
   purpose: string;
   mobile: string;
@@ -92,6 +94,7 @@ interface BookedPooja {
 
 export default function DevoteePoojaBookingsPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'catalog' | 'my-bookings'>('catalog');
   const [poojas, setPoojas] = useState<PoojaItem[]>([]);
   const [selectedPooja, setSelectedPooja] = useState<PoojaItem | null>(null);
@@ -110,15 +113,53 @@ export default function DevoteePoojaBookingsPage() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedSlot, setSelectedSlot] = useState<string>('');
 
-  // Form Fields
-  const [devoteeName, setDevoteeName] = useState('Radha Krishna');
-  const [gotra, setGotra] = useState('Kaundinya');
+  // Form Fields - dynamically auto-filled from devotee profile / storage
+  const [devoteeName, setDevoteeName] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_name') || '' : ''));
+  const [gotra, setGotra] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_selected_gotram') || 'Kaundinya' : 'Kaundinya'));
   const [customGotra, setCustomGotra] = useState('');
+  const [sankethanamam, setSankethanamam] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_selected_sankethanamam') || '' : ''));
   const [nakshatra, setNakshatra] = useState('');
   const [purpose, setPurpose] = useState('Family Health, Peace & Prosperity');
-  const [mobile, setMobile] = useState('9123456789');
-  const [email, setEmail] = useState('devotee@gmail.com');
+  const [mobile, setMobile] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_mobile') || '' : ''));
+  const [email, setEmail] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_email') || '' : ''));
   const [attendanceMode, setAttendanceMode] = useState<'IN_PERSON' | 'ONLINE_LIVE'>('IN_PERSON');
+
+  // Auto-fill and reactively update devotee details
+  useEffect(() => {
+    if (user) {
+      if (user.fullName) setDevoteeName(user.fullName);
+      if (user.gotram) setGotra(user.gotram);
+      if (user.sankethanamam) setSankethanamam(user.sankethanamam);
+      if (user.email) setEmail(user.email);
+      if (user.mobile) setMobile(user.mobile);
+    } else if (typeof window !== 'undefined') {
+      const storedName = localStorage.getItem('vdonations_devotee_name');
+      const storedGotra = localStorage.getItem('vdonations_selected_gotram');
+      const storedSankethanamam = localStorage.getItem('vdonations_selected_sankethanamam');
+      const storedEmail = localStorage.getItem('vdonations_devotee_email');
+      const storedMobile = localStorage.getItem('vdonations_devotee_mobile');
+      if (storedName) setDevoteeName(storedName);
+      if (storedGotra) setGotra(storedGotra);
+      if (storedSankethanamam) setSankethanamam(storedSankethanamam);
+      if (storedEmail) setEmail(storedEmail);
+      if (storedMobile) setMobile(storedMobile);
+    }
+
+    const handleProfileUpdate = (e: any) => {
+      const u = e.detail;
+      if (u) {
+        if (u.fullName) setDevoteeName(u.fullName);
+        if (u.gotram) setGotra(u.gotram);
+        if (u.sankethanamam !== undefined) setSankethanamam(u.sankethanamam);
+        if (u.email) setEmail(u.email);
+        if (u.mobile) setMobile(u.mobile);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('vdonations_profile_updated', handleProfileUpdate);
+      return () => window.removeEventListener('vdonations_profile_updated', handleProfileUpdate);
+    }
+  }, [user]);
 
   // Error and Success handling
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -307,6 +348,7 @@ export default function DevoteePoojaBookingsPage() {
       slot: selectedSlot,
       devoteeName: devoteeName.trim(),
       gotra: effectiveGotra,
+      sankethanamam: sankethanamam.trim() || undefined,
       nakshatra: nakshatra.trim() || 'Not Specified',
       purpose: purpose.trim(),
       mobile: cleanMobile,
@@ -883,9 +925,16 @@ export default function DevoteePoojaBookingsPage() {
 
               {/* RIGHT COLUMN: DEVOTEE SANKALPAM DETAILS & ERROR VALIDATION */}
               <div className="space-y-4">
-                <h3 className="font-serif font-bold text-sm text-stone-900 dark:text-stone-100 flex items-center gap-2">
-                  <User className="w-4 h-4 text-devotional-saffron" /> Devotee Sankalpam Particulars
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-serif font-bold text-sm text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                    <User className="w-4 h-4 text-devotional-saffron" /> Devotee Sankalpam Particulars
+                  </h3>
+                  {(gotra || email || sankethanamam) && (
+                    <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-300/80 dark:border-amber-700 flex items-center gap-1">
+                      ✨ Auto-filled from Profile
+                    </span>
+                  )}
+                </div>
 
                 {/* Devotee / Yajamana Name */}
                 <div className="space-y-1">
@@ -901,8 +950,8 @@ export default function DevoteePoojaBookingsPage() {
                   />
                 </div>
 
-                {/* Gotra & Nakshatra Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Gotra, Sankethanamam & Nakshatra Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <DevotionalSelect
                     label="Gotra"
                     required
@@ -919,6 +968,19 @@ export default function DevoteePoojaBookingsPage() {
                       badge: g.charAt(0).toUpperCase(),
                     }))}
                   />
+
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-stone-600 dark:text-stone-400 uppercase">
+                      Sankethanamam
+                    </label>
+                    <input
+                      type="text"
+                      value={sankethanamam}
+                      onChange={(e) => setSankethanamam(e.target.value.toUpperCase())}
+                      placeholder="e.g. AKRAMULAKULA"
+                      className="w-full px-3 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-xs font-semibold focus:ring-2 focus:ring-amber-400 uppercase font-mono"
+                    />
+                  </div>
 
                   <NakshatraSelect
                     label="Janma Nakshatra"

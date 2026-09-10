@@ -40,6 +40,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { useLanguage } from '@/lib/language-context';
+import { useAuth } from '@/lib/auth-context';
 import { MOCK_DONATIONS } from '@/lib/mock-data';
 import ReceiptViewModal from '@/components/ReceiptViewModal';
 
@@ -270,6 +271,12 @@ const FY_DATA: Record<
 
 export default function DevoteeAnalyticsAndStatementPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const devoteeName = user?.fullName || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_name') || 'Sri Vasavi Devotee' : 'Sri Vasavi Devotee');
+  const devoteeEmail = user?.email || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_email') || 'devotee@vasavi.dev' : 'devotee@vasavi.dev');
+  const devoteeMobile = user?.mobile || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_mobile') || '+91 9848012345' : '+91 9848012345');
+  const devoteeGotram = user?.gotram || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_selected_gotram') || '' : '');
+
   const [selectedFY, setSelectedFY] = useState<string>('2025-2026');
   const [activeTab, setActiveTab] = useState<'analytics' | 'statement' | 'combined'>('combined');
   const [searchQuery, setSearchQuery] = useState('');
@@ -712,7 +719,9 @@ export default function DevoteeAnalyticsAndStatementPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                 <div>
                   <span className="text-stone-500 text-[10px] uppercase font-bold block">Devotee / Donor Name</span>
-                  <span className="font-serif font-bold text-stone-900 dark:text-stone-100 text-sm">Radha Krishna</span>
+                  <span className="font-serif font-bold text-stone-900 dark:text-stone-100 text-sm">
+                    {devoteeName} {devoteeGotram ? `(${devoteeGotram} Gotram)` : ''}
+                  </span>
                 </div>
                 <div>
                   <span className="text-stone-500 text-[10px] uppercase font-bold block">Devotee PAN</span>
@@ -858,7 +867,7 @@ export default function DevoteeAnalyticsAndStatementPage() {
                                 donationId: d.id,
                                 templeName: d.temple,
                                 trustName: 'Sri Vasavi Kanyaka Parameswari Matha Trust',
-                                donorName: 'Radha Krishna',
+                                donorName: devoteeName,
                                 amount: d.amount,
                                 categoryName: d.category,
                                 date: d.date,
@@ -937,7 +946,9 @@ export default function DevoteeAnalyticsAndStatementPage() {
             <div className="grid grid-cols-2 gap-4 text-xs bg-stone-50 p-4 rounded-xl border border-stone-200">
               <div>
                 <span className="text-stone-500 text-[10px] uppercase font-bold block">Donor / Devotee Name</span>
-                <span className="font-serif font-bold text-sm text-stone-900">Radha Krishna</span>
+                <span className="font-serif font-bold text-sm text-stone-900">
+                  {devoteeName} {devoteeGotram ? `(${devoteeGotram} Gotram)` : ''}
+                </span>
               </div>
               <div>
                 <span className="text-stone-500 text-[10px] uppercase font-bold block">Permanent Account Number (PAN)</span>
@@ -945,7 +956,7 @@ export default function DevoteeAnalyticsAndStatementPage() {
               </div>
               <div>
                 <span className="text-stone-500 text-[10px] uppercase font-bold block">Email & Phone</span>
-                <span className="font-medium text-stone-800">devotee@gmail.com • +91 9123456789</span>
+                <span className="font-medium text-stone-800">{devoteeEmail} • {devoteeMobile}</span>
               </div>
               <div>
                 <span className="text-stone-500 text-[10px] uppercase font-bold block">Address</span>

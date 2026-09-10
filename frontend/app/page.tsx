@@ -20,15 +20,14 @@ import { MEDAL_TIERS, MedalTier } from '@/lib/medals';
 import { useLanguage } from '@/lib/language-context';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
 import { useAuth } from '@/lib/auth-context';
-import { DjangoAPI } from '@/lib/api-client';
+import { getInitiatives } from '@/lib/initiatives-data';
+import { adminService } from '@/lib/supabase-service';
 import {
   Heart,
   Sparkles,
   Flame,
   Award,
   Flower2,
-  Sun,
-  BellRing,
   Video,
   Repeat,
 } from 'lucide-react';
@@ -44,10 +43,15 @@ export default function HomePage() {
   const [showVirtualDarshan, setShowVirtualDarshan] = useState(false);
 
   // Auth Guard: Devotee must be logged in to access the Home Page.
-  // Unauthenticated users are redirected to the dedicated /login page.
+  // Unauthenticated users are redirected to complete their Sankalpam or to /login.
   useEffect(() => {
     if (isHydrated && !isAuthenticated) {
-      router.replace('/login');
+      const hasPending = typeof window !== 'undefined' && !!localStorage.getItem('vdonations_pending_sankalpam');
+      if (hasPending) {
+        router.replace('/sankalpam/gotram');
+      } else {
+        router.replace('/login');
+      }
     }
   }, [isHydrated, isAuthenticated, router]);
 
@@ -60,22 +64,30 @@ export default function HomePage() {
     totalRaised: 48000000,
   });
 
-  // Fetch live initiative & donation metrics from Django REST Framework (Port 6000)
+  // Fetch live initiative & donation metrics from Supabase
   useEffect(() => {
     let isMounted = true;
     async function loadStats() {
       try {
-        const initiativesRes = await DjangoAPI.getInitiatives();
-        if (initiativesRes && (initiativesRes.results || Array.isArray(initiativesRes))) {
-          const list = initiativesRes.results || initiativesRes;
-          const totalDonors = list.reduce((acc: number, item: any) => acc + (Number(item.donor_count) || 0), 0);
-          const totalRaised = list.reduce((acc: number, item: any) => acc + (parseFloat(item.current_raised) || 0), 0);
+        const [initiatives, metrics] = await Promise.all([
+          getInitiatives({ status: 'PUBLISHED' }),
+          adminService.getMetrics(),
+        ]);
+
+        if (initiatives && initiatives.length > 0) {
+          const totalDonors = initiatives.reduce((acc: number, item: any) => acc + (Number(item.donor_count) || 0), 0);
+          const totalRaised = initiatives.reduce((acc: number, item: any) => acc + (parseFloat(item.current_raised) || 0), 0);
           if (isMounted) {
             setDbStats({
-              totalDonors: totalDonors > 0 ? totalDonors : 120000,
-              totalRaised: totalRaised > 0 ? totalRaised : 48000000,
+              totalDonors: totalDonors > 0 ? totalDonors : (metrics.totalDonationsCount || 120000),
+              totalRaised: totalRaised > 0 ? totalRaised : (metrics.totalCollection || 48000000),
             });
           }
+        } else if (metrics && isMounted) {
+          setDbStats({
+            totalDonors: metrics.totalDonationsCount || 120000,
+            totalRaised: metrics.totalCollection || 48000000,
+          });
         }
       } catch (e) {
         // Fall back to curated stats
@@ -139,14 +151,6 @@ export default function HomePage() {
     },
   ];
 
-  const handleRingTempleBell = () => {
-    showAlert({
-      type: 'info',
-      title: 'Sacred Temple Bell Ringing',
-      message: '🔔 Om Sri Vasavi Kanyaka Parameswaryai Namaha! May the divine temple bell resonance bless your family with peace and abundance.',
-    });
-  };
-
   // ----------------------------------------------------------------------------
   // AUTH GUARD: Devotees must log in on /login before accessing the Home Page.
   // ----------------------------------------------------------------------------
@@ -186,22 +190,7 @@ export default function HomePage() {
 
       {/* DESKTOP FULL HOME EXPERIENCE (>= md) */}
       <div className="hidden md:block pb-16 bg-[#FAF7F2] dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans">
-        
-        {/* PANCHANGAM TICKER BANNER */}
-        <div className="bg-[#fff9e6] dark:bg-stone-900 border-b border-amber-300 dark:border-stone-800 text-xs py-2 px-4 text-center text-amber-950 dark:text-amber-300 font-medium flex items-center justify-center gap-3 overflow-x-auto shadow-xs">
-          <span className="font-bold flex items-center gap-1.5 text-amber-800 dark:text-amber-400">
-            <Sun className="w-4 h-4 text-devotional-saffron" /> TODAY&apos;S SACRED PANCHANGAM:
-          </span>
-          <span className="text-stone-800 dark:text-stone-200">
-            Shravana Masa • Ekadashi Tithi • Abhijit Muhurtham (11:45 AM - 12:35 PM)
-          </span>
-          <button
-            onClick={handleRingTempleBell}
-            className="px-3 py-1 rounded-full bg-[#52131f] hover:bg-[#681928] text-[#fbe18d] font-serif font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
-          >
-            <BellRing className="w-3.5 h-3.5 text-[#fbe18d]" /> RING TEMPLE BELL
-          </button>
-        </div>
+
 
         {/* 1. HERO SECTION (MATCHING USER SCREENSHOT EXACTLY) */}
         <section className="relative overflow-hidden bg-gradient-to-b from-[#140608] via-[#1a080c] to-[#0c0304] text-white py-12 md:py-16 border-b border-amber-500/20">
@@ -245,12 +234,12 @@ export default function HomePage() {
                 >
                   <Heart className="w-4 h-4 fill-[#301103] text-[#301103]" /> Offer Seva Now
                 </a>
-                <button
-                  onClick={() => setShowVirtualDarshan(true)}
+                <Link
+                  href="/darshan"
                   className="px-5 py-3.5 rounded-2xl bg-[#0e7456] hover:bg-[#128a67] text-white font-serif font-bold text-xs shadow-md transition-all flex items-center gap-2 border border-emerald-400/40 hover:scale-105 cursor-pointer"
                 >
                   <Video className="w-4 h-4 text-emerald-200" /> 📹 Live 3D Virtual Darshan Portal
-                </button>
+                </Link>
                 <Link
                   href="/donate/recurring"
                   className="px-5 py-3.5 rounded-2xl bg-stone-950/80 text-amber-300 border border-amber-500/50 font-serif font-bold text-xs hover:bg-stone-900 transition-colors flex items-center gap-2"

@@ -8,14 +8,72 @@ import { Heart, Search, Download, Flame, ShieldCheck, FileText, CheckCircle2, Cl
 import { useLanguage } from '@/lib/language-context';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
+import { useAuth } from '@/lib/auth-context';
+import { donationsService } from '@/lib/supabase-service';
+
 type FilterType = 'ALL' | 'DONATIONS' | 'SEVAS' | 'AUTOPAY';
 
 export default function DevoteeDonationsPage() {
   const { t } = useLanguage();
   const { showAlert } = useConfirmAlert();
+  const { user } = useAuth();
+  const devoteeDisplayName = user?.fullName || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_name') || 'Sri Vasavi Devotee' : 'Sri Vasavi Devotee');
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('ALL');
   const [activeReceipt, setActiveReceipt] = useState<any | null>(null);
+  const [donations, setDonations] = useState<any[]>(MOCK_DONATIONS);
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    async function loadDonations() {
+      setLoading(true);
+      try {
+        if (user?.id) {
+          const userDons = await donationsService.getDevoteeDonations(user.id);
+          if (userDons && userDons.length > 0) {
+            setDonations(
+              userDons.map((d: any) => ({
+                id: d.id,
+                donationId: d.donation_id || `DON-${d.id.slice(0, 8)}`,
+                templeName: 'Sri Vasavi Kanyaka Parameswari Matha, Penugonda',
+                categoryName: d.category_id || 'Sacred Seva Offering',
+                amount: Number(d.amount || 0),
+                status: d.status || 'SUCCESS',
+                paymentMethod: d.payment_method || 'UPI',
+                transactionId: d.transaction_id || `TXN-${d.id.slice(0, 8)}`,
+                createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString('en-IN') : 'Recently',
+                verificationCode: d.donation_id ? d.donation_id.replace(/[^A-Z0-9]/g, '').slice(-8) : 'VK20268X',
+              }))
+            );
+            return;
+          }
+        }
+        // Fallback or public recent donors
+        const recent = await donationsService.getRecentDonors(10);
+        if (recent && recent.length > 0) {
+          setDonations(
+            recent.map((d: any) => ({
+              id: d.id,
+              donationId: d.donation_id || `DON-${d.id.slice(0, 8)}`,
+              templeName: 'Sri Vasavi Kanyaka Parameswari Matha, Penugonda',
+              categoryName: d.category_id || 'Sacred Seva Offering',
+              amount: Number(d.amount || 0),
+              status: d.status || 'SUCCESS',
+              paymentMethod: d.payment_method || 'UPI',
+              transactionId: d.transaction_id || `TXN-${d.id.slice(0, 8)}`,
+              createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString('en-IN') : 'Recently',
+              verificationCode: d.donation_id ? d.donation_id.replace(/[^A-Z0-9]/g, '').slice(-8) : 'VK20268X',
+            }))
+          );
+        }
+      } catch (err) {
+        console.warn('[Supabase] Failed to load devotee donations:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadDonations();
+  }, [user]);
 
   const filterChips: { id: FilterType; label: string }[] = [
     { id: 'ALL', label: 'All' },
@@ -24,7 +82,7 @@ export default function DevoteeDonationsPage() {
     { id: 'AUTOPAY', label: 'Autopay' },
   ];
 
-  const filtered = MOCK_DONATIONS.filter((d) => {
+  const filtered = donations.filter((d) => {
     const term = search.toLowerCase();
     const matchesSearch =
       !term ||
@@ -143,7 +201,7 @@ export default function DevoteeDonationsPage() {
                       donationId: d.id,
                       templeName: d.templeName,
                       trustName: 'Sri Vasavi Kanyaka Parameswari Matha Trust',
-                      donorName: 'Radha Krishna',
+                      donorName: devoteeDisplayName,
                       amount: d.amount,
                       categoryName: d.categoryName,
                       date: d.createdAt,
@@ -221,7 +279,7 @@ export default function DevoteeDonationsPage() {
                           donationId: d.id,
                           templeName: d.templeName,
                           trustName: 'Sri Vasavi Kanyaka Parameswari Matha Trust',
-                          donorName: 'Radha Krishna',
+                          donorName: devoteeDisplayName,
                           amount: d.amount,
                           categoryName: d.categoryName,
                           date: d.createdAt,

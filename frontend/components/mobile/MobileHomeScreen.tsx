@@ -3,9 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import {
-  Heart,
   Flame,
-  Award,
   Calendar,
   Sparkles,
   ChevronRight,
@@ -37,12 +35,17 @@ import {
 import { MOCK_USERS, MOCK_CAMPAIGNS, MOCK_DONATIONS } from '@/lib/mock-data';
 import { INITIAL_INITIATIVES, INITIATIVE_TYPE_LABELS } from '@/lib/initiatives-data';
 import { useLanguage } from '@/lib/language-context';
+import { useAuth } from '@/lib/auth-context';
 
 export default function MobileHomeScreen() {
   const { t } = useLanguage();
-  const currentUser = MOCK_USERS[0];
-  const [quickAmount, setQuickAmount] = useState(1001);
-  const [monthlyAmount, setMonthlyAmount] = useState(500);
+  const { user } = useAuth();
+  const devoteeFullName = user?.fullName || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_name') || 'Devotee' : 'Devotee');
+  const devoteeFirstName = devoteeFullName.split(' ')[0] || 'Devotee';
+  const devoteeInitial = devoteeFullName.charAt(0) || '🪔';
+  const devoteeGotram = user?.gotram || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_selected_gotram') || '' : '');
+  const [quickAmount, setQuickAmount] = useState(102);
+  const [monthlyAmount, setMonthlyAmount] = useState(102);
 
   const sevasList = [
     {
@@ -111,12 +114,9 @@ export default function MobileHomeScreen() {
             <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/20 to-stone-950/60 pointer-events-none" />
 
             {/* Sacred Badges */}
-            <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+            <div className="absolute top-3 left-3 flex items-center pointer-events-none">
               <span className="px-2.5 py-1 rounded-full bg-stone-950/80 backdrop-blur-md border border-amber-400/50 text-amber-300 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-gold">
                 <Sparkles className="w-3 h-3 text-amber-400" /> Penugonda Matha
-              </span>
-              <span className="px-2.5 py-1 rounded-full bg-emerald-950/80 backdrop-blur-md border border-emerald-400/50 text-emerald-300 text-[10px] font-bold tracking-wider flex items-center gap-1">
-                🟢 DB Live (Port 6000)
               </span>
             </div>
 
@@ -132,15 +132,8 @@ export default function MobileHomeScreen() {
           </div>
 
           {/* Quick Action Buttons Row */}
-          <div className="p-3 pt-0 space-y-2.5">
+          <div className="p-3 pt-0">
             <div className="grid grid-cols-2 gap-2">
-              <Link
-                href="/donate"
-                className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-devotional-saffron via-amber-400 to-amber-500 text-stone-950 font-serif font-bold text-xs shadow-gold flex items-center justify-center gap-1.5 active-press"
-              >
-                <Heart className="w-3.5 h-3.5 fill-current text-devotional-maroon" />
-                <span>Digital Sevas</span>
-              </Link>
               <Link
                 href="/darshan"
                 className="py-2.5 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-serif font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 border border-emerald-400/40 active-press"
@@ -148,22 +141,12 @@ export default function MobileHomeScreen() {
                 <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
                 <span>Live Darshan</span>
               </Link>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
               <Link
                 href="/donate/recurring"
-                className="py-2 px-3 rounded-xl bg-stone-900 border border-amber-500/30 text-amber-300 font-serif font-medium text-[11px] flex items-center justify-center gap-1.5 active-press"
+                className="py-2.5 px-3 rounded-xl bg-stone-900 hover:bg-stone-800 border border-amber-500/30 text-amber-300 font-serif font-semibold text-xs flex items-center justify-center gap-1.5 active-press"
               >
-                <Repeat className="w-3 h-3 text-amber-400" />
+                <Repeat className="w-3.5 h-3.5 text-amber-400" />
                 <span>Monthly AutoPay</span>
-              </Link>
-              <Link
-                href="/login"
-                className="py-2 px-3 rounded-xl bg-stone-900 border border-amber-500/30 text-amber-300 font-serif font-medium text-[11px] flex items-center justify-center gap-1.5 active-press"
-              >
-                <Award className="w-3 h-3 text-amber-400" />
-                <span>102 Gotras Portal</span>
               </Link>
             </div>
           </div>
@@ -174,16 +157,23 @@ export default function MobileHomeScreen() {
       <section className="px-4">
         <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 shadow-xs">
           <div className="space-y-0.5">
-            <h2 className="font-serif font-bold text-sm text-devotional-maroon dark:text-amber-300">
-              Namaste, {currentUser.fullName.split(' ')[0]} 🙏
-            </h2>
+            <div className="flex items-center gap-1.5">
+              <h2 className="font-serif font-bold text-sm text-devotional-maroon dark:text-amber-300">
+                Namaste, {devoteeFirstName} 🙏
+              </h2>
+              {devoteeGotram && (
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300/60">
+                  {devoteeGotram}
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-stone-600 dark:text-stone-300 leading-snug">
               May Sri Vasavi Kanyaka Parameswari bless you and your family.
             </p>
           </div>
           <Link href="/devotee/profile" className="shrink-0 ml-3 active-press">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-devotional-maroon to-devotional-saffron text-amber-200 flex items-center justify-center font-bold text-sm border-2 border-devotional-gold/70 shadow-sm">
-              {currentUser.fullName.charAt(0)}
+              {devoteeInitial}
             </div>
           </Link>
         </div>
@@ -201,8 +191,8 @@ export default function MobileHomeScreen() {
             </span>
           </div>
 
-          <div className="grid grid-cols-4 gap-2">
-            {[100, 500, 1001, 5001].map((amt) => {
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {[102, 516, 1116, 2116, 5116, 10116].map((amt) => {
               const isSelected = quickAmount === amt;
               return (
                 <button
@@ -312,7 +302,7 @@ export default function MobileHomeScreen() {
           </div>
 
           <div className="grid grid-cols-3 gap-2">
-            {[100, 500, 1001].map((amt) => (
+            {[102, 516, 1116, 2116, 5116, 10116].map((amt) => (
               <button
                 key={amt}
                 type="button"
@@ -323,7 +313,7 @@ export default function MobileHomeScreen() {
                     : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300'
                 }`}
               >
-                ₹{amt}/mo
+                ₹{amt.toLocaleString('en-IN')}/mo
               </button>
             ))}
           </div>

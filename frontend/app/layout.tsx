@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -19,6 +19,7 @@ import { Sparkles } from 'lucide-react';
 
 function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { isAuthenticated, isHydrated, user } = useAuth();
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -44,6 +45,27 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
+  // Strict route locking: "nothing should be opened untill the new sankalpam steps completed"
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    // Never redirect away if user is already on /login, /auth, or /sankalpam!
+    if (pathname === '/login' || pathname.startsWith('/auth') || pathname.startsWith('/sankalpam')) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      const hasPendingSankalpam = typeof window !== 'undefined' && !!localStorage.getItem('vdonations_pending_sankalpam');
+      if (hasPendingSankalpam) {
+        // If devotee was in the middle of New Sankalpam and tried opening another site page (e.g. /donate)
+        router.replace('/sankalpam/gotram');
+      } else {
+        // Otherwise direct to login
+        router.replace('/login');
+      }
+    }
+  }, [isHydrated, isAuthenticated, pathname, router]);
+
   const toggleDarkMode = () => {
     if (typeof window !== 'undefined') {
       if (isDarkMode) {
@@ -63,8 +85,13 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Pure login gateway check: Hide inner navigation on /login or on / when unauthenticated
-  const isAuthGate = pathname === '/login' || (pathname === '/' && (!isAuthenticated || !isHydrated));
+  // Pure isolated gateway check: Hide all navbar, header, footer, and drawer functions on:
+  // - /login
+  // - /sankalpam routes (e.g. /sankalpam/gotram)
+  // - /auth routes (e.g. /auth/callback)
+  const isSankalpamRoute = pathname.startsWith('/sankalpam');
+  const isAuthRoute = pathname === '/login' || pathname.startsWith('/auth') || isSankalpamRoute;
+  const isAuthGate = isAuthRoute;
 
   if (isAuthGate) {
     return (

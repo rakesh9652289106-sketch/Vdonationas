@@ -15,6 +15,8 @@ import {
   Star,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { useAuth } from '@/lib/auth-context';
+import { devoteeService, donationsService } from '@/lib/supabase-service';
 
 interface Badge {
   id: string;
@@ -27,15 +29,51 @@ interface Badge {
 
 export default function DevoteeRewardsPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const devoteeDisplayName = user?.fullName || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_name') || 'Sri Vasavi Devotee' : 'Sri Vasavi Devotee');
+  const devoteeGotram = user?.gotram || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_selected_gotram') || '' : '');
   const [copied, setCopied] = useState(false);
+  const [totalDonated, setTotalDonated] = useState(35000);
+  const [donationsCount, setDonationsCount] = useState(12);
 
-  // Devotee Reward Metrics
-  const currentTier = 'Gold Seva Patron';
-  const totalDonated = 35000;
-  const nextTier = 'Diamond Seva Patron';
-  const nextTierTarget = 50000;
+  React.useEffect(() => {
+    if (!user?.id) return;
+    devoteeService.getProfile(user.id).then((prof) => {
+      if (prof?.total_donated) {
+        setTotalDonated(Number(prof.total_donated));
+      }
+    });
+
+    donationsService.getDevoteeDonations(user.id).then((dons) => {
+      if (dons && dons.length > 0) {
+        setDonationsCount(dons.length);
+        const sum = dons.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+        setTotalDonated(sum);
+      }
+    });
+  }, [user]);
+
+  // Devotee Reward Metrics computed dynamically
+  let currentTier = 'Silver Seva Patron';
+  let nextTier = 'Gold Seva Patron';
+  let nextTierTarget = 10000;
+
+  if (totalDonated >= 100000) {
+    currentTier = 'Mahadana Patron';
+    nextTier = 'Parampara Supreme Patron';
+    nextTierTarget = 250000;
+  } else if (totalDonated >= 50000) {
+    currentTier = 'Diamond Seva Patron';
+    nextTier = 'Mahadana Patron';
+    nextTierTarget = 100000;
+  } else if (totalDonated >= 10000) {
+    currentTier = 'Gold Seva Patron';
+    nextTier = 'Diamond Seva Patron';
+    nextTierTarget = 50000;
+  }
+
   const progressPercent = Math.min(100, Math.round((totalDonated / nextTierTarget) * 100));
-  const remaining = nextTierTarget - totalDonated;
+  const remaining = Math.max(nextTierTarget - totalDonated, 0);
 
   const badges: Badge[] = [
     {
@@ -139,11 +177,18 @@ export default function DevoteeRewardsPage() {
               <Sparkles className="w-3 h-3 text-amber-500" /> Devotee Rank
             </div>
             <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 dark:text-stone-100">
-              Radha Krishna
+              {devoteeDisplayName}
             </h2>
-            <p className="text-sm font-serif font-bold text-devotional-maroon dark:text-amber-400">
-              {currentTier}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-serif font-bold text-devotional-maroon dark:text-amber-400">
+                {currentTier}
+              </p>
+              {devoteeGotram && (
+                <span className="text-[10px] font-mono text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-300/60">
+                  🪔 {devoteeGotram} Gotram
+                </span>
+              )}
+            </div>
             <p className="text-xs text-stone-500">
               Total Seva Contribution:{' '}
               <strong className="text-emerald-600 dark:text-emerald-400 font-serif text-sm">

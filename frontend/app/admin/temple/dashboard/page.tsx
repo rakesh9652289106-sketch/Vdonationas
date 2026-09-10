@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MOCK_TEMPLES, MOCK_DONATIONS } from '@/lib/mock-data';
 import { useLanguage } from '@/lib/language-context';
@@ -15,14 +15,53 @@ import {
   Users,
   Utensils,
   Sparkles,
+  ShieldCheck,
+  MessageSquare,
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { templeService } from '@/lib/supabase-service';
 
 export default function TempleAdminDashboardPage() {
   const { t } = useLanguage();
   const { confirmAction, showAlert } = useConfirmAlert();
-  const activeTemple = MOCK_TEMPLES[0];
+  const [temple, setTemple] = useState({
+    name: 'Sri Vasavi Kanyaka Parameswari Matha',
+    code: 'TPL-VASAVI-001',
+    city: 'Penugonda',
+    deity: 'Sri Vasavi Kanyaka Parameswari Ammavaru',
+    verificationStatus: 'VERIFIED',
+  });
   const [autoScaleSlots, setAutoScaleSlots] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedName = localStorage.getItem('vdonations_temple_name');
+      const storedCode = localStorage.getItem('vdonations_temple_code');
+      const storedTempleId = localStorage.getItem('vdonations_temple_id');
+
+      if (storedName || storedCode) {
+        setTemple((prev) => ({
+          ...prev,
+          name: storedName || prev.name,
+          code: storedCode || prev.code,
+        }));
+      }
+
+      if (storedTempleId) {
+        templeService.getTempleById(storedTempleId).then((data) => {
+          if (data) {
+            setTemple({
+              name: data.name,
+              code: data.code,
+              city: `${data.city}, ${data.state}`,
+              deity: data.deity,
+              verificationStatus: data.verificationStatus,
+            });
+          }
+        });
+      }
+    }
+  }, []);
 
   const handleToggleAutoScale = async () => {
     const nextState = !autoScaleSlots;
@@ -64,23 +103,34 @@ export default function TempleAdminDashboardPage() {
       {/* 3D DEVOTIONAL TEMPLE ADMIN HEADER BANNER */}
       <div className="bg-gradient-to-r from-devotional-maroon via-devotional-maroon-dark to-stone-950 text-white p-8 rounded-3xl shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-2 border-devotional-gold/60 relative overflow-hidden diya-glow-pulse">
         <div className="space-y-1 relative z-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold uppercase border border-amber-400/30">
-            <Building2 className="w-3.5 h-3.5 text-devotional-saffron" /> {t('navAdminDashboard')}
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold uppercase border border-amber-400/30">
+              <Building2 className="w-3.5 h-3.5 text-devotional-saffron" /> Devasthanam Portal
+            </div>
+            <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-amber-400 text-stone-950 font-bold shadow-sm">
+              {temple.code}
+            </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-serif font-bold text-amber-300">
-            {t('templeName')}
+            {temple.name}
           </h1>
           <p className="text-amber-100/80 text-xs">
-            {t('templeLocation')} • Multi-Tenant Protected Devasthanam Portal
+            {temple.city} • {temple.deity} • Exclusive Single-Temple Management
           </p>
         </div>
 
         <div className="flex flex-wrap gap-2 relative z-10">
           <Link
+            href="/admin/temple/communications"
+            className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold text-xs transition-all flex items-center gap-1.5 shadow-gold"
+          >
+            <MessageSquare className="w-4 h-4 text-devotional-maroon" /> Super Admin Desk & Requests
+          </Link>
+          <Link
             href="/admin/temple/qr-display"
             className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-devotional-saffron to-amber-600 text-white font-bold text-xs hover:brightness-110 transition-all flex items-center gap-1.5 shadow-gold"
           >
-            <QrCode className="w-4 h-4 text-amber-300" /> Full-Screen Counter QR Mode
+            <QrCode className="w-4 h-4 text-amber-300" /> Counter QR Mode
           </Link>
         </div>
       </div>

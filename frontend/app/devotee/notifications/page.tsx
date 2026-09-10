@@ -6,23 +6,47 @@ import { Bell, Flame, Calendar, Sparkles, CheckCircle2, Megaphone, Clock } from 
 import { IconTempleBell } from '@/components/icons/DevotionalIcons';
 import { useLanguage } from '@/lib/language-context';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
+import { notificationsService } from '@/lib/supabase-service';
 
 export default function DevoteeNotificationsPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<any[]>(MOCK_NOTIFICATIONS);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('vasavi_devotee_notifications');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const combined = [...parsed, ...MOCK_NOTIFICATIONS.filter((m) => !parsed.some((p: any) => p.id === m.id))];
-        setNotifications(combined);
+    async function loadNotifs() {
+      let dbList: any[] = [];
+      if (user?.id) {
+        try {
+          const dbData = await notificationsService.getDevoteeNotifications(user.id);
+          if (dbData && dbData.length > 0) {
+            dbList = dbData.map((n: any) => ({
+              id: n.id,
+              title: n.title,
+              message: n.message,
+              createdAt: n.created_at ? new Date(n.created_at).toLocaleDateString('en-IN') : 'Recently',
+              isRead: n.is_read,
+              isBroadcastRelease: n.type === 'BROADCAST',
+              isInitiativeBroadcast: n.type === 'INITIATIVE',
+            }));
+          }
+        } catch (err) {
+          console.warn('[Supabase] Failed to fetch notifications:', err);
+        }
       }
-    } catch {
-      // Ignore
+
+      try {
+        const saved = localStorage.getItem('vasavi_devotee_notifications');
+        const parsed = saved ? JSON.parse(saved) : [];
+        const combined = [...dbList, ...parsed, ...MOCK_NOTIFICATIONS.filter((m) => !dbList.some((d: any) => d.id === m.id) && !parsed.some((p: any) => p.id === m.id))];
+        setNotifications(combined);
+      } catch {
+        if (dbList.length > 0) setNotifications(dbList);
+      }
     }
-  }, []);
+    loadNotifs();
+  }, [user]);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto font-sans pb-16">

@@ -6,16 +6,19 @@ import { Sparkles, Heart, Repeat, ShieldCheck, CheckCircle2, Calendar, ArrowRigh
 import { MOCK_TEMPLES } from '@/lib/mock-data';
 import { useLanguage } from '@/lib/language-context';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
+import { autopayService } from '@/lib/supabase-service';
+import { useAuth } from '@/lib/auth-context';
 
 export default function RecurringSevaPage() {
   const { t } = useLanguage();
   const { confirmAction, showAlert } = useConfirmAlert();
-  const [selectedPlan, setSelectedPlan] = useState(116);
+  const { user } = useAuth();
+  const [selectedPlan, setSelectedPlan] = useState(102);
   const [customAmount, setCustomAmount] = useState('');
   const [category, setCategory] = useState('Nitya Annadanam Seva');
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  const autopayPresets = [1, 116, 216, 516, 1016, 2116];
+  const autopayPresets = [102, 516, 1116, 2116, 5116, 10116];
 
   const handleSelectPlan = (amt: number) => {
     setSelectedPlan(amt);
@@ -30,7 +33,7 @@ export default function RecurringSevaPage() {
     if (!isNaN(parsed) && parsed > 0) {
       setSelectedPlan(parsed);
     } else if (val === '' || parsed <= 0) {
-      setSelectedPlan(1);
+      setSelectedPlan(102);
     }
   };
 
@@ -40,7 +43,7 @@ export default function RecurringSevaPage() {
       showAlert({
         type: 'warning',
         title: 'Valid Amount Required',
-        message: 'Autopay monthly donation amount must be a positive number (minimum ₹1).',
+        message: 'Autopay monthly donation amount must be a positive number (minimum ₹102).',
       });
       return;
     }
@@ -54,12 +57,29 @@ export default function RecurringSevaPage() {
 
     if (!confirmed) return;
 
-    setIsSubscribed(true);
-    showAlert({
-      type: 'change',
-      title: 'AutoPay Mandate Registered',
-      message: `Monthly offering of ₹${selectedPlan.toLocaleString('en-IN')} for ${category} successfully scheduled.`,
-    });
+    try {
+      await autopayService.createSubscription({
+        userId: user?.id,
+        categoryName: category,
+        amount: selectedPlan,
+        interval: 'MONTHLY',
+        paymentMethod: 'UPI Autopay',
+      });
+
+      setIsSubscribed(true);
+      showAlert({
+        type: 'change',
+        title: 'AutoPay Mandate Registered',
+        message: `Monthly offering of ₹${selectedPlan.toLocaleString('en-IN')} for ${category} successfully scheduled in Supabase.`,
+      });
+    } catch (err) {
+      console.error('[Supabase AutoPay Error]:', err);
+      showAlert({
+        type: 'error',
+        title: 'AutoPay Registration Failed',
+        message: 'Could not register mandate with the temple server. Please try again.',
+      });
+    }
   };
 
   return (
@@ -130,7 +150,7 @@ export default function RecurringSevaPage() {
             {/* Custom Amount */}
             <input
               type="number"
-              min="1"
+              min="102"
               value={customAmount}
               onChange={handleCustomChange}
               placeholder={t('customAmountPlaceholder')}

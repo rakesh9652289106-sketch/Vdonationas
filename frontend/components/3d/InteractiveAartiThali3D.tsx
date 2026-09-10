@@ -16,15 +16,40 @@ export default function InteractiveAartiThali3D({
 }: InteractiveAartiThali3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [isCircling, setIsCircling] = useState(false);
+  const isCirclingRef = useRef(false);
+  isCirclingRef.current = isCircling;
+  const [secondsLeft, setSecondsLeft] = useState(11);
   const [aartiCount, setAartiCount] = useState(0);
+  const aartiTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleStartCircling = () => {
-    setIsCircling((prev) => !prev);
-    templeAudio.playTempleBell(0.6);
-    if (!isCircling) {
-      setAartiCount((c) => c + 1);
-      if (onAartiCompleted) onAartiCompleted();
+    if (isCircling) {
+      if (aartiTimerRef.current) clearInterval(aartiTimerRef.current);
+      aartiTimerRef.current = null;
+      setIsCircling(false);
+      setSecondsLeft(11);
+      return;
     }
+
+    setIsCircling(true);
+    setSecondsLeft(11);
+    templeAudio.playTempleBell(0.6);
+    setAartiCount((c) => c + 1);
+    if (onAartiCompleted) onAartiCompleted();
+
+    let remaining = 11;
+    if (aartiTimerRef.current) clearInterval(aartiTimerRef.current);
+
+    aartiTimerRef.current = setInterval(() => {
+      remaining -= 1;
+      setSecondsLeft(remaining);
+      if (remaining <= 0) {
+        if (aartiTimerRef.current) clearInterval(aartiTimerRef.current);
+        aartiTimerRef.current = null;
+        setIsCircling(false);
+        setSecondsLeft(11);
+      }
+    }, 1000);
   };
 
   useEffect(() => {
@@ -39,10 +64,27 @@ export default function InteractiveAartiThali3D({
     camera.position.set(0, 3.5, 5.5);
     camera.lookAt(0, 0, 0);
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: true,
+        powerPreference: 'low-power',
+        failIfMajorPerformanceCaveat: false,
+      });
+    } catch (e) {
+      console.warn('WebGL not available in InteractiveAartiThali3D:', e);
+      return;
+    }
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
+
+    const canvas = renderer.domElement;
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+    };
+    canvas.addEventListener('webglcontextlost', handleContextLost, false);
 
     // Warm Devotional Lighting
     const ambient = new THREE.AmbientLight(0xfff0dd, 1.2);
@@ -152,7 +194,7 @@ export default function InteractiveAartiThali3D({
       flameLight.intensity = 3.5 + Math.sin(clock * 12) * 1.0;
 
       // Aarti motion
-      if (isCircling) {
+      if (isCirclingRef.current) {
         thaliGroup.position.x = Math.sin(clock * 2) * 0.8;
         thaliGroup.position.y = Math.cos(clock * 2) * 0.4;
         thaliGroup.rotation.y = clock * 2;
@@ -182,12 +224,20 @@ export default function InteractiveAartiThali3D({
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', handleResize);
+      canvas.removeEventListener('webglcontextlost', handleContextLost);
       cancelAnimationFrame(animationId);
+      if (aartiTimerRef.current) {
+        clearInterval(aartiTimerRef.current);
+      }
       if (container && renderer.domElement) {
         container.removeChild(renderer.domElement);
       }
+      try {
+        renderer.dispose();
+        renderer.forceContextLoss();
+      } catch (e) {}
     };
-  }, [isCircling]);
+  }, []);
 
   return (
     <div className={`relative rounded-3xl overflow-hidden bg-gradient-to-b from-stone-950 via-stone-900 to-stone-950 border-2 border-devotional-gold/60 p-4 ${className}`}>
@@ -210,12 +260,12 @@ export default function InteractiveAartiThali3D({
           onClick={handleStartCircling}
           className={`px-4 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all shadow ${
             isCircling
-              ? 'bg-amber-400 text-stone-950 font-bold shadow-gold'
+              ? 'bg-amber-400 text-stone-950 font-bold shadow-gold ring-2 ring-amber-300'
               : 'bg-gradient-to-r from-devotional-maroon to-devotional-saffron text-white hover:brightness-110'
           }`}
         >
           <RotateCw className={`w-3.5 h-3.5 ${isCircling ? 'animate-spin' : ''}`} />
-          {isCircling ? 'Stop Aarti' : 'Circle Aarti Thali'}
+          {isCircling ? `Stop Aarti (${secondsLeft}s)` : 'Circle Aarti Thali (11s)'}
         </button>
       </div>
     </div>

@@ -29,6 +29,7 @@ import { DjangoAPI } from '@/lib/api-client';
 import { templeAudio } from '@/lib/templeAudio';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
 import { useLanguage } from '@/lib/language-context';
+import { useAuth } from '@/lib/auth-context';
 
 interface SacredGatewayHeroProps {
   onOpenVirtualDarshan?: () => void;
@@ -38,10 +39,11 @@ interface SacredGatewayHeroProps {
 export default function SacredGatewayHero({
   onOpenVirtualDarshan,
   onOpenDevaAI,
-}: SacredGatewayHeroProps) {
+}: SacredGatewayHeroProps = {}) {
   const router = useRouter();
   const { t } = useLanguage();
   const { showAlert } = useConfirmAlert();
+  const { user } = useAuth();
 
   // Database State
   const [dbConnected, setDbConnected] = useState<boolean>(false);
@@ -57,14 +59,43 @@ export default function SacredGatewayHero({
   });
 
   // Interactive Form State (Quick Devotee Sankalpam & Offering)
-  const [devoteeName, setDevoteeName] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('');
-  const [selectedGotram, setSelectedGotram] = useState('1 - ACHAYANASA');
+  const [devoteeName, setDevoteeName] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_name') || '' : ''));
+  const [mobileNumber, setMobileNumber] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_mobile') || '' : ''));
+  const [selectedGotram, setSelectedGotram] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_selected_gotram') || '1 - ACHAYANASA' : '1 - ACHAYANASA'));
   const [gotramSearch, setGotramSearch] = useState('');
   const [showGotramDropdown, setShowGotramDropdown] = useState(false);
   const [selectedAmount, setSelectedAmount] = useState(1001);
   const [selectedSeva, setSelectedSeva] = useState('Annadanam Seva');
   const [isBellRinging, setIsBellRinging] = useState(false);
+
+  // Auto-fill and sync devotee details
+  useEffect(() => {
+    if (user) {
+      if (user.fullName) setDevoteeName(user.fullName);
+      if (user.mobile) setMobileNumber(user.mobile);
+      if (user.gotram) setSelectedGotram(user.gotram);
+    } else if (typeof window !== 'undefined') {
+      const storedName = localStorage.getItem('vdonations_devotee_name');
+      const storedMobile = localStorage.getItem('vdonations_devotee_mobile');
+      const storedGotram = localStorage.getItem('vdonations_selected_gotram');
+      if (storedName) setDevoteeName(storedName);
+      if (storedMobile) setMobileNumber(storedMobile);
+      if (storedGotram) setSelectedGotram(storedGotram);
+    }
+
+    const handleProfileUpdate = (e: any) => {
+      const u = e.detail;
+      if (u) {
+        if (u.fullName) setDevoteeName(u.fullName);
+        if (u.mobile) setMobileNumber(u.mobile);
+        if (u.gotram) setSelectedGotram(u.gotram);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('vdonations_profile_updated', handleProfileUpdate);
+      return () => window.removeEventListener('vdonations_profile_updated', handleProfileUpdate);
+    }
+  }, [user]);
 
   // Fetch Live Database Data from Django REST API (Port 6000)
   useEffect(() => {
@@ -287,13 +318,13 @@ export default function SacredGatewayHero({
                   <span>Digital Sevas & Donate</span>
                 </Link>
 
-                <button
-                  onClick={onOpenVirtualDarshan || (() => router.push('/darshan'))}
+                <Link
+                  href="/darshan"
                   className="px-5 py-3 rounded-xl bg-emerald-700/90 hover:bg-emerald-600 text-white font-serif font-bold text-xs sm:text-sm shadow-md transition-all flex items-center gap-2 border border-emerald-400/60 hover:scale-105 active:scale-95"
                 >
                   <Video className="w-4 h-4 text-emerald-300" />
                   <span>3D Live Virtual Darshan</span>
-                </button>
+                </Link>
 
                 <Link
                   href="/donate/recurring"
@@ -317,21 +348,13 @@ export default function SacredGatewayHero({
                 <p className="text-[11px] font-serif uppercase tracking-widest text-amber-300/80 mb-2 font-semibold">
                   ✦ Sacred Portal Quick Features
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-left">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-left">
                   <Link
                     href="/initiatives"
                     className="p-2.5 rounded-xl bg-stone-900/70 hover:bg-stone-900 border border-amber-500/20 hover:border-amber-400/50 transition-all flex items-center gap-2 text-xs text-amber-100 group"
                   >
                     <Building2 className="w-3.5 h-3.5 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
                     <span className="truncate">Gopuram & Projects</span>
-                  </Link>
-
-                  <Link
-                    href="/festivals"
-                    className="p-2.5 rounded-xl bg-stone-900/70 hover:bg-stone-900 border border-amber-500/20 hover:border-amber-400/50 transition-all flex items-center gap-2 text-xs text-amber-100 group"
-                  >
-                    <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
-                    <span className="truncate">Panchangam Calendar</span>
                   </Link>
 
                   <Link

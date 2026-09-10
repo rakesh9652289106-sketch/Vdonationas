@@ -150,11 +150,184 @@ const PLANETS: PlanetInfo[] = [
   },
 ];
 
+function Navagraha2DChakraCanvas({
+  selectedPlanet,
+  onSelectPlanet,
+}: {
+  selectedPlanet: PlanetInfo;
+  onSelectPlanet: (p: PlanetInfo) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    let clock = 0;
+
+    // Stable twinkling stars
+    const stars: { x: number; y: number; s: number; alpha: number }[] = [];
+    for (let i = 0; i < 70; i++) {
+      stars.push({
+        x: Math.random(),
+        y: Math.random(),
+        s: 0.8 + Math.random() * 1.6,
+        alpha: 0.3 + Math.random() * 0.7,
+      });
+    }
+
+    const render = () => {
+      animId = requestAnimationFrame(render);
+      clock += 0.016;
+
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      if (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr)) {
+        canvas.width = Math.floor(rect.width * dpr);
+        canvas.height = Math.floor(rect.height * dpr);
+      }
+
+      const w = canvas.width;
+      const h = canvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
+      const maxR = Math.min(cx, cy) * 0.90;
+
+      // 1. Cosmic Deep Space Background
+      const bgGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, Math.max(w, h) / 2);
+      bgGrad.addColorStop(0, '#1c0915');
+      bgGrad.addColorStop(0.5, '#0e040c');
+      bgGrad.addColorStop(1, '#050205');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // 2. Stars
+      stars.forEach((st) => {
+        const sx = st.x * w;
+        const sy = st.y * h;
+        const twinkle = Math.sin(clock * 3 + st.x * 20) * 0.25;
+        ctx.fillStyle = `rgba(255, 235, 180, ${Math.max(0.1, st.alpha + twinkle)})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, st.s * dpr, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 3. Central Sacred Sri Yantra Disc
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(clock * 0.2);
+
+      // Outer gold circle
+      ctx.strokeStyle = 'rgba(212, 175, 55, 0.5)';
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.beginPath();
+      ctx.arc(0, 0, maxR * 0.16, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Golden sun rays
+      for (let r = 0; r < 8; r++) {
+        const ang = (Math.PI * 2 / 8) * r;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ang) * (maxR * 0.08), Math.sin(ang) * (maxR * 0.08));
+        ctx.lineTo(Math.cos(ang) * (maxR * 0.15), Math.sin(ang) * (maxR * 0.15));
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.7)';
+        ctx.lineWidth = 1.8 * dpr;
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Center Bindu
+      const binduGrad = ctx.createRadialGradient(cx, cy, 1, cx, cy, maxR * 0.06);
+      binduGrad.addColorStop(0, '#ffffff');
+      binduGrad.addColorStop(0.4, '#ffd700');
+      binduGrad.addColorStop(1, 'rgba(255, 165, 0, 0)');
+      ctx.fillStyle = binduGrad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, maxR * 0.06, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 4. Planetary Orbits & Spheres
+      PLANETS.forEach((planet, idx) => {
+        const orbitR = maxR * (0.22 + (idx / (PLANETS.length - 1)) * 0.72);
+
+        // Orbit ring
+        ctx.beginPath();
+        ctx.arc(cx, cy, orbitR, 0, Math.PI * 2);
+        ctx.strokeStyle = planet.id === selectedPlanet.id
+          ? 'rgba(255, 215, 0, 0.65)'
+          : `${planet.color}40`;
+        ctx.lineWidth = planet.id === selectedPlanet.id ? 2 * dpr : 1 * dpr;
+        ctx.stroke();
+
+        // Orbit angle
+        const angle = (idx * (Math.PI * 2 / PLANETS.length)) + clock * (0.35 * planet.speed);
+        const px = cx + Math.cos(angle) * orbitR;
+        const py = cy + Math.sin(angle) * orbitR;
+        const pSize = Math.max(5 * dpr, planet.size * 26 * dpr);
+
+        // Planet Glow Halo
+        const glowGrad = ctx.createRadialGradient(px, py, 1, px, py, pSize * 2.2);
+        glowGrad.addColorStop(0, `${planet.color}dd`);
+        glowGrad.addColorStop(0.5, `${planet.color}44`);
+        glowGrad.addColorStop(1, `${planet.color}00`);
+        ctx.fillStyle = glowGrad;
+        ctx.beginPath();
+        ctx.arc(px, py, pSize * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Planet Sphere
+        const sphereGrad = ctx.createRadialGradient(px - pSize * 0.3, py - pSize * 0.3, 1, px, py, pSize);
+        sphereGrad.addColorStop(0, '#ffffff');
+        sphereGrad.addColorStop(0.4, planet.color);
+        sphereGrad.addColorStop(1, '#050505');
+        ctx.fillStyle = sphereGrad;
+        ctx.beginPath();
+        ctx.arc(px, py, pSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Selected Planet Target Reticle
+        if (planet.id === selectedPlanet.id) {
+          const reticleR = pSize * (1.8 + Math.sin(clock * 6) * 0.2);
+          ctx.strokeStyle = '#ffd700';
+          ctx.lineWidth = 2 * dpr;
+          ctx.beginPath();
+          ctx.arc(px, py, reticleR, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `bold ${Math.floor(11 * dpr)}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.fillText(planet.name.split(' ')[0], px, py - reticleR - 4 * dpr);
+        }
+      });
+    };
+
+    render();
+
+    return () => {
+      cancelAnimationFrame(animId);
+    };
+  }, [selectedPlanet]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="w-full h-full block cursor-pointer"
+      style={{ background: 'transparent' }}
+    />
+  );
+}
+
 export default function NavagrahaYantra3D() {
   const mountRef = useRef<HTMLDivElement>(null);
   const { confirmAction, showAlert } = useConfirmAlert();
   const [selectedPlanet, setSelectedPlanet] = useState<PlanetInfo>(PLANETS[0]);
   const [isRotating, setIsRotating] = useState(true);
+  const [webGlFailed, setWebGlFailed] = useState(false);
 
   const handleBookShantiPooja = async () => {
     const confirmed = await confirmAction({
@@ -189,10 +362,34 @@ export default function NavagrahaYantra3D() {
     camera.position.set(0, 7.5, 9.5);
     camera.lookAt(0, 0, 0);
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: true,
+        powerPreference: 'low-power',
+        failIfMajorPerformanceCaveat: false,
+      });
+    } catch (err) {
+      console.warn('WebGL init failed in NavagrahaYantra3D, enabling 2D fallback:', err);
+      setWebGlFailed(true);
+      return;
+    }
+
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
+
+    const canvas = renderer.domElement;
+    canvas.style.display = 'block';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    const handleContextLost = (e: Event) => {
+      e.preventDefault();
+      console.warn('NavagrahaYantra3D: WebGL context lost');
+      setWebGlFailed(true);
+    };
+    canvas.addEventListener('webglcontextlost', handleContextLost, false);
 
     // Lights
     const ambientLight = new THREE.AmbientLight(0xfff0dd, 1.2);
@@ -328,10 +525,15 @@ export default function NavagrahaYantra3D() {
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      canvas.removeEventListener('webglcontextlost', handleContextLost);
       cancelAnimationFrame(animationId);
       if (container && renderer.domElement) {
         container.removeChild(renderer.domElement);
       }
+      try {
+        renderer.dispose();
+        renderer.forceContextLoss();
+      } catch (e) {}
     };
   }, []);
 
@@ -355,9 +557,16 @@ export default function NavagrahaYantra3D() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-        {/* 3D WebGL Orbit Canvas */}
+        {/* 3D WebGL Orbit Canvas or 2D Celestial Fallback */}
         <div className="lg:col-span-7 relative h-80 sm:h-96 rounded-2xl overflow-hidden bg-gradient-to-b from-stone-950 via-[#180a14] to-stone-950 border border-amber-400/40 shadow-inner">
-          <div ref={mountRef} className="w-full h-full cursor-pointer" />
+          {webGlFailed ? (
+            <Navagraha2DChakraCanvas
+              selectedPlanet={selectedPlanet}
+              onSelectPlanet={selectPlanet}
+            />
+          ) : (
+            <div ref={mountRef} className="w-full h-full cursor-pointer" />
+          )}
           
           <div className="absolute bottom-3 left-3 bg-stone-950/80 backdrop-blur-md px-3 py-1 rounded-full border border-stone-700 text-[10px] text-stone-300 flex items-center gap-1.5">
             <Compass className="w-3 h-3 text-amber-400" />

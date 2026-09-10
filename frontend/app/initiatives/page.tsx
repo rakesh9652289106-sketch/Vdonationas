@@ -21,6 +21,8 @@ import {
   Heart,
   Users,
   RefreshCw,
+  ChevronDown,
+  X,
 } from 'lucide-react';
 
 export default function InitiativesCatalogPage() {
@@ -174,68 +176,87 @@ export default function InitiativesCatalogPage() {
         )}
 
         {/* Search & Filter Bar Card */}
-        <div className="bg-white dark:bg-stone-900 rounded-3xl p-4 sm:p-6 border border-devotional-gold/40 shadow-xl space-y-4">
-          <div className="flex flex-col md:flex-row items-center gap-3">
+        <div className="bg-white dark:bg-stone-900 rounded-3xl p-4 sm:p-5 border border-devotional-gold/40 shadow-xl space-y-3.5">
+          {/* Main Controls Row: Responsive inline on tablet/desktop, clean 2-row on mobile */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
             {/* Search Input */}
-            <div className="relative flex-1 w-full">
-              <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-amber-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search initiatives by title, code, city, or cause..."
-                className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-stone-100 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-devotional-gold"
+                className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-stone-100 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 text-xs sm:text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-devotional-gold transition-all"
               />
-            </div>
-
-            {/* Urgent Toggle Button */}
-            <button
-              type="button"
-              onClick={() => setUrgentOnly(!urgentOnly)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 ${
-                urgentOnly
-                  ? 'bg-red-600 text-white shadow-md ring-2 ring-red-400'
-                  : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200'
-              }`}
-            >
-              <Flame className={`w-3.5 h-3.5 ${urgentOnly ? 'text-amber-300 fill-current' : 'text-red-500'}`} />
-              Urgent
-            </button>
-
-            {/* Sort Dropdown */}
-            <select
-              value={sortBy}
-              onChange={(e: any) => setSortBy(e.target.value)}
-              aria-label="Sort initiatives by"
-              className="px-3.5 py-2.5 rounded-2xl bg-stone-100 dark:bg-stone-800 text-xs font-bold text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-devotional-gold shrink-0 cursor-pointer"
-            >
-              <option value="URGENT">Sort: Urgent First</option>
-              <option value="MOST_FUNDED">Sort: Most Funded (%)</option>
-              <option value="TARGET_HIGH">Sort: Target (High to Low)</option>
-              <option value="NEWEST">Sort: Newest</option>
-            </select>
-          </div>
-
-          {/* Category Filter Pills Carousel / Wrap */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
-            {categoryPills.map((cat) => {
-              const active = selectedCategory === cat.key;
-              return (
+              {searchQuery && (
                 <button
                   type="button"
-                  key={cat.key}
-                  onClick={() => setSelectedCategory(cat.key)}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold whitespace-nowrap transition-all duration-200 ${
-                    active
-                      ? 'bg-gradient-to-r from-devotional-maroon to-devotional-saffron text-white shadow-md shadow-red-950/20 ring-1 ring-amber-300'
-                      : 'bg-stone-100 dark:bg-stone-800/80 text-stone-600 dark:text-stone-300 hover:bg-stone-200/80 dark:hover:bg-stone-700'
-                  }`}
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search query"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-0.5"
                 >
-                  <span>{cat.icon}</span>
-                  <span>{cat.label}</span>
+                  <X className="w-3.5 h-3.5" />
                 </button>
-              );
-            })}
+              )}
+            </div>
+
+            {/* Quick Actions (Urgent & Sort Dropdown side-by-side) */}
+            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+              {/* Urgent Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setUrgentOnly(!urgentOnly)}
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all border ${
+                  urgentOnly
+                    ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white border-red-500 shadow-md shadow-red-950/30 ring-2 ring-red-400/50'
+                    : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 border-stone-200 dark:border-stone-700'
+                }`}
+              >
+                <Flame className={`w-3.5 h-3.5 ${urgentOnly ? 'text-amber-200 fill-current animate-pulse' : 'text-rose-500'}`} />
+                <span className="whitespace-nowrap">{urgentOnly ? 'Urgent Only' : 'Urgent'}</span>
+              </button>
+
+              {/* Sort Dropdown with Custom Chevron */}
+              <div className="flex-1 sm:flex-initial relative">
+                <select
+                  value={sortBy}
+                  onChange={(e: any) => setSortBy(e.target.value)}
+                  aria-label="Sort initiatives by"
+                  className="w-full sm:w-auto px-3.5 py-2.5 pr-8 rounded-2xl bg-stone-100 dark:bg-stone-800 text-xs font-bold text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-devotional-gold cursor-pointer appearance-none"
+                >
+                  <option value="URGENT">Sort: Urgent First</option>
+                  <option value="MOST_FUNDED">Sort: Most Funded (%)</option>
+                  <option value="TARGET_HIGH">Sort: Target (High to Low)</option>
+                  <option value="NEWEST">Sort: Newest</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Category Filter Pills (Clean horizontal scroll with hidden scrollbar) */}
+          <div className="pt-2 border-t border-stone-100 dark:border-stone-800/80">
+            <div className="flex items-center gap-2 overflow-x-auto py-1 no-scrollbar text-xs">
+              {categoryPills.map((cat) => {
+                const active = selectedCategory === cat.key;
+                return (
+                  <button
+                    type="button"
+                    key={cat.key}
+                    onClick={() => setSelectedCategory(cat.key)}
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-2xl font-bold whitespace-nowrap transition-all duration-200 shrink-0 ${
+                      active
+                        ? 'bg-gradient-to-r from-devotional-maroon to-devotional-saffron text-white shadow-md shadow-red-950/20 ring-1 ring-amber-300 scale-[1.02]'
+                        : 'bg-stone-100 dark:bg-stone-800/80 text-stone-600 dark:text-stone-300 hover:bg-stone-200/80 dark:hover:bg-stone-700 border border-stone-200/60 dark:border-stone-700/60'
+                    }`}
+                  >
+                    <span>{cat.icon}</span>
+                    <span>{cat.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

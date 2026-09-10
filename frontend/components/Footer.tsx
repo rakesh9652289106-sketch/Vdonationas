@@ -106,11 +106,6 @@ export default function Footer() {
               </Link>
             </li>
             <li>
-              <Link href="/festivals" className="hover:text-amber-400">
-                {t('navFestivals')}
-              </Link>
-            </li>
-            <li>
               <Link href="/verify-receipt" className="hover:text-amber-400">
                 {t('navVerifyReceipt')}
               </Link>

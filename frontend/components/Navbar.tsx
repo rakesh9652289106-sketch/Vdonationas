@@ -9,7 +9,6 @@ import {
   Search,
   ShieldCheck,
   User,
-  Heart,
   ChevronDown,
   Building2,
   Menu,
@@ -30,12 +29,21 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
-  const { user, logout } = useAuth();
+  const { user, activeRole, switchActiveRole, logout } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentUser, setCurrentUser] = useState(MOCK_USERS[0]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const userAccountRole = (user?.role || '').toUpperCase();
+  const isSuperAdmin =
+    userAccountRole === 'SUPER_ADMIN' || userAccountRole === 'SUPERADMIN';
+  const isTempleAdmin =
+    isSuperAdmin ||
+    userAccountRole === 'TEMPLE_ADMIN' ||
+    userAccountRole === 'TEMPLE_MANAGER';
+  const isFinanceAdmin =
+    isSuperAdmin || userAccountRole === 'FINANCE_ADMIN';
 
   const medalProgress = calculateDevoteeMedals(MOCK_DONATIONS);
 
@@ -55,12 +63,16 @@ export default function Navbar() {
     }
   };
 
-  const handleSwitchUser = (role: UserRoleType) => {
-    const found = MOCK_USERS.find((u) => u.role === role);
-    if (found) {
-      setCurrentUser(found);
-    }
+  const handleSelectPortal = (role: UserRoleType, targetPath: string) => {
+    switchActiveRole(role);
     setIsRoleDropdownOpen(false);
+    router.push(targetPath);
+  };
+
+  const handleSignOut = async () => {
+    setIsRoleDropdownOpen(false);
+    await logout();
+    window.location.href = '/login';
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -143,16 +155,6 @@ export default function Navbar() {
               {t('navAutopay')}
             </Link>
             <Link
-              href="/festivals"
-              className={`hover:text-devotional-maroon dark:hover:text-amber-400 transition-colors whitespace-nowrap ${
-                pathname.startsWith('/festivals')
-                  ? 'text-devotional-maroon dark:text-amber-400 font-extrabold border-b-2 border-devotional-maroon pb-0.5'
-                  : ''
-              }`}
-            >
-              {t('navFestivals')}
-            </Link>
-            <Link
               href="/initiatives"
               className={`hover:text-devotional-maroon dark:hover:text-amber-400 transition-colors whitespace-nowrap ${
                 pathname.startsWith('/initiatives')
@@ -224,7 +226,19 @@ export default function Navbar() {
                   <User className="w-3 h-3" />
                 </div>
                 <span className="hidden xl:inline font-serif font-bold whitespace-nowrap">
-                  Account / Portals
+                  {user
+                    ? isSuperAdmin
+                      ? `👑 Super Admin (${
+                          activeRole === 'SUPER_ADMIN'
+                            ? 'Super'
+                            : activeRole === 'TEMPLE_ADMIN'
+                            ? 'Temple Admin'
+                            : activeRole === 'FINANCE_ADMIN'
+                            ? 'Finance'
+                            : 'Devotee'
+                        })`
+                      : user.fullName
+                    : 'Account / Portals'}
                 </span>
                 {medalProgress.currentMedal && (
                   <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-300 via-amber-200 to-amber-300 text-amber-950 font-bold text-[10px] inline-flex items-center gap-1 whitespace-nowrap shrink-0 border border-amber-400/80 shadow-sm leading-none">
@@ -263,12 +277,13 @@ export default function Navbar() {
                       Select Portal Access:
                     </p>
 
-                    <Link
-                      href="/devotee/dashboard"
-                      onClick={() => handleSwitchUser('DEVOTEE')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-colors ${
-                        currentUser.role === 'DEVOTEE'
-                          ? 'bg-amber-50 dark:bg-stone-800 text-devotional-maroon dark:text-amber-400 font-bold'
+                    {/* Devotee Portal */}
+                    <button
+                      type="button"
+                      onClick={() => handleSelectPortal('DEVOTEE', '/devotee/dashboard')}
+                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-colors cursor-pointer ${
+                        activeRole === 'DEVOTEE'
+                          ? 'bg-amber-100/90 dark:bg-stone-800 text-devotional-maroon dark:text-amber-400 font-bold border border-amber-300/80 dark:border-amber-500/40 shadow-xs'
                           : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
                       }`}
                     >
@@ -276,61 +291,87 @@ export default function Navbar() {
                         <User className="w-4 h-4 text-devotional-saffron" />
                         <span>🙏 Devotee Portal</span>
                       </div>
-                    </Link>
+                      {activeRole === 'DEVOTEE' && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
+                          Active
+                        </span>
+                      )}
+                    </button>
 
-                    <Link
-                      href="/admin/temple/dashboard"
-                      onClick={() => handleSwitchUser('TEMPLE_ADMIN')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-colors ${
-                        currentUser.role === 'TEMPLE_ADMIN'
-                          ? 'bg-amber-50 dark:bg-stone-800 text-devotional-maroon dark:text-amber-400 font-bold'
-                          : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-devotional-maroon dark:text-amber-400" />
-                        <span>🛕 {t('navAdminDashboard')}</span>
-                      </div>
-                    </Link>
+                    {/* Temple Admin (Visible ONLY for Temple Admin & Super Admin) */}
+                    {isTempleAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleSelectPortal('TEMPLE_ADMIN', '/admin/temple/dashboard')}
+                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-colors cursor-pointer ${
+                          activeRole === 'TEMPLE_ADMIN'
+                            ? 'bg-amber-100/90 dark:bg-stone-800 text-devotional-maroon dark:text-amber-400 font-bold border border-amber-300/80 dark:border-amber-500/40 shadow-xs'
+                            : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-4 h-4 text-devotional-maroon dark:text-amber-400" />
+                          <span>🛕 {t('navAdminDashboard')}</span>
+                        </div>
+                        {activeRole === 'TEMPLE_ADMIN' && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
+                            Active
+                          </span>
+                        )}
+                      </button>
+                    )}
 
-                    <Link
-                      href="/admin/finance/dashboard"
-                      onClick={() => handleSwitchUser('FINANCE_ADMIN')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-colors ${
-                        currentUser.role === 'FINANCE_ADMIN'
-                          ? 'bg-amber-50 dark:bg-stone-800 text-devotional-maroon dark:text-amber-400 font-bold'
-                          : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Coins className="w-4 h-4 text-emerald-600" />
-                        <span>💰 {t('sidebarFinanceDashboard')}</span>
-                      </div>
-                    </Link>
+                    {/* Finance Dashboard (Visible ONLY for Finance Admin & Super Admin) */}
+                    {isFinanceAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleSelectPortal('FINANCE_ADMIN', '/admin/finance/dashboard')}
+                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-colors cursor-pointer ${
+                          activeRole === 'FINANCE_ADMIN'
+                            ? 'bg-amber-100/90 dark:bg-stone-800 text-devotional-maroon dark:text-amber-400 font-bold border border-amber-300/80 dark:border-amber-500/40 shadow-xs'
+                            : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Coins className="w-4 h-4 text-emerald-600" />
+                          <span>💰 {t('sidebarFinanceDashboard')}</span>
+                        </div>
+                        {activeRole === 'FINANCE_ADMIN' && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
+                            Active
+                          </span>
+                        )}
+                      </button>
+                    )}
 
-                    <Link
-                      href="/admin/super/dashboard"
-                      onClick={() => handleSwitchUser('SUPER_ADMIN')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-colors ${
-                        currentUser.role === 'SUPER_ADMIN'
-                          ? 'bg-amber-50 dark:bg-stone-800 text-devotional-maroon dark:text-amber-400 font-bold'
-                          : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-4 h-4 text-amber-500" />
-                        <span>👑 {t('sidebarSuperDashboard')}</span>
-                      </div>
-                    </Link>
+                    {/* Super Dashboard (Visible ONLY for Super Admin) */}
+                    {isSuperAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleSelectPortal('SUPER_ADMIN', '/admin/super/dashboard')}
+                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-colors cursor-pointer ${
+                          activeRole === 'SUPER_ADMIN'
+                            ? 'bg-amber-100/90 dark:bg-stone-800 text-devotional-maroon dark:text-amber-400 font-bold border border-amber-300/80 dark:border-amber-500/40 shadow-xs'
+                            : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Shield className="w-4 h-4 text-amber-500" />
+                          <span>👑 {t('sidebarSuperDashboard')}</span>
+                        </div>
+                        {activeRole === 'SUPER_ADMIN' && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
+                            Active
+                          </span>
+                        )}
+                      </button>
+                    )}
 
                     {/* Return to Login Gateway / Sign Out */}
                     <div className="pt-2 mt-1 border-t border-stone-100 dark:border-stone-800">
                       <button
-                        onClick={() => {
-                          logout();
-                          setIsRoleDropdownOpen(false);
-                          router.push('/login');
-                        }}
+                        type="button"
+                        onClick={handleSignOut}
                         className="w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors text-xs font-semibold cursor-pointer"
                       >
                         <LogOut className="w-3.5 h-3.5 text-red-500" />
@@ -341,15 +382,6 @@ export default function Navbar() {
                 </div>
               )}
             </div>
-
-            {/* ALWAYS-VISIBLE PROMINENT DONATE CTA BUTTON */}
-            <Link
-              href="/donate"
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-devotional-saffron via-amber-500 to-amber-600 text-white text-xs font-bold hover:brightness-110 transition-all shadow-gold shrink-0 border border-amber-300/40 cursor-pointer"
-            >
-              <Heart className="w-3.5 h-3.5 fill-current text-white" />
-              <span>{t('navDonate')}</span>
-            </Link>
 
             {/* Mobile Menu Button */}
             <button
@@ -385,13 +417,6 @@ export default function Navbar() {
             className="block py-2 text-sm font-bold text-stone-800 dark:text-stone-200"
           >
             {t('navAutopay')}
-          </Link>
-          <Link
-            href="/festivals"
-            onClick={() => setIsMenuOpen(false)}
-            className="block py-2 text-sm font-bold text-stone-800 dark:text-stone-200"
-          >
-            {t('navFestivals')}
           </Link>
         </div>
       )}

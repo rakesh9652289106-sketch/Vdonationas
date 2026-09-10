@@ -1,3 +1,5 @@
+import { supabase } from './supabase';
+
 export type InitiativeType =
   | 'TEMPLE_CONSTRUCTION'
   | 'TEMPLE_RENOVATION'
@@ -787,32 +789,94 @@ export function isInitiativeTeaserVisible(initiative: Initiative): boolean {
   return true;
 }
 
-// Service methods with network first, fallback to store
+// Map Supabase initiative row + relations to Initiative frontend object
+export function mapSupabaseToInitiative(row: any): Initiative {
+  const breakdown_items = (row.initiative_breakdowns || []).map((b: any, idx: number) => ({
+    id: String(b.id || `bd-${idx}`),
+    category: b.category || 'Allocation',
+    target_amount: Number(b.target_amount || 0),
+    description: b.description || '',
+    order: Number(b.order_index ?? idx),
+  }));
+
+  const updates = (row.initiative_updates || []).map((u: any, idx: number) => ({
+    id: String(u.id || `up-${idx}`),
+    title: u.title || 'Update',
+    message: u.message || '',
+    images: Array.isArray(u.images) ? u.images : [],
+    posted_by_name: u.posted_by_name || 'Temple Administrator',
+    posted_at: u.posted_at || new Date().toISOString(),
+  }));
+
+  const expenses = (row.initiative_expenses || []).map((e: any, idx: number) => ({
+    id: String(e.id || `exp-${idx}`),
+    category: e.category || 'General',
+    amount: Number(e.amount || 0),
+    description: e.description || '',
+    invoice_ref: e.invoice_ref,
+    receipt_url: e.receipt_url,
+    expense_date: e.expense_date || new Date().toISOString().split('T')[0],
+    status: e.status || 'APPROVED',
+    recorded_by_name: e.recorded_by_name,
+    approved_by_name: e.approved_by_name,
+    created_at: e.created_at || new Date().toISOString(),
+  }));
+
+  return normalizeInitiative({
+    ...row,
+    target_amount: Number(row.target_amount || 0),
+    current_raised: Number(row.current_raised || 0),
+    donor_count: Number(row.donor_count || 0),
+    min_donation: Number(row.min_donation || 100),
+    breakdown_items,
+    updates,
+    expenses,
+  });
+}
+
+// Service methods querying Supabase first, fallback to cached store
 export async function getInitiatives(filters?: { status?: string; type?: string; urgent?: boolean; search?: string }): Promise<Initiative[]> {
   try {
-    const params = new URLSearchParams();
-    if (filters?.status && filters.status !== 'ALL') params.append('status', filters.status);
-    if (filters?.type && filters.type !== 'ALL') params.append('type', filters.type);
-    if (filters?.urgent) params.append('urgent', 'true');
-    if (filters?.search) params.append('search', filters.search);
+    let query = supabase
+      .from('initiatives')
+      .select('*, initiative_breakdowns(*), initiative_updates(*), initiative_expenses(*)');
 
-    const res = await fetch(`http://127.0.0.1:8000/api/v1/initiatives/?${params.toString()}`, {
-      headers: { Accept: 'application/json' },
-      cache: 'no-store',
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const results = Array.isArray(data) ? data : data.results || [];
-      if (results.length > 0) {
-        const normalizedList = results.map(normalizeInitiative);
-        setStoredInitiatives(normalizedList);
-        return normalizedList;
+    if (filters?.status && filters.status !== 'ALL') {
+      if (filters.status === 'PUBLISHED') {
+        query = query.in('status', ['PUBLISHED', 'SCHEDULED']);
+      } else {
+        query = query.eq('status', filters.status);
       }
     }
-  } catch {
-    // Backend offline or network failure, use local storage fallback
+    if (filters?.type && filters.type !== 'ALL') {
+      query = query.eq('initiative_type', filters.type);
+    }
+    if (filters?.urgent) {
+      query = query.eq('is_urgent', true);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      let mapped = data.map(mapSupabaseToInitiative);
+      if (filters?.search) {
+        const q = filters.search.toLowerCase();
+        mapped = mapped.filter(
+          (i) =>
+            i.title.toLowerCase().includes(q) ||
+            i.code.toLowerCase().includes(q) ||
+            i.city.toLowerCase().includes(q) ||
+            i.state.toLowerCase().includes(q)
+        );
+      }
+      setStoredInitiatives(mapped);
+      return mapped;
+    }
+  } catch (err) {
+    console.warn('[Supabase] Error fetching initiatives:', err);
   }
 
+  // Fallback to local stored initiatives
   let list = getStoredInitiatives();
   if (filters?.status && filters.status !== 'ALL') {
     if (filters.status === 'PUBLISHED') {
@@ -842,13 +906,20 @@ export async function getInitiatives(filters?: { status?: string; type?: string;
 
 export async function getInitiativeByCode(codeOrId: string): Promise<Initiative | null> {
   try {
-    const res = await fetch(`http://127.0.0.1:8000/api/v1/initiatives/${encodeURIComponent(codeOrId)}/`, {
-      cache: 'no-store',
-    });
-    if (res.ok) {
-      const item = await res.json();
-      const normalized = normalizeInitiative(item);
-      // Sync into local list
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(codeOrId);
+    let query = supabase
+      .from('initiatives')
+      .select('*, initiative_breakdowns(*), initiative_updates(*), initiative_expenses(*)');
+
+    if (isUuid) {
+      query = query.eq('id', codeOrId);
+    } else {
+      query = query.eq('code', codeOrId);
+    }
+
+    const { data, error } = await query.single();
+    if (!error && data) {
+      const normalized = mapSupabaseToInitiative(data);
       const list = getStoredInitiatives();
       const idx = list.findIndex((i) => i.code === normalized.code || i.id === normalized.id);
       if (idx >= 0) {
@@ -859,8 +930,8 @@ export async function getInitiativeByCode(codeOrId: string): Promise<Initiative 
       setStoredInitiatives(list);
       return normalized;
     }
-  } catch {
-    // fallback
+  } catch (err) {
+    console.warn('[Supabase] Error fetching initiative by code:', err);
   }
 
   const list = getStoredInitiatives();
@@ -871,6 +942,81 @@ export async function createInitiative(payload: Partial<Initiative>): Promise<In
   const code = `VD-INI-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
   const statusToSet: InitiativeStatus = payload.status || (payload.scheduled_publish_at ? 'SCHEDULED' : 'PUBLISHED');
 
+  try {
+    const { data, error } = await supabase
+      .from('initiatives')
+      .insert([
+        {
+          code,
+          title: payload.title || 'Untitled Initiative',
+          short_title: payload.short_title || payload.title?.slice(0, 30) || 'Initiative',
+          initiative_type: payload.initiative_type || 'TEMPLE_CONSTRUCTION',
+          custom_type: payload.custom_type,
+          description: payload.description || '',
+          objective: payload.objective || '',
+          priority: payload.priority || 'NORMAL',
+          is_urgent: !!payload.is_urgent,
+          address: payload.address || '',
+          city: payload.city || 'Penugonda',
+          district: payload.district || '',
+          state: payload.state || 'Andhra Pradesh',
+          pin_code: payload.pin_code || '534320',
+          country: payload.country || 'India',
+          target_amount: Number(payload.target_amount) || 100000,
+          current_raised: 0,
+          donor_count: 0,
+          min_donation: Number(payload.min_donation) || 100,
+          suggested_amounts: payload.suggested_amounts?.length ? payload.suggested_amounts : [501, 1001, 2501, 5001, 10001],
+          cover_image: payload.cover_image || 'https://images.unsplash.com/photo-1590077428593-a55bb07c4665?auto=format&fit=crop&w=1200&q=80',
+          gallery_images: payload.gallery_images || [],
+          documents: payload.documents || [],
+          current_stage: payload.current_stage || 'PROPOSED',
+          status: statusToSet,
+          scheduled_publish_at: payload.scheduled_publish_at,
+          is_teaser_enabled: payload.is_teaser_enabled ?? true,
+          muhurtham_name: payload.muhurtham_name,
+          excess_funds_policy: payload.excess_funds_policy || 'Excess funds will be utilized for continuous Matha Annadanam and educational scholarships.',
+        },
+      ])
+      .select()
+      .single();
+
+    if (!error && data) {
+      if (payload.breakdown_items && payload.breakdown_items.length > 0) {
+        const breakdowns = payload.breakdown_items.map((b, idx) => ({
+          initiative_id: data.id,
+          category: b.category,
+          target_amount: Number(b.target_amount) || 0,
+          description: b.description || '',
+          order_index: idx + 1,
+        }));
+        await supabase.from('initiative_breakdowns').insert(breakdowns);
+      }
+
+      await supabase.from('audit_logs').insert([
+        {
+          action: 'INITIATIVE_CREATED',
+          entity_type: 'initiative',
+          entity_id: data.id,
+          new_values: { code, title: payload.title, status: statusToSet },
+        },
+      ]);
+
+      const normalized = mapSupabaseToInitiative(data);
+      const list = getStoredInitiatives();
+      list.unshift(normalized);
+      setStoredInitiatives(list);
+
+      if (normalized.status === 'PUBLISHED' && normalized.broadcast_on_publish) {
+        dispatchInitiativeBroadcastNotification(normalized);
+      }
+      return normalized;
+    }
+  } catch (err) {
+    console.error('[Supabase] Failed to create initiative:', err);
+  }
+
+  // Local fallback
   const rawInitiative = {
     id: `ini-${Date.now()}`,
     code,
@@ -918,38 +1064,17 @@ export async function createInitiative(payload: Partial<Initiative>): Promise<In
         action: 'INITIATIVE_CREATED',
         user_name: 'Super Admin',
         previous_value: '',
-        new_value: `Created initiative ${code} (Status: ${statusToSet}${payload.scheduled_publish_at ? ` | Scheduled: ${payload.scheduled_publish_at}` : ''})`,
+        new_value: `Created initiative ${code} (Status: ${statusToSet})`,
         timestamp: new Date().toISOString(),
       },
     ],
   };
 
-  let newInitiative = normalizeInitiative(rawInitiative);
-
-  // Try saving to backend
-  try {
-    const res = await fetch('http://127.0.0.1:8000/api/v1/initiatives/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...newInitiative,
-        breakdown_items: payload.breakdown_items,
-      }),
-    });
-    if (res.ok) {
-      const saved = await res.json();
-      newInitiative = normalizeInitiative(saved);
-    }
-  } catch {
-    // backend silent catch
-  }
-
-  // Update local storage
+  const newInitiative = normalizeInitiative(rawInitiative);
   const list = getStoredInitiatives();
   list.unshift(newInitiative);
   setStoredInitiatives(list);
 
-  // If published immediately and broadcast is enabled, dispatch broadcast right away
   if (newInitiative.status === 'PUBLISHED' && newInitiative.broadcast_on_publish) {
     dispatchInitiativeBroadcastNotification(newInitiative);
   }
@@ -958,20 +1083,27 @@ export async function createInitiative(payload: Partial<Initiative>): Promise<In
 }
 
 export async function updateInitiativeStatus(code: string, newStatus: InitiativeStatus, completionData?: { final_report?: string }): Promise<boolean> {
-  // RULE ENFORCEMENT: Admin can pause/resume/publish, but cannot mark COMPLETED
   if (newStatus === 'COMPLETED') {
     console.warn('Super Admin cannot manually set status to COMPLETED as per governance protocol.');
     return false;
   }
 
   try {
-    await fetch(`http://127.0.0.1:8000/api/v1/initiatives/${encodeURIComponent(code)}/status/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus, ...completionData }),
-    });
-  } catch {
-    // fallback
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
+    let q = supabase.from('initiatives').update({ status: newStatus, updated_at: new Date().toISOString() });
+    if (isUuid) q = q.eq('id', code);
+    else q = q.eq('code', code);
+    await q;
+
+    await supabase.from('audit_logs').insert([
+      {
+        action: 'STATUS_CHANGED',
+        entity_type: 'initiative',
+        new_values: { code, status: newStatus },
+      },
+    ]);
+  } catch (err) {
+    console.warn('[Supabase] Update status fallback:', err);
   }
 
   const list = getStoredInitiatives();
@@ -989,29 +1121,34 @@ export async function updateInitiativeStatus(code: string, newStatus: Initiative
     });
     setStoredInitiatives(list);
 
-    // If transitioned to PUBLISHED and broadcast is enabled, dispatch notification
     if (newStatus === 'PUBLISHED' && item.broadcast_on_publish) {
       dispatchInitiativeBroadcastNotification(item);
     }
-
     return true;
   }
   return false;
 }
 
-// Allow Super Admin to edit initiative fields (urgent status, priority, description, etc.) even after publishing
 export async function updateInitiative(
   code: string,
   updates: Partial<Initiative>
 ): Promise<Initiative | null> {
   try {
-    await fetch(`http://127.0.0.1:8000/api/v1/initiatives/${encodeURIComponent(code)}/`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
+    let q = supabase.from('initiatives').update({
+      title: updates.title,
+      short_title: updates.short_title,
+      description: updates.description,
+      priority: updates.priority,
+      is_urgent: updates.is_urgent,
+      target_amount: updates.target_amount,
+      updated_at: new Date().toISOString(),
     });
-  } catch {
-    // fallback to local storage
+    if (isUuid) q = q.eq('id', code);
+    else q = q.eq('code', code);
+    await q;
+  } catch (err) {
+    console.warn('[Supabase] Update initiative fallback:', err);
   }
 
   const list = getStoredInitiatives();
@@ -1024,7 +1161,6 @@ export async function updateInitiative(
       updated_at: new Date().toISOString(),
     };
 
-    // Ensure audit trail captures changes
     if (updates.is_urgent !== undefined && updates.is_urgent !== prev.is_urgent) {
       updated.audit_logs = updated.audit_logs || [];
       updated.audit_logs.unshift({
@@ -1033,16 +1169,6 @@ export async function updateInitiative(
         user_name: 'Super Admin',
         previous_value: prev.is_urgent ? 'URGENT APPEAL (Active)' : 'STANDARD PRIORITY',
         new_value: updates.is_urgent ? 'ELEVATED TO URGENT EMERGENCY APPEAL' : 'REVERTED TO STANDARD PRIORITY',
-        timestamp: new Date().toISOString(),
-      });
-    } else {
-      updated.audit_logs = updated.audit_logs || [];
-      updated.audit_logs.unshift({
-        id: `aud-${Date.now()}`,
-        action: 'INITIATIVE_EDITED',
-        user_name: 'Super Admin',
-        previous_value: `Priority: ${prev.priority}, Target: ₹${prev.target_amount}`,
-        new_value: `Updated by Super Admin`,
         timestamp: new Date().toISOString(),
       });
     }
@@ -1160,13 +1286,21 @@ export function isInitiativeReminderSet(code: string): boolean {
 
 export async function updateInitiativeStage(code: string, newStage: InitiativeStage): Promise<boolean> {
   try {
-    await fetch(`http://127.0.0.1:8000/api/v1/initiatives/${encodeURIComponent(code)}/stage/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stage: newStage }),
-    });
-  } catch {
-    // fallback
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
+    let q = supabase.from('initiatives').update({ current_stage: newStage, updated_at: new Date().toISOString() });
+    if (isUuid) q = q.eq('id', code);
+    else q = q.eq('code', code);
+    await q;
+
+    await supabase.from('audit_logs').insert([
+      {
+        action: 'STAGE_ADVANCED',
+        entity_type: 'initiative',
+        new_values: { code, current_stage: newStage },
+      },
+    ]);
+  } catch (err) {
+    console.warn('[Supabase] Update stage fallback:', err);
   }
 
   const list = getStoredInitiatives();
@@ -1198,31 +1332,46 @@ export async function addInitiativeExpense(code: string, expense: Omit<Initiativ
   };
 
   try {
-    const res = await fetch(`http://127.0.0.1:8000/api/v1/initiatives/${encodeURIComponent(code)}/expenses/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...expense,
-        amount: Number(expense.amount || 0),
-        status: expense.status || 'APPROVED',
-      }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      createdExpense = {
-        ...data,
-        amount: Number(data.amount || 0),
-      };
+    // Look up initiative id from Supabase
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
+    let q = supabase.from('initiatives').select('id');
+    if (isUuid) q = q.eq('id', code);
+    else q = q.eq('code', code);
+    const { data: iniData } = await q.single();
+
+    if (iniData?.id) {
+      const { data: expData, error } = await supabase
+        .from('initiative_expenses')
+        .insert([
+          {
+            initiative_id: iniData.id,
+            category: expense.category || 'General',
+            amount: Number(expense.amount || 0),
+            description: expense.description || '',
+            invoice_ref: expense.invoice_ref,
+            receipt_url: expense.receipt_url,
+            expense_date: expense.expense_date || new Date().toISOString().split('T')[0],
+            status: expense.status || 'APPROVED',
+          },
+        ])
+        .select()
+        .single();
+
+      if (!error && expData) {
+        createdExpense = {
+          ...expData,
+          amount: Number(expData.amount || 0),
+        };
+      }
     }
-  } catch {
-    // fallback
+  } catch (err) {
+    console.warn('[Supabase] Add expense fallback:', err);
   }
 
   const list = getStoredInitiatives();
   const item = list.find((i) => i.code === code || i.id === code);
   if (item) {
     if (!item.expenses) item.expenses = [];
-    // remove if exists
     item.expenses = item.expenses.filter((e) => e.id !== createdExpense.id);
     item.expenses.unshift(createdExpense);
     const approvedTotal = item.expenses
@@ -1246,17 +1395,36 @@ export async function addInitiativeUpdate(code: string, update: { title: string;
   };
 
   try {
-    const res = await fetch(`http://127.0.0.1:8000/api/v1/initiatives/${encodeURIComponent(code)}/updates/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(update),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      createdUpdate = data;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
+    let q = supabase.from('initiatives').select('id');
+    if (isUuid) q = q.eq('id', code);
+    else q = q.eq('code', code);
+    const { data: iniData } = await q.single();
+
+    if (iniData?.id) {
+      const { data: upData, error } = await supabase
+        .from('initiative_updates')
+        .insert([
+          {
+            initiative_id: iniData.id,
+            title: update.title,
+            message: update.message,
+            images: update.images || [],
+          },
+        ])
+        .select()
+        .single();
+
+      if (!error && upData) {
+        createdUpdate = {
+          ...upData,
+          images: Array.isArray(upData.images) ? upData.images : [],
+          posted_by_name: 'Temple Administrator',
+        };
+      }
     }
-  } catch {
-    // fallback
+  } catch (err) {
+    console.warn('[Supabase] Add update fallback:', err);
   }
 
   const list = getStoredInitiatives();
@@ -1272,6 +1440,30 @@ export async function addInitiativeUpdate(code: string, update: { title: string;
 
 export async function recordInitiativeDonation(code: string, donationAmount: number): Promise<boolean> {
   const amt = Number(donationAmount || 0);
+
+  try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
+    let q = supabase.from('initiatives').select('id, current_raised, donor_count');
+    if (isUuid) q = q.eq('id', code);
+    else q = q.eq('code', code);
+    const { data } = await q.single();
+
+    if (data?.id) {
+      const newRaised = Number(data.current_raised || 0) + amt;
+      const newDonors = Number(data.donor_count || 0) + 1;
+      await supabase
+        .from('initiatives')
+        .update({
+          current_raised: newRaised,
+          donor_count: newDonors,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', data.id);
+    }
+  } catch (err) {
+    console.warn('[Supabase] Record donation fallback:', err);
+  }
+
   const list = getStoredInitiatives();
   const item = list.find((i) => i.code === code || i.id === code);
   if (item) {

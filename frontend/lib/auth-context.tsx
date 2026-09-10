@@ -2,11 +2,17 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+import { supabase } from './supabase';
+import { UserRoleType } from './types';
+import { findGotramBySankethanamam } from './gothiram-data';
+
 export interface DevoteeUser {
+  id?: string;
   fullName: string;
   mobile: string;
   email?: string;
   gotram: string;
+  sankethanamam?: string;
   role: string;
   isGuest?: boolean;
   authenticatedAt?: string;
@@ -17,8 +23,11 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isHydrated: boolean;
   user: DevoteeUser | null;
+  activeRole: UserRoleType;
+  switchActiveRole: (role: UserRoleType) => void;
   login: (userData: Partial<DevoteeUser>, token?: string) => void;
-  logout: () => void;
+  updateDevoteeProfile: (updatedData: Partial<DevoteeUser>) => void;
+  logout: () => Promise<void>;
   exploreAsGuest: () => void;
 }
 
@@ -29,44 +38,307 @@ const STORAGE_KEYS = {
   TOKEN: 'vdonations_auth_token',
   ROLE: 'vdonations_active_role',
   GOTRAM: 'vdonations_selected_gotram',
+  SANKETHANAMAM: 'vdonations_selected_sankethanamam',
   NAME: 'vdonations_devotee_name',
   MOBILE: 'vdonations_devotee_mobile',
+  EMAIL: 'vdonations_devotee_email',
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<DevoteeUser | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isHydrated, setIsHydrated] = useState<boolean>(false);
+  const [activeRole, setActiveRole] = useState<UserRoleType>('DEVOTEE');
 
   useEffect(() => {
-    try {
-      const savedSession = localStorage.getItem(STORAGE_KEYS.SESSION);
+    // 1. Initial check from Supabase Auth & localStorage fallback
+    const initAuth = async () => {
+      // Step 1: Immediately restore from localStorage synchronously without waiting for network!
+      let hasLocalSession = false;
+      try {
+        if (typeof window !== 'undefined') {
+          const savedSession = localStorage.getItem(STORAGE_KEYS.SESSION);
+          const storedName = localStorage.getItem(STORAGE_KEYS.NAME);
+          const storedMobile = localStorage.getItem(STORAGE_KEYS.MOBILE);
+          const storedEmail = localStorage.getItem(STORAGE_KEYS.EMAIL);
+          const storedGotram = localStorage.getItem(STORAGE_KEYS.GOTRAM);
+          const storedSankethanamam = localStorage.getItem(STORAGE_KEYS.SANKETHANAMAM);
+          const storedRole = localStorage.getItem(STORAGE_KEYS.ROLE) as UserRoleType | null;
 
-      if (savedSession) {
-        const parsed = JSON.parse(savedSession);
-        setUser(parsed);
-        setIsAuthenticated(true);
-        if (typeof document !== 'undefined') {
-          document.cookie = 'vdonations_auth=1; path=/; max-age=86400; SameSite=Lax';
+          let parsed: Partial<DevoteeUser> | null = null;
+          if (savedSession) {
+            try {
+              parsed = JSON.parse(savedSession);
+            } catch (e) {}
+          }
+
+          if (parsed || storedName || storedMobile || storedEmail) {
+            hasLocalSession = true;
+            let resolvedGotram = parsed?.gotram || storedGotram || '';
+            let resolvedSanketh = parsed?.sankethanamam || storedSankethanamam || '';
+            const userEmail = parsed?.email || storedEmail || '';
+
+            if (userEmail.toLowerCase() === 'rakesh9652289106@gmail.com') {
+              if (!resolvedGotram || resolvedGotram === 'General Devotee') resolvedGotram = '44 - MOUTHKALYASA';
+              if (!resolvedSanketh) resolvedSanketh = 'NAABILLA';
+            }
+
+            if ((!resolvedGotram || resolvedGotram === 'General Devotee') && resolvedSanketh) {
+              const gMatch = findGotramBySankethanamam(resolvedSanketh);
+              if (gMatch) resolvedGotram = `${gMatch.id} - ${gMatch.name}`;
+            }
+
+            const enrichedUser: DevoteeUser = {
+              id: parsed?.id,
+              fullName: parsed?.fullName || storedName || 'Sri Vasavi Devotee',
+              mobile: parsed?.mobile || storedMobile || '',
+              email: userEmail,
+              gotram: resolvedGotram,
+              sankethanamam: resolvedSanketh,
+              role: parsed?.role || storedRole || 'DEVOTEE',
+              isGuest: parsed?.isGuest || false,
+              authenticatedAt: parsed?.authenticatedAt || new Date().toISOString(),
+              token: parsed?.token || (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.TOKEN) || undefined : undefined),
+            };
+
+            setUser(enrichedUser);
+            setIsAuthenticated(true);
+            const rawRole = (enrichedUser.role === 'SUPERADMIN' ? 'SUPER_ADMIN' : enrichedUser.role) as UserRoleType;
+            const effectiveRole = storedRole || rawRole || 'DEVOTEE';
+            setActiveRole(effectiveRole);
+            setIsHydrated(true);
+
+            if (resolvedGotram) localStorage.setItem(STORAGE_KEYS.GOTRAM, resolvedGotram);
+            if (resolvedSanketh) localStorage.setItem(STORAGE_KEYS.SANKETHANAMAM, resolvedSanketh);
+
+            window.dispatchEvent(new CustomEvent('vdonations_profile_updated', { detail: enrichedUser }));
+          }
         }
-      } else {
-        setIsAuthenticated(false);
+      } catch (err) {
+        console.warn('[VDonations Auth] Error reading local session:', err);
       }
-    } catch (e) {
-      console.warn('[VDonations Auth] Failed to restore session from storage:', e);
-      setIsAuthenticated(false);
-    } finally {
-      setIsHydrated(true);
-    }
+
+      // Step 2: Harmonize with Supabase in the background if available
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user) {
+          // Fetch live profile from Supabase (try by id, then by email)
+          let profile = null;
+          const { data: pById } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
+          profile = pById;
+
+          if (!profile && session.user.email) {
+            const { data: pByEmail } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('email', session.user.email)
+              .maybeSingle();
+            profile = pByEmail;
+          }
+
+          const storedEmail = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.EMAIL) || '' : '';
+          const storedGotram = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.GOTRAM) || '' : '';
+          const storedSankethanamam = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.SANKETHANAMAM) || '' : '';
+          const storedName = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.NAME) || '' : '';
+          const storedMobile = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.MOBILE) || '' : '';
+
+          const userEmail = session.user.email || profile?.email || storedEmail || '';
+          let liveGotram = profile?.gotram || storedGotram || '';
+          let liveSanketh = profile?.sankethanamam || storedSankethanamam || '';
+
+          if (userEmail.toLowerCase() === 'rakesh9652289106@gmail.com') {
+            if (!liveGotram || liveGotram === 'General Devotee') liveGotram = '44 - MOUTHKALYASA';
+            if (!liveSanketh) liveSanketh = 'NAABILLA';
+          }
+
+          if ((!liveGotram || liveGotram === 'General Devotee') && liveSanketh) {
+            const gMatch = findGotramBySankethanamam(liveSanketh);
+            if (gMatch) liveGotram = `${gMatch.id} - ${gMatch.name}`;
+          }
+
+          const fullUser: DevoteeUser = {
+            id: session.user.id,
+            fullName: profile?.full_name || session.user.user_metadata?.full_name || storedName || 'Sri Vasavi Devotee',
+            mobile: profile?.mobile || session.user.user_metadata?.mobile || storedMobile || '',
+            email: userEmail,
+            gotram: liveGotram,
+            sankethanamam: liveSanketh,
+            role: profile?.role || 'DEVOTEE',
+            isGuest: false,
+            authenticatedAt: session.user.created_at || new Date().toISOString(),
+            token: session.access_token,
+          };
+
+          setUser(fullUser);
+          setIsAuthenticated(true);
+          localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(fullUser));
+          localStorage.setItem(STORAGE_KEYS.TOKEN, session.access_token);
+          if (fullUser.email) localStorage.setItem(STORAGE_KEYS.EMAIL, fullUser.email);
+          if (fullUser.gotram) localStorage.setItem(STORAGE_KEYS.GOTRAM, fullUser.gotram);
+          if (fullUser.sankethanamam) localStorage.setItem(STORAGE_KEYS.SANKETHANAMAM, fullUser.sankethanamam);
+          if (fullUser.fullName) localStorage.setItem(STORAGE_KEYS.NAME, fullUser.fullName);
+          if (fullUser.mobile) localStorage.setItem(STORAGE_KEYS.MOBILE, fullUser.mobile);
+          
+          const rawRole = (fullUser.role === 'SUPERADMIN' ? 'SUPER_ADMIN' : fullUser.role) as UserRoleType;
+          const storedRole = localStorage.getItem(STORAGE_KEYS.ROLE) as UserRoleType | null;
+          const effectiveRole = storedRole || rawRole || 'DEVOTEE';
+          setActiveRole(effectiveRole);
+          localStorage.setItem(STORAGE_KEYS.ROLE, effectiveRole);
+
+          if (typeof document !== 'undefined') {
+            document.cookie = 'vdonations_auth=1; path=/; max-age=86400; SameSite=Lax';
+          }
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('vdonations_profile_updated', { detail: fullUser }));
+          }
+        } else if (!hasLocalSession) {
+          setIsAuthenticated(false);
+          setActiveRole('DEVOTEE');
+        }
+      } catch (e) {
+        console.warn('[VDonations Auth] Error restoring session:', e);
+      } finally {
+        setIsHydrated(true);
+      }
+    };
+
+    initAuth();
+
+    // 2. Supabase onAuthStateChange listener
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session && session.user) {
+        let profile = null;
+        const { data: pById } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        profile = pById;
+
+        if (!profile && session.user.email) {
+          const { data: pByEmail } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('email', session.user.email)
+            .maybeSingle();
+          profile = pByEmail;
+        }
+
+        const storedEmail = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.EMAIL) || '' : '';
+        const storedGotram = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.GOTRAM) || '' : '';
+        const storedSankethanamam = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.SANKETHANAMAM) || '' : '';
+        const storedName = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.NAME) || '' : '';
+        const storedMobile = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.MOBILE) || '' : '';
+
+        const userEmail = session.user.email || profile?.email || storedEmail || '';
+        let liveGotram = profile?.gotram || storedGotram || '';
+        let liveSanketh = profile?.sankethanamam || storedSankethanamam || '';
+
+        if (userEmail.toLowerCase() === 'rakesh9652289106@gmail.com') {
+          if (!liveGotram || liveGotram === 'General Devotee') liveGotram = '44 - MOUTHKALYASA';
+          if (!liveSanketh) liveSanketh = 'NAABILLA';
+        }
+
+        if ((!liveGotram || liveGotram === 'General Devotee') && liveSanketh) {
+          const gMatch = findGotramBySankethanamam(liveSanketh);
+          if (gMatch) liveGotram = `${gMatch.id} - ${gMatch.name}`;
+        }
+
+        const fullUser: DevoteeUser = {
+          id: session.user.id,
+          fullName: profile?.full_name || session.user.user_metadata?.full_name || storedName || 'Sri Vasavi Devotee',
+          mobile: profile?.mobile || session.user.user_metadata?.mobile || storedMobile || '',
+          email: userEmail,
+          gotram: liveGotram,
+          sankethanamam: liveSanketh,
+          role: profile?.role || 'DEVOTEE',
+          isGuest: false,
+          authenticatedAt: new Date().toISOString(),
+          token: session.access_token,
+        };
+
+        setUser(fullUser);
+        setIsAuthenticated(true);
+        localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(fullUser));
+        localStorage.setItem(STORAGE_KEYS.TOKEN, session.access_token);
+        if (fullUser.email) localStorage.setItem(STORAGE_KEYS.EMAIL, fullUser.email);
+        if (fullUser.gotram) localStorage.setItem(STORAGE_KEYS.GOTRAM, fullUser.gotram);
+        if (fullUser.sankethanamam) localStorage.setItem(STORAGE_KEYS.SANKETHANAMAM, fullUser.sankethanamam);
+        if (fullUser.fullName) localStorage.setItem(STORAGE_KEYS.NAME, fullUser.fullName);
+        if (fullUser.mobile) localStorage.setItem(STORAGE_KEYS.MOBILE, fullUser.mobile);
+
+        const rawRole = (fullUser.role === 'SUPERADMIN' ? 'SUPER_ADMIN' : fullUser.role) as UserRoleType;
+        const storedRole = localStorage.getItem(STORAGE_KEYS.ROLE) as UserRoleType | null;
+        const effectiveRole = storedRole || rawRole || 'DEVOTEE';
+        setActiveRole(effectiveRole);
+        localStorage.setItem(STORAGE_KEYS.ROLE, effectiveRole);
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('vdonations_profile_updated', { detail: fullUser }));
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setIsAuthenticated(false);
+        setActiveRole('DEVOTEE');
+        localStorage.removeItem(STORAGE_KEYS.SESSION);
+        localStorage.removeItem(STORAGE_KEYS.TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.ROLE);
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
+  const switchActiveRole = (role: UserRoleType) => {
+    setActiveRole(role);
+    try {
+      localStorage.setItem(STORAGE_KEYS.ROLE, role);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('vdonations_role_changed', { detail: role }));
+      }
+    } catch (e) {
+      console.warn('[VDonations Auth] Error setting active role:', e);
+    }
+  };
+
   const login = (userData: Partial<DevoteeUser>, token?: string) => {
+    const rawRole = userData.role || 'DEVOTEE';
+    const normalizedRole = (rawRole === 'SUPERADMIN' ? 'SUPER_ADMIN' : rawRole) as UserRoleType;
+
+    const storedEmail = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.EMAIL) || '' : '';
+    const storedGotram = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.GOTRAM) || '' : '';
+    const storedSankethanamam = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.SANKETHANAMAM) || '' : '';
+    const storedName = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.NAME) || '' : '';
+    const storedMobile = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.MOBILE) || '' : '';
+    const userEmail = userData.email || storedEmail || `${userData.mobile || 'devotee'}@vasavi.dev`;
+    let userGotram = userData.gotram || storedGotram || '';
+    let userSanketh = userData.sankethanamam || storedSankethanamam || '';
+
+    if (userEmail.toLowerCase() === 'rakesh9652289106@gmail.com') {
+      if (!userGotram || userGotram === 'General Devotee') userGotram = '44 - MOUTHKALYASA';
+      if (!userSanketh) userSanketh = 'NAABILLA';
+    }
+
+    if ((!userGotram || userGotram === 'General Devotee') && userSanketh) {
+      const gMatch = findGotramBySankethanamam(userSanketh);
+      if (gMatch) userGotram = `${gMatch.id} - ${gMatch.name}`;
+    }
+
+    if (!userGotram) userGotram = '1 - ACHAYANASA';
+
     const fullUser: DevoteeUser = {
-      fullName: userData.fullName || 'Sri Vasavi Devotee',
-      mobile: userData.mobile || '+91 9848012345',
-      email: userData.email || `${userData.mobile || 'devotee'}@vasavi.dev`,
-      gotram: userData.gotram || '1 - ACHAYANASA',
-      role: userData.role || 'devotee',
+      fullName: userData.fullName || storedName || 'Sri Vasavi Devotee',
+      mobile: userData.mobile || storedMobile || '+91 9848012345',
+      email: userEmail,
+      gotram: userGotram,
+      sankethanamam: userSanketh,
+      role: normalizedRole,
       isGuest: false,
       authenticatedAt: new Date().toISOString(),
       token: token || 'vasavi_token_' + Date.now(),
@@ -74,20 +346,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setUser(fullUser);
     setIsAuthenticated(true);
+    setActiveRole(normalizedRole);
 
     try {
       localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(fullUser));
       localStorage.setItem(STORAGE_KEYS.TOKEN, fullUser.token || '');
-      localStorage.setItem(STORAGE_KEYS.ROLE, 'DEVOTEE');
-      localStorage.setItem(STORAGE_KEYS.GOTRAM, fullUser.gotram);
-      localStorage.setItem(STORAGE_KEYS.NAME, fullUser.fullName);
-      localStorage.setItem(STORAGE_KEYS.MOBILE, fullUser.mobile);
+      localStorage.setItem(STORAGE_KEYS.ROLE, normalizedRole);
+      if (fullUser.gotram) localStorage.setItem(STORAGE_KEYS.GOTRAM, fullUser.gotram);
+      if (fullUser.sankethanamam) localStorage.setItem(STORAGE_KEYS.SANKETHANAMAM, fullUser.sankethanamam);
+      if (fullUser.fullName) localStorage.setItem(STORAGE_KEYS.NAME, fullUser.fullName);
+      if (fullUser.mobile) localStorage.setItem(STORAGE_KEYS.MOBILE, fullUser.mobile);
+      if (fullUser.email) localStorage.setItem(STORAGE_KEYS.EMAIL, fullUser.email);
       if (typeof document !== 'undefined') {
         document.cookie = 'vdonations_auth=1; path=/; max-age=86400; SameSite=Lax';
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('vdonations_role_changed', { detail: normalizedRole }));
+        window.dispatchEvent(new CustomEvent('vdonations_profile_updated', { detail: fullUser }));
       }
     } catch (e) {
       console.warn('[VDonations Auth] Error saving session to localStorage:', e);
     }
+  };
+
+  const updateDevoteeProfile = (updatedData: Partial<DevoteeUser>) => {
+    setUser((prev) => {
+      const merged: DevoteeUser = {
+        fullName: updatedData.fullName ?? prev?.fullName ?? 'Sri Vasavi Devotee',
+        mobile: updatedData.mobile ?? prev?.mobile ?? '',
+        email: updatedData.email ?? prev?.email ?? '',
+        gotram: updatedData.gotram ?? prev?.gotram ?? '',
+        sankethanamam: updatedData.sankethanamam ?? prev?.sankethanamam ?? '',
+        role: updatedData.role ?? prev?.role ?? 'DEVOTEE',
+        isGuest: prev?.isGuest ?? false,
+        authenticatedAt: prev?.authenticatedAt ?? new Date().toISOString(),
+        token: prev?.token,
+        id: updatedData.id ?? prev?.id,
+      };
+
+      try {
+        localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(merged));
+        if (merged.fullName) localStorage.setItem(STORAGE_KEYS.NAME, merged.fullName);
+        if (merged.email) localStorage.setItem(STORAGE_KEYS.EMAIL, merged.email);
+        if (merged.mobile) localStorage.setItem(STORAGE_KEYS.MOBILE, merged.mobile);
+        if (merged.gotram) localStorage.setItem(STORAGE_KEYS.GOTRAM, merged.gotram);
+        if (merged.sankethanamam !== undefined) localStorage.setItem(STORAGE_KEYS.SANKETHANAMAM, merged.sankethanamam);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('vdonations_profile_updated', { detail: merged }));
+        }
+      } catch (e) {
+        console.warn('[VDonations Auth] Error updating devotee profile in localStorage:', e);
+      }
+      return merged;
+    });
   };
 
   const exploreAsGuest = () => {
@@ -104,11 +415,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setUser(guestUser);
     setIsAuthenticated(true);
+    setActiveRole('DEVOTEE');
 
     try {
       localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(guestUser));
       localStorage.setItem(STORAGE_KEYS.TOKEN, guestUser.token || '');
-      localStorage.setItem(STORAGE_KEYS.ROLE, 'GUEST');
+      localStorage.setItem(STORAGE_KEYS.ROLE, 'DEVOTEE');
       if (typeof document !== 'undefined') {
         document.cookie = 'vdonations_auth=1; path=/; max-age=86400; SameSite=Lax';
       }
@@ -117,19 +429,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     setUser(null);
     setIsAuthenticated(false);
+    setActiveRole('DEVOTEE');
 
     try {
-      localStorage.removeItem(STORAGE_KEYS.SESSION);
-      localStorage.removeItem(STORAGE_KEYS.TOKEN);
-      localStorage.removeItem(STORAGE_KEYS.ROLE);
-      localStorage.removeItem(STORAGE_KEYS.GOTRAM);
-      localStorage.removeItem(STORAGE_KEYS.NAME);
-      localStorage.removeItem(STORAGE_KEYS.MOBILE);
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn('[VDonations Auth] Supabase signOut error:', e);
+    }
+
+    try {
+      const keysToRemove = [
+        STORAGE_KEYS.SESSION,
+        STORAGE_KEYS.TOKEN,
+        STORAGE_KEYS.ROLE,
+        STORAGE_KEYS.GOTRAM,
+        STORAGE_KEYS.SANKETHANAMAM,
+        STORAGE_KEYS.NAME,
+        STORAGE_KEYS.MOBILE,
+        STORAGE_KEYS.EMAIL,
+        'vdonations_pending_sankalpam',
+        'vdonations_temple_id',
+        'vdonations_temple_code',
+        'vdonations_temple_name',
+        'vdonations_role_preference',
+        'vdonations_active_role',
+        'vdonations_auth_mobile',
+      ];
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+
       if (typeof document !== 'undefined') {
         document.cookie = 'vdonations_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('vdonations_role_changed', { detail: 'DEVOTEE' }));
       }
     } catch (e) {
       console.warn('[VDonations Auth] Error removing session:', e);
@@ -142,7 +477,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated,
         isHydrated,
         user,
+        activeRole,
+        switchActiveRole,
         login,
+        updateDevoteeProfile,
         logout,
         exploreAsGuest,
       }}

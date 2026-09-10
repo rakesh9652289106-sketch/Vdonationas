@@ -1,14 +1,37 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { MOCK_AUDIT_LOGS } from '@/lib/mock-data';
 import { Lock, Download, Flame } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
+import { adminService } from '@/lib/supabase-service';
 
 export default function AuditLogsPage() {
   const { t } = useLanguage();
   const { showAlert } = useConfirmAlert();
+  const [logs, setLogs] = useState<any[]>(MOCK_AUDIT_LOGS);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    adminService.getAuditLogs(50).then((dbLogs) => {
+      if (dbLogs && dbLogs.length > 0) {
+        setLogs(
+          dbLogs.map((l: any) => ({
+            id: `AUD-${l.id.slice(0, 8).toUpperCase()}`,
+            userName: l.performed_by || 'Admin',
+            action: l.action,
+            templeName: 'Penugonda Matha',
+            oldValue: l.old_values ? JSON.stringify(l.old_values).slice(0, 30) : '-',
+            newValue: l.new_values ? JSON.stringify(l.new_values).slice(0, 40) : 'Updated',
+            date: l.created_at ? new Date(l.created_at).toLocaleDateString('en-IN') : 'Today',
+            time: l.created_at ? new Date(l.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '',
+            ipAddress: l.ip_address || '127.0.0.1',
+          }))
+        );
+      }
+    }).finally(() => setLoading(false));
+  }, []);
 
   const handleExport = () => {
     showAlert({
@@ -59,7 +82,7 @@ export default function AuditLogsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-              {MOCK_AUDIT_LOGS.map((aud) => (
+              {logs.map((aud) => (
                 <tr key={aud.id} className="hover:bg-amber-50/60 dark:hover:bg-stone-800/60 transition-colors">
                   <td className="p-3.5 font-mono font-bold text-devotional-maroon dark:text-amber-400">
                     {aud.id}

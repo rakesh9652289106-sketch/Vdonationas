@@ -7,7 +7,6 @@ import NavagrahaYantra3D from '@/components/3d/NavagrahaYantra3D';
 import InteractiveAartiThali3D from '@/components/3d/InteractiveAartiThali3D';
 import TempleGopuram3D from '@/components/3d/TempleGopuram3D';
 import PanchangamCalculator from '@/components/devotional/PanchangamCalculator';
-import { NakshatraSelect, GotraSelect } from '@/components/ui/VedicSelects';
 import { templeAudio } from '@/lib/templeAudio';
 import {
   Sparkles,
@@ -23,14 +22,46 @@ import {
   Share2,
   Calendar,
 } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
 
 export default function DarshanPage() {
-  const [devoteeName, setDevoteeName] = useState('');
-  const [gothram, setGothram] = useState('');
-  const [nakshatram, setNakshatram] = useState('Rohini');
-  const [eHundiAmount, setEHundiAmount] = useState(501);
+  const { user } = useAuth();
+  const [devoteeName, setDevoteeName] = useState<string>('');
+  const [gothram, setGothram] = useState<string>('');
+  const [sankethanamam, setSankethanamam] = useState<string>('');
+  const [isMounted, setIsMounted] = useState(false);
+  const [eHundiAmount, setEHundiAmount] = useState<number>(10);
   const [isHundiPaid, setIsHundiPaid] = useState(false);
   const [sankalpaReceiptNo, setSankalpaReceiptNo] = useState('');
+
+  React.useEffect(() => {
+    setIsMounted(true);
+    if (user) {
+      if (user.fullName) setDevoteeName(user.fullName);
+      if (user.gotram) setGothram(user.gotram);
+      if (user.sankethanamam) setSankethanamam(user.sankethanamam);
+    } else if (typeof window !== 'undefined') {
+      const storedName = localStorage.getItem('vdonations_devotee_name');
+      const storedGotram = localStorage.getItem('vdonations_selected_gotram');
+      const storedSankethanamam = localStorage.getItem('vdonations_selected_sankethanamam');
+      if (storedName) setDevoteeName(storedName);
+      if (storedGotram) setGothram(storedGotram);
+      if (storedSankethanamam) setSankethanamam(storedSankethanamam);
+    }
+
+    const handleProfileUpdate = (e: any) => {
+      const u = e.detail;
+      if (u) {
+        if (u.fullName) setDevoteeName(u.fullName);
+        if (u.gotram) setGothram(u.gotram);
+        if (u.sankethanamam !== undefined) setSankethanamam(u.sankethanamam);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('vdonations_profile_updated', handleProfileUpdate);
+      return () => window.removeEventListener('vdonations_profile_updated', handleProfileUpdate);
+    }
+  }, [user]);
 
   const handleEHundiSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,19 +73,7 @@ export default function DarshanPage() {
 
   return (
     <div className="space-y-12 pb-20 bg-[#FAF7F2] dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans">
-      {/* 1. TOP TICKER & SANCTUM STATUS */}
-      <div className="bg-gradient-to-r from-devotional-maroon via-stone-900 to-devotional-maroon text-amber-300 py-2.5 px-4 text-xs font-serif text-center border-b border-amber-400/40 flex items-center justify-center gap-3">
-        <span className="flex items-center gap-1.5 font-bold">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          LIVE 3D VIRTUAL SANCTUM OF SRI VASAVI KANYAKA PARAMESWARI DEVI
-        </span>
-        <span className="hidden sm:inline text-amber-200/70">•</span>
-        <span className="hidden sm:inline text-amber-100">
-          Penugonda Moola Sannidhi • Continuous 3D WebGL Telecast
-        </span>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 pt-6">
         {/* 2. HERO LIVE 3D SANCTUM EXPERIENCE */}
         <section className="space-y-6">
           <div className="text-center space-y-2 max-w-3xl mx-auto">
@@ -106,7 +125,7 @@ export default function DarshanPage() {
                     Sankalpa & E-Hundi Accepted!
                   </h4>
                   <p className="text-xs text-stone-700 dark:text-stone-300">
-                    Devotee <strong>{devoteeName || 'Devotee Family'}</strong> ({gothram || 'Vysya'} Gothram, {nakshatram} Nakshatram).
+                    Devotee <strong>{devoteeName || 'Devotee Family'}</strong> ({gothram ? `${gothram} Gothram` : 'Vysya Gothram'}{sankethanamam ? ` • ${sankethanamam}` : ''}).
                   </p>
                   <div className="p-2 bg-white/80 dark:bg-stone-900 rounded-lg text-[11px] font-mono text-emerald-700 dark:text-emerald-400 font-bold">
                     Receipt: {sankalpaReceiptNo}
@@ -121,9 +140,16 @@ export default function DarshanPage() {
               ) : (
                 <form onSubmit={handleEHundiSubmit} className="space-y-4 text-xs">
                   <div>
-                    <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
-                      Devotee Name
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-stone-700 dark:text-stone-300 font-semibold">
+                        Devotee Name *
+                      </label>
+                      {isMounted && (devoteeName || gothram || sankethanamam) && (
+                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-700 flex items-center gap-1">
+                          ✨ Auto-filled
+                        </span>
+                      )}
+                    </div>
                     <input
                       type="text"
                       required
@@ -135,18 +161,30 @@ export default function DarshanPage() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <GotraSelect
-                      label="Gothram"
-                      value={gothram}
-                      onChange={setGothram}
-                      placeholder="Select Gotram (Optional)"
-                    />
-                    <NakshatraSelect
-                      label="Nakshatram"
-                      value={nakshatram}
-                      onChange={setNakshatram}
-                      placeholder="Select Nakshatra (Optional)"
-                    />
+                    <div>
+                      <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                        Devotee Gotram
+                      </label>
+                      <input
+                        type="text"
+                        value={gothram}
+                        onChange={(e) => setGothram(e.target.value)}
+                        placeholder="e.g. 1 - ACHAYANASA"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-white font-medium text-xs focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                        Sankethanamam
+                      </label>
+                      <input
+                        type="text"
+                        value={sankethanamam}
+                        onChange={(e) => setSankethanamam(e.target.value.toUpperCase())}
+                        placeholder="e.g. NAABILLA"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-white font-mono uppercase text-xs focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -154,7 +192,7 @@ export default function DarshanPage() {
                       Select E-Hundi Offering Amount
                     </label>
                     <div className="grid grid-cols-4 gap-1.5">
-                      {[101, 251, 501, 1001].map((amt) => (
+                      {[1, 10, 50, 100].map((amt) => (
                         <button
                           key={amt}
                           type="button"

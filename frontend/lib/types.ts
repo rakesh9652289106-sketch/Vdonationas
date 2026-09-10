@@ -7,6 +7,9 @@ export interface User {
   mobile?: string;
   role: UserRoleType;
   templeIds?: string[]; // Scope restriction for Temple Admins
+  templeId?: string;
+  templeCode?: string;
+  templeName?: string;
   isTwoFactorAuth: boolean;
   language: 'en' | 'te' | 'ta' | 'hi';
 }
@@ -55,6 +58,45 @@ export interface Temple {
   verificationStatus: VerificationStatus;
   isActive: boolean;
   gallery: string[];
+  managerId?: string;
+  managerName?: string;
+  managerPhone?: string;
+  financeAdminId?: string;
+  financeAdminName?: string;
+  financeAdminPhone?: string;
+}
+
+export interface TempleManagementRequest {
+  id: string;
+  templeId: string;
+  templeCode: string;
+  templeName: string;
+  managerId?: string;
+  managerName: string;
+  managerPhone?: string;
+  senderRole?: 'TEMPLE_ADMIN' | 'FINANCE_ADMIN';
+  requestType: 'SEVA_QUOTA' | 'PROFILE_UPDATE' | 'FESTIVAL_EVENT' | 'FINANCIAL_QR' | 'GENERAL_INQUIRY';
+  title: string;
+  description: string;
+  urgency: 'NORMAL' | 'HIGH' | 'URGENT';
+  status: 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'RESOLVED' | 'REJECTED';
+  superAdminReply?: string;
+  repliedBy?: string;
+  repliedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TempleInternalMessage {
+  id: string;
+  templeId: string;
+  senderId?: string;
+  senderName: string;
+  senderRole: 'TEMPLE_ADMIN' | 'FINANCE_ADMIN' | 'SUPER_ADMIN';
+  message: string;
+  category?: 'BUDGET' | 'SETTLEMENT' | 'COLLECTIONS' | 'DISCREPANCY' | 'GENERAL';
+  metadata?: Record<string, any>;
+  createdAt: string;
 }
 
 export interface DonationCategory {

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Building2,
   QrCode,
@@ -14,14 +14,27 @@ import {
   PieChart,
   Tv,
   Bell,
+  ShieldCheck,
+  MessageSquare,
+  ArrowLeft,
+  DollarSign,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
 import { getTempleAdminNotifications } from '@/lib/quota-store';
+import { templeService } from '@/lib/supabase-service';
+import { Temple } from '@/lib/types';
 
 export default function TempleAdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { t } = useLanguage();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [templeInfo, setTempleInfo] = useState<{ name: string; code: string; city: string; managerName?: string }>({
+    name: 'Sri Vasavi Kanyaka Parameswari Matha',
+    code: 'TPL-VASAVI-001',
+    city: 'Penugonda',
+  });
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   const checkUnread = () => {
     const notifs = getTempleAdminNotifications();
@@ -37,8 +50,67 @@ export default function TempleAdminLayout({ children }: { children: React.ReactN
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const role = localStorage.getItem('vdonations_active_role');
+      const sessionRaw = localStorage.getItem('vdonations_user_session');
+
+      if (!sessionRaw) {
+        router.replace('/login');
+        return;
+      }
+
+      try {
+        const session = JSON.parse(sessionRaw);
+        if (session.role === 'SUPER_ADMIN' || session.role === 'SUPERADMIN' || session.role === 'superadmin') {
+          setIsSuperAdmin(true);
+        } else if (
+          session.role !== 'TEMPLE_ADMIN' &&
+          session.role !== 'TEMPLE_MANAGER' &&
+          role !== 'TEMPLE_ADMIN'
+        ) {
+          // Devotees cannot access Temple Admin portal
+          router.replace('/devotee/dashboard');
+          return;
+        }
+      } catch {
+        router.replace('/login');
+        return;
+      }
+
+      const storedName = localStorage.getItem('vdonations_temple_name');
+      const storedCode = localStorage.getItem('vdonations_temple_code');
+      const storedTempleId = localStorage.getItem('vdonations_temple_id');
+      const storedManagerName = localStorage.getItem('vdonations_devotee_name');
+
+      if (storedName || storedCode) {
+        setTempleInfo({
+          name: storedName || 'Sri Vasavi Shrine',
+          code: storedCode || 'TPL-001',
+          city: 'Devasthanam',
+          managerName: storedManagerName || undefined,
+        });
+      }
+
+      if (storedTempleId) {
+        templeService.getTempleById(storedTempleId).then((temple) => {
+          if (temple) {
+            setTempleInfo({
+              name: temple.name,
+              code: temple.code,
+              city: `${temple.city}, ${temple.state}`,
+              managerName: temple.managerName || storedManagerName || undefined,
+            });
+          }
+        });
+      }
+    }
+  }, [router]);
+
   const navItems = [
     { name: t('sidebarTempleDashboard'), href: '/admin/temple/dashboard', icon: PieChart },
+    { name: 'Super Admin Desk & Requests', href: '/admin/temple/communications', icon: MessageSquare },
+    { name: 'Finance Coordination Desk', href: '/admin/temple/finance-desk', icon: DollarSign },
     { name: t('sidebarNotifications'), href: '/admin/temple/notifications', icon: Bell, isNotification: true },
     { name: t('sidebarEditShrineProfile'), href: '/admin/temple/profile', icon: Building2 },
     { name: t('sidebarDonationCategories'), href: '/admin/temple/categories', icon: Utensils },
@@ -54,15 +126,15 @@ export default function TempleAdminLayout({ children }: { children: React.ReactN
     <div className="min-h-screen bg-devotional-cream dark:bg-stone-900 flex flex-col md:flex-row font-sans">
       {/* Temple Admin 3D Dedicated Sidebar */}
       <aside className="w-full md:w-64 bg-white dark:bg-stone-950 border-r border-stone-200 dark:border-stone-800 p-6 space-y-6 shrink-0 shadow-lg">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-1 text-devotional-maroon dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-950 px-2.5 py-0.5 rounded-full border border-amber-300">
-            <Flame className="w-3 h-3 text-devotional-saffron animate-pulse" /> {t('navAdminDashboard')}
-          </div>
-          <h2 className="text-xl font-serif font-bold text-devotional-maroon dark:text-amber-400">
-            {t('templeName')}
-          </h2>
-          <p className="text-[11px] text-stone-500">{t('templeLocation')}</p>
-        </div>
+        {isSuperAdmin && (
+          <Link
+            href="/admin/super/temples"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400/20 text-amber-700 dark:text-amber-300 text-[11px] font-bold border border-amber-400/40 hover:bg-amber-400/30 transition-all mb-2"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Super Admin
+          </Link>
+        )}
+
 
         <nav className="space-y-1.5 text-xs font-semibold">
           {navItems.map((item) => {

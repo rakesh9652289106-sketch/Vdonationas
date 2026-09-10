@@ -12,7 +12,7 @@ export default function DonationCard3D() {
   const { showAlert } = useConfirmAlert();
   const [selectedTempleId, setSelectedTempleId] = useState(MOCK_TEMPLES[0].id);
   const [selectedCategory, setSelectedCategory] = useState('Nitya Annadanam');
-  const [amount, setAmount] = useState(1001);
+  const [amount, setAmount] = useState(102);
   const [customAmount, setCustomAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -20,7 +20,7 @@ export default function DonationCard3D() {
   const [lastDonation, setLastDonation] = useState<any>(null);
   const [unlockedMedalAlert, setUnlockedMedalAlert] = useState<MedalTier | null>(null);
 
-  const presetAmounts = [501, 1001, 2501, 5001, 10001];
+  const presetAmounts = [102, 516, 1116, 2116, 5116, 10116];
 
   const handleAmountSelect = (val: number) => {
     setAmount(val);
@@ -35,7 +35,7 @@ export default function DonationCard3D() {
     if (!isNaN(parsed) && parsed > 0) {
       setAmount(parsed);
     } else if (val === '' || parsed <= 0) {
-      setAmount(1);
+      setAmount(102);
     }
   };
 

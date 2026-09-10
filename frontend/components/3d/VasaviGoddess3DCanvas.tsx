@@ -25,7 +25,18 @@ export default function VasaviGoddess3DCanvas({
     camera.position.set(0, 2.4, 7.4);
     camera.lookAt(0, 2.4, 0);
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: true,
+        powerPreference: 'low-power',
+        failIfMajorPerformanceCaveat: false,
+      });
+    } catch (err) {
+      console.warn('WebGL init failed in VasaviGoddess3DCanvas:', err);
+      return;
+    }
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
@@ -163,9 +174,15 @@ export default function VasaviGoddess3DCanvas({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationId);
-      if (container && renderer.domElement) {
+      if (container && renderer && renderer.domElement) {
         container.removeChild(renderer.domElement);
       }
+      try {
+        if (renderer) {
+          renderer.dispose();
+          renderer.forceContextLoss();
+        }
+      } catch (e) {}
     };
   }, []);
 

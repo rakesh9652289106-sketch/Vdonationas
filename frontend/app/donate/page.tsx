@@ -24,11 +24,14 @@ import { DevotionalSelect } from '@/components/ui/DevotionalSelect';
 import { NakshatraSelect, GotraSelect } from '@/components/ui/VedicSelects';
 import { recordInitiativeDonation } from '@/lib/initiatives-data';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
+import { donationsService } from '@/lib/supabase-service';
+import { useAuth } from '@/lib/auth-context';
 
 function DonationFormContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { confirmAction, showAlert } = useConfirmAlert();
+  const { user } = useAuth();
 
   const initialTempleId = searchParams.get('templeId') || MOCK_TEMPLES[0].id;
   const initialCategoryId = searchParams.get('categoryId') || '';
@@ -47,18 +50,60 @@ function DonationFormContent() {
       ? 'Nitya Annadanam'
       : 'General Donation'
   );
-  const [amount, setAmount] = useState<number>(1001);
+  const initialAmountParam = searchParams.get('amount');
+  const [amount, setAmount] = useState<number>(
+    initialAmountParam ? parseInt(initialAmountParam, 10) || 102 : 102
+  );
   const [customAmount, setCustomAmount] = useState('');
-  const [donorName, setDonorName] = useState('Radha Krishna');
-  const [donorEmail, setDonorEmail] = useState('devotee@gmail.com');
-  const [donorPhone, setDonorPhone] = useState('+91 9123456789');
+  const [donorName, setDonorName] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_name') || '' : ''));
+  const [donorEmail, setDonorEmail] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_email') || '' : ''));
+  const [donorPhone, setDonorPhone] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_mobile') || '' : ''));
   const [donorPan, setDonorPan] = useState('');
-  const [donorGotra, setDonorGotra] = useState('');
+  const [donorGotra, setDonorGotra] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_selected_gotram') || '' : ''));
+  const [donorSankethanamam, setDonorSankethanamam] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_selected_sankethanamam') || '' : ''));
   const [donorNakshatra, setDonorNakshatra] = useState('');
   const [onBehalfOf, setOnBehalfOf] = useState('');
   const [dedicationMsg, setDedicationMsg] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'QR' | 'CARD' | 'NETBANKING'>('UPI');
+
+  // Auto-fill and reactively update devotee details
+  React.useEffect(() => {
+    if (user) {
+      if (user.fullName) setDonorName(user.fullName);
+      if (user.email) setDonorEmail(user.email);
+      if (user.mobile) setDonorPhone(user.mobile);
+      if (user.gotram) setDonorGotra(user.gotram);
+      if (user.sankethanamam) setDonorSankethanamam(user.sankethanamam);
+    } else if (typeof window !== 'undefined') {
+      const storedName = localStorage.getItem('vdonations_devotee_name');
+      const storedEmail = localStorage.getItem('vdonations_devotee_email');
+      const storedPhone = localStorage.getItem('vdonations_devotee_mobile');
+      const storedGotra = localStorage.getItem('vdonations_selected_gotram');
+      const storedSankethanamam = localStorage.getItem('vdonations_selected_sankethanamam');
+
+      if (storedName) setDonorName(storedName);
+      if (storedEmail) setDonorEmail(storedEmail);
+      if (storedPhone) setDonorPhone(storedPhone);
+      if (storedGotra) setDonorGotra(storedGotra);
+      if (storedSankethanamam) setDonorSankethanamam(storedSankethanamam);
+    }
+
+    const handleProfileUpdate = (e: any) => {
+      const updated = e.detail;
+      if (updated) {
+        if (updated.fullName) setDonorName(updated.fullName);
+        if (updated.email) setDonorEmail(updated.email);
+        if (updated.mobile) setDonorPhone(updated.mobile);
+        if (updated.gotram) setDonorGotra(updated.gotram);
+        if (updated.sankethanamam !== undefined) setDonorSankethanamam(updated.sankethanamam);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('vdonations_profile_updated', handleProfileUpdate);
+      return () => window.removeEventListener('vdonations_profile_updated', handleProfileUpdate);
+    }
+  }, [user]);
 
   // Checkout Steps
   const [step, setStep] = useState<'DETAILS' | 'PAYMENT' | 'VERIFYING' | 'SUCCESS'>('DETAILS');
@@ -66,7 +111,7 @@ function DonationFormContent() {
   const [receiptData, setReceiptData] = useState<any>(null);
 
   const currentTemple = MOCK_TEMPLES.find((t) => t.id === selectedTempleId) || MOCK_TEMPLES[0];
-  const presets = [100, 500, 1001, 2501, 5001, 10001];
+  const presets = [102, 516, 1116, 2116, 5116, 10116];
 
   const handleShare = () => {
     if (typeof window !== 'undefined') {
@@ -101,7 +146,7 @@ function DonationFormContent() {
     if (!isNaN(num) && num > 0) {
       setAmount(num);
     } else if (val === '' || num <= 0) {
-      setAmount(1);
+      setAmount(102);
     }
   };
 
@@ -111,7 +156,7 @@ function DonationFormContent() {
       showAlert({
         type: 'warning',
         title: 'Valid Amount Required',
-        message: 'Donation amount must be a positive number (minimum ₹1).',
+        message: 'Donation amount must be a positive number (minimum ₹102).',
       });
       return;
     }
@@ -122,52 +167,64 @@ function DonationFormContent() {
     setStep('VERIFYING');
     setIsProcessing(true);
 
-    // Initiate server-side payment abstraction
-    const initiateRes = await PaymentProviderEngine.initiatePayment({
-      templeId: currentTemple.id,
-      amount,
-      currency: 'INR',
-      donorName: isAnonymous ? 'Anonymous Devotee' : donorName,
-      donorEmail,
-      donorPhone,
-      paymentMethod,
-      purpose,
-    });
+    try {
+      // 1. Record real verified donation into Supabase (activates triggers for receipts, stats, and notifications)
+      const { donation, transactionId } = await donationsService.createDonation({
+        amount,
+        paymentMethod,
+        donorName: isAnonymous ? 'Anonymous Devotee' : donorName,
+        donorEmail,
+        donorPhone,
+        donorPan,
+        donorGotram: donorGotra,
+        donorSankethanamam: donorSankethanamam || user?.sankethanamam || undefined,
+        dedicationMsg: dedicationMsg,
+        onBehalfOf,
+        isAnonymous,
+        initiativeId: initialInitiativeId || undefined,
+        userId: user?.id,
+      });
 
-    // Simulate server verification check (Requirement #12)
-    setTimeout(async () => {
-      const verifyRes = await PaymentProviderEngine.verifyPaymentServerSide(initiateRes.transactionId);
-
-      setIsProcessing(false);
-      if (verifyRes.isVerified) {
-        if (initialInitiativeId) {
-          recordInitiativeDonation(initialInitiativeId, amount);
-        }
-
-        const receipt = {
-          receiptNo: verifyRes.receiptNo,
-          donationId: `DON-${Date.now()}`,
-          templeName: currentTemple.name,
-          trustName: currentTemple.trustName,
-          donorName: isAnonymous ? 'Anonymous Devotee' : donorName,
-          amount,
-          categoryName: purpose,
-          campaignTitle: initialInitiativeId
-            ? `Initiative (${initialInitiativeId})`
-            : initialCampaignId
-            ? 'Campaign Support'
-            : undefined,
-          date: new Date().toLocaleString(),
-          paymentMethod,
-          transactionId: verifyRes.transactionId,
-          taxInfo: currentTemple.taxBenefitInfo,
-          verificationCode: verifyRes.verificationCode,
-        };
-
-        setReceiptData(receipt);
-        setStep('SUCCESS');
+      if (initialInitiativeId) {
+        recordInitiativeDonation(initialInitiativeId, amount);
       }
-    }, 2000);
+
+      const receiptNo = `RCP-${new Date().getFullYear()}-${donation?.id ? donation.id.slice(0, 6).toUpperCase() : '1082'}`;
+      const verificationCode = `VRF-${transactionId.slice(-6).toUpperCase()}`;
+
+      const receipt = {
+        receiptNo: receiptNo,
+        donationId: donation?.donation_id || `DON-${Date.now()}`,
+        templeName: currentTemple.name,
+        trustName: currentTemple.trustName,
+        donorName: isAnonymous ? 'Anonymous Devotee' : donorName,
+        amount,
+        categoryName: purpose,
+        campaignTitle: initialInitiativeId
+          ? `Initiative (${initialInitiativeId})`
+          : initialCampaignId
+          ? 'Campaign Support'
+          : undefined,
+        date: new Date().toLocaleString(),
+        paymentMethod,
+        transactionId: transactionId,
+        taxInfo: currentTemple.taxBenefitInfo,
+        verificationCode: verificationCode,
+      };
+
+      setReceiptData(receipt);
+      setStep('SUCCESS');
+    } catch (err) {
+      console.error('[Supabase Donation Error]:', err);
+      showAlert({
+        type: 'error',
+        title: 'Donation Processing Error',
+        message: 'Could not record donation with the temple server. Please try again.',
+      });
+      setStep('DETAILS');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -285,7 +342,8 @@ function DonationFormContent() {
               <div>
                 <input
                   type="number"
-                  placeholder="Or enter custom amount in ₹"
+                  min="102"
+                  placeholder="Or enter custom amount in ₹ (minimum 102)"
                   value={customAmount}
                   onChange={handleCustomAmountChange}
                   className="w-full px-4 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-xs text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-devotional-maroon"
@@ -295,9 +353,16 @@ function DonationFormContent() {
 
             {/* Step 4: Donor Information */}
             <div className="space-y-4 pt-4 border-t border-stone-200 dark:border-stone-800">
-              <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
-                4. Devotee & Tax Information
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
+                  4. Devotee & Tax Information
+                </label>
+                {(donorGotra || donorEmail || donorSankethanamam) && (
+                  <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700 flex items-center gap-1">
+                    ✨ Auto-filled from Profile
+                  </span>
+                )}
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div>
@@ -350,14 +415,26 @@ function DonationFormContent() {
                 </div>
               </div>
 
-              {/* Devotional Sankalpam Details (Gotram & Nakshatram) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2">
+              {/* Devotional Sankalpam Details (Gotram, Sankethanamam & Nakshatram) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs pt-2">
                 <GotraSelect
                   label="Devotee Gotram (for Temple Sankalpam)"
                   value={donorGotra}
                   onChange={setDonorGotra}
-                  placeholder="Select Gotram (Optional)"
+                  placeholder="Select Gotram"
                 />
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Sankethanamam
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. AKRAMULAKULA"
+                    value={donorSankethanamam}
+                    onChange={(e) => setDonorSankethanamam(e.target.value.toUpperCase())}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 uppercase font-mono"
+                  />
+                </div>
                 <NakshatraSelect
                   label="Devotee Janma Nakshatra"
                   value={donorNakshatra}

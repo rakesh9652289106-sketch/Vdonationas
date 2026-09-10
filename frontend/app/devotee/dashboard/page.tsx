@@ -14,6 +14,7 @@ import { getInitiatives, Initiative, isInitiativeTeaserVisible } from '@/lib/ini
 import { calculateDevoteeMedals, MEDAL_TIERS, MedalTier } from '@/lib/medals';
 import { useLanguage } from '@/lib/language-context';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
+import { useAuth } from '@/lib/auth-context';
 import {
   Heart,
   FileText,
@@ -42,6 +43,8 @@ import {
 export default function DevoteeDashboardPage() {
   const { t } = useLanguage();
   const { showAlert } = useConfirmAlert();
+  const { user } = useAuth();
+  const devoteeDisplayName = user?.fullName || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_name') || 'Sri Vasavi Devotee' : 'Sri Vasavi Devotee');
   const [activeReceipt, setActiveReceipt] = useState<any | null>(null);
   const [activeCertificate, setActiveCertificate] = useState<any | null>(null);
   const [showDevaAI, setShowDevaAI] = useState(false);
@@ -338,7 +341,7 @@ export default function DevoteeDashboardPage() {
                           donationId: d.id,
                           templeName: d.templeName,
                           trustName: 'Sri Vasavi Kanyaka Parameswari Matha Trust',
-                          donorName: 'Radha Krishna',
+                          donorName: devoteeDisplayName,
                           amount: d.amount,
                           categoryName: d.categoryName,
                           date: d.createdAt || '24 Aug 2026',
@@ -354,7 +357,7 @@ export default function DevoteeDashboardPage() {
                     <button
                       onClick={() =>
                         setActiveCertificate({
-                          devoteeName: 'Radha Krishna',
+                          devoteeName: devoteeDisplayName,
                           sevaType: d.categoryName,
                           amount: d.amount,
                           date: d.createdAt || '24 Aug 2026',

@@ -5,14 +5,46 @@ import Link from 'next/link';
 import { Repeat, Play, Pause, Trash2, Edit3, Flame, ShieldCheck, Plus, Check } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
+import { useAuth } from '@/lib/auth-context';
+import { autopayService } from '@/lib/supabase-service';
+import { supabase } from '@/lib/supabase';
 
 export default function DevoteeRecurringDonationsPage() {
   const { t } = useLanguage();
   const { confirmAction, showAlert } = useConfirmAlert();
+  const { user } = useAuth();
+  const [subscription, setSubscription] = useState<any | null>(null);
   const [status, setStatus] = useState<'ACTIVE' | 'PAUSED' | 'CANCELLED'>('ACTIVE');
-  const [amount, setAmount] = useState(1016);
+  const [amount, setAmount] = useState(1116);
   const [isEditing, setIsEditing] = useState(false);
-  const [editAmount, setEditAmount] = useState('1016');
+  const [editAmount, setEditAmount] = useState('1116');
+  const [loading, setLoading] = useState(true);
+
+  const autopayPresets = [102, 516, 1116, 2116, 5116, 10116];
+
+  React.useEffect(() => {
+    async function loadSub() {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const subs = await autopayService.getDevoteeSubscriptions(user.id);
+        if (subs && subs.length > 0) {
+          const first = subs[0];
+          setSubscription(first);
+          setStatus((first.status as any) || 'ACTIVE');
+          setAmount(Number(first.amount || 1116));
+          setEditAmount(String(first.amount || 1116));
+        }
+      } catch (err) {
+        console.warn('[Supabase] Failed to load subscription:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadSub();
+  }, [user]);
 
   const handleSaveEdit = async () => {
     const parsed = parseInt(editAmount, 10);
@@ -26,11 +58,14 @@ export default function DevoteeRecurringDonationsPage() {
         cancelText: 'Keep Current Amount',
       });
       if (ok) {
+        if (subscription?.id) {
+          await supabase.from('autopay_subscriptions').update({ amount: parsed, updated_at: new Date().toISOString() }).eq('id', subscription.id);
+        }
         setAmount(parsed);
         setIsEditing(false);
         showAlert({
           title: 'AutoPay Amount Updated',
-          message: `Your sacred monthly donation has been adjusted to ₹${parsed.toLocaleString('en-IN')}.`,
+          message: `Your sacred monthly donation has been adjusted to ₹${parsed.toLocaleString('en-IN')} in Supabase.`,
           type: 'success',
         });
       }
@@ -78,22 +113,40 @@ export default function DevoteeRecurringDonationsPage() {
 
           <div className="text-right">
             {isEditing ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-stone-600">₹</span>
-                <input
-                  type="number"
-                  value={editAmount}
-                  onChange={(e) => setEditAmount(e.target.value)}
-                  className="w-24 px-2 py-1 text-sm font-bold border rounded-lg dark:bg-stone-800"
-                />
-                <button
-                  type="button"
-                  onClick={handleSaveEdit}
-                  className="p-1.5 rounded-lg bg-devotional-maroon text-white active-press"
-                  title="Save"
-                >
-                  <Check className="w-4 h-4" />
-                </button>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 justify-end">
+                  <span className="text-xs font-bold text-stone-600">₹</span>
+                  <input
+                    type="number"
+                    value={editAmount}
+                    onChange={(e) => setEditAmount(e.target.value)}
+                    className="w-24 px-2 py-1 text-sm font-bold border rounded-lg dark:bg-stone-800"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveEdit}
+                    className="p-1.5 rounded-lg bg-devotional-maroon text-white active-press cursor-pointer"
+                    title="Save"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1 justify-end">
+                  {autopayPresets.map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setEditAmount(String(amt))}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                        editAmount === String(amt)
+                          ? 'bg-amber-400 text-stone-950 border-amber-500'
+                          : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-300 hover:border-amber-400'
+                      }`}
+                    >
+                      ₹{amt.toLocaleString('en-IN')}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               <span className="font-serif font-bold text-2xl text-devotional-maroon dark:text-amber-400">
@@ -148,10 +201,13 @@ export default function DevoteeRecurringDonationsPage() {
                   cancelText: 'Keep Active',
                 });
                 if (ok) {
+                  if (subscription?.id) {
+                    await autopayService.updateStatus(subscription.id, 'PAUSED');
+                  }
                   setStatus('PAUSED');
                   showAlert({
                     title: 'AutoPay Offering Paused',
-                    message: 'Your recurring seva deduction has been placed on hold.',
+                    message: 'Your recurring seva deduction has been placed on hold in Supabase.',
                     type: 'warning',
                   });
                 }
@@ -164,11 +220,14 @@ export default function DevoteeRecurringDonationsPage() {
           ) : (
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
+                if (subscription?.id) {
+                  await autopayService.updateStatus(subscription.id, 'ACTIVE');
+                }
                 setStatus('ACTIVE');
                 showAlert({
                   title: 'Sacred AutoPay Resumed!',
-                  message: 'Your recurring monthly seva offering is now active. May Sri Vasavi Matha bless you.',
+                  message: 'Your recurring monthly seva offering is now active in Supabase. May Sri Vasavi Matha bless you.',
                   type: 'success',
                 });
               }}
@@ -191,10 +250,13 @@ export default function DevoteeRecurringDonationsPage() {
                 cancelText: 'Keep My Offering',
               });
               if (ok) {
+                if (subscription?.id) {
+                  await autopayService.updateStatus(subscription.id, 'CANCELLED');
+                }
                 setStatus('CANCELLED');
                 showAlert({
                   title: 'AutoPay Subscription Cancelled',
-                  message: 'Your monthly recurring mandate has been successfully terminated.',
+                  message: 'Your monthly recurring mandate has been successfully terminated in Supabase.',
                   type: 'info',
                 });
               }

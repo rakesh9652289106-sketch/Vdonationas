@@ -2,8 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { X } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { X, LogOut, Shield, Building2, Coins, User as UserIcon } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
 import {
   IconSanctumHome,
   IconSacredDonateFAB,
@@ -40,10 +41,34 @@ export default function MobileAppDrawer({
   currentUser,
 }: MobileAppDrawerProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, activeRole, switchActiveRole, logout } = useAuth();
   const { t } = useLanguage();
   const medalProgress = calculateDevoteeMedals(MOCK_DONATIONS);
 
+  const userAccountRole = (user?.role || '').toUpperCase();
+  const isSuperAdmin =
+    userAccountRole === 'SUPER_ADMIN' || userAccountRole === 'SUPERADMIN';
+  const isTempleAdmin =
+    isSuperAdmin ||
+    userAccountRole === 'TEMPLE_ADMIN' ||
+    userAccountRole === 'TEMPLE_MANAGER';
+  const isFinanceAdmin =
+    isSuperAdmin || userAccountRole === 'FINANCE_ADMIN';
+
   if (!isOpen) return null;
+
+  const handleSelectPortal = (role: UserRoleType, path: string) => {
+    switchActiveRole(role);
+    onClose();
+    router.push(path);
+  };
+
+  const handleSignOut = async () => {
+    onClose();
+    await logout();
+    window.location.href = '/login';
+  };
 
   // The complete 14 existing sidebar items with bespoke realistic devotional icons
   const sidebarItems = [
@@ -60,7 +85,7 @@ export default function MobileAppDrawer({
     { name: 'My Temples', href: '/devotee/temples', icon: IconTempleMatha },
     { name: 'Recurring Seva', href: '/devotee/recurring', icon: IconAnnadanamPot },
     { name: 'Family & Occasions', href: '/devotee/family', icon: IconFamilySacred },
-    { name: 'Upcoming Festivals', href: '/devotee/festivals', icon: IconFestivalDeepam },
+    // { name: 'Upcoming Festivals', href: '/devotee/festivals', icon: IconFestivalDeepam }, // Hidden for now
     { name: 'Pooja Bookings', href: '/devotee/poojas', icon: IconPoojaAarti },
     { name: 'Notifications', href: '/devotee/notifications', icon: IconTempleBell },
     { name: 'My Profile', href: '/devotee/profile', icon: IconDevoteeSacred },
@@ -190,6 +215,82 @@ export default function MobileAppDrawer({
               );
             })}
           </nav>
+
+          {/* Mobile Portal Access Switcher */}
+          <div className="pt-3 border-t border-stone-200 dark:border-stone-800 space-y-2">
+            <p className="text-[10px] uppercase font-bold text-stone-400 tracking-wider px-1">
+              Select Portal Access:
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleSelectPortal('DEVOTEE', '/devotee/dashboard')}
+                className={`p-2.5 rounded-xl border flex flex-col items-center text-center gap-1 transition-all ${
+                  activeRole === 'DEVOTEE'
+                    ? 'bg-amber-100 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
+                    : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300'
+                }`}
+              >
+                <UserIcon className="w-4 h-4 text-devotional-saffron" />
+                <span className="text-[11px]">🙏 Devotee</span>
+              </button>
+
+              {isTempleAdmin && (
+                <button
+                  type="button"
+                  onClick={() => handleSelectPortal('TEMPLE_ADMIN', '/admin/temple/dashboard')}
+                  className={`p-2.5 rounded-xl border flex flex-col items-center text-center gap-1 transition-all ${
+                    activeRole === 'TEMPLE_ADMIN'
+                      ? 'bg-amber-100 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
+                      : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300'
+                  }`}
+                >
+                  <Building2 className="w-4 h-4 text-devotional-maroon dark:text-amber-400" />
+                  <span className="text-[11px]">🛕 Temple</span>
+                </button>
+              )}
+
+              {isFinanceAdmin && (
+                <button
+                  type="button"
+                  onClick={() => handleSelectPortal('FINANCE_ADMIN', '/admin/finance/dashboard')}
+                  className={`p-2.5 rounded-xl border flex flex-col items-center text-center gap-1 transition-all ${
+                    activeRole === 'FINANCE_ADMIN'
+                      ? 'bg-amber-100 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
+                      : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300'
+                  }`}
+                >
+                  <Coins className="w-4 h-4 text-emerald-600" />
+                  <span className="text-[11px]">💰 Finance</span>
+                </button>
+              )}
+
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={() => handleSelectPortal('SUPER_ADMIN', '/admin/super/dashboard')}
+                  className={`p-2.5 rounded-xl border flex flex-col items-center text-center gap-1 transition-all ${
+                    activeRole === 'SUPER_ADMIN'
+                      ? 'bg-amber-100 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
+                      : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300'
+                  }`}
+                >
+                  <Shield className="w-4 h-4 text-amber-500" />
+                  <span className="text-[11px]">👑 Super Admin</span>
+                </button>
+              )}
+            </div>
+
+            {/* Sign Out Button */}
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="w-full mt-2 py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/40 text-xs font-bold transition-colors cursor-pointer"
+            >
+              <LogOut className="w-4 h-4 text-red-500" />
+              <span>Sign Out / Switch Devotee</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

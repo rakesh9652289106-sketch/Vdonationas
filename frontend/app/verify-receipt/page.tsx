@@ -3,44 +3,81 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Search, CheckCircle2, XCircle, Building2 } from 'lucide-react';
 import ReceiptViewModal from '@/components/ReceiptViewModal';
+import { receiptsService } from '@/lib/supabase-service';
+import { supabase } from '@/lib/supabase';
 
 export default function ReceiptVerificationPage() {
   const [receiptInput, setReceiptInput] = useState('');
   const [verificationResult, setVerificationResult] = useState<any | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [activeReceiptModal, setActiveReceiptModal] = useState<any | null>(null);
 
-  const handleVerify = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!receiptInput.trim()) return;
 
     setHasSearched(true);
+    setLoading(true);
 
-    // Check against mock database verification engine
-    if (
-      receiptInput.toUpperCase().includes('REC-2026') ||
-      receiptInput.toUpperCase().includes('DON-') ||
-      receiptInput.toUpperCase().includes('VK') ||
-      receiptInput.toUpperCase().includes('YN')
-    ) {
-      const found = {
-        receiptNo: receiptInput.toUpperCase().startsWith('REC') ? receiptInput.toUpperCase() : 'REC-2026-89102',
-        donationId: 'DON-20260822-9081',
-        templeName: 'Sri Venkateswara Swamy Temple',
-        trustName: 'Sri Venkateswara Temple Devasthanam Trust',
-        donorName: 'Radha Krishna',
-        amount: 1001,
-        categoryName: 'Nitya Annadanam',
-        campaignTitle: 'New Annadanam Mega Dining Hall Construction',
-        date: '2026-08-22 10:15 AM',
-        paymentMethod: 'UPI',
-        transactionId: 'TXN-9988112233',
-        taxInfo: '80G Tax Exempted under Section 80G(5)(vi) of IT Act 1961',
-        verificationCode: 'VK89102X',
-      };
-      setVerificationResult(found);
-    } else {
+    try {
+      const clean = receiptInput.trim();
+      const res = await receiptsService.verifyReceipt(clean);
+
+      if (res.receipt || res.donation) {
+        const r = res.receipt;
+        const d = res.donation;
+        setVerificationResult({
+          receiptNo: r?.receipt_no || d?.donation_id || clean,
+          donationId: d?.donation_id || r?.receipt_no || clean,
+          templeName: 'Sri Vasavi Kanyaka Parameswari Matha, Penugonda',
+          trustName: 'Sri Vasavi Kanyaka Parameswari Matha Devasthanam Trust',
+          donorName: d?.donor_name || 'Sacred Devotee',
+          amount: Number(d?.amount || 1116),
+          categoryName: d?.category_id || 'Sacred Seva Offering',
+          campaignTitle: 'Sri Vasavi Matha Temple & Annadanam Devasthanam',
+          date: r?.issued_at ? new Date(r.issued_at).toLocaleString('en-IN') : (d?.created_at ? new Date(d.created_at).toLocaleString('en-IN') : 'Verified'),
+          paymentMethod: d?.payment_method || 'UPI',
+          transactionId: d?.transaction_id || `TXN-${clean}`,
+          taxInfo: '80G Tax Exempted under Section 80G(5)(vi) of IT Act 1961',
+          verificationCode: r?.verification_code || clean.slice(-8).toUpperCase(),
+        });
+        return;
+      }
+
+      // Check donations table directly
+      const { data: donData } = await supabase
+        .from('donations')
+        .select('*')
+        .or(`donation_id.ilike.%${clean}%,transaction_id.ilike.%${clean}%`)
+        .limit(1)
+        .maybeSingle();
+
+      if (donData) {
+        setVerificationResult({
+          receiptNo: donData.donation_id || clean,
+          donationId: donData.donation_id || clean,
+          templeName: 'Sri Vasavi Kanyaka Parameswari Matha, Penugonda',
+          trustName: 'Sri Vasavi Kanyaka Parameswari Matha Devasthanam Trust',
+          donorName: donData.donor_name || 'Sacred Devotee',
+          amount: Number(donData.amount || 0),
+          categoryName: donData.category_id || 'Sacred Seva Offering',
+          campaignTitle: 'Sri Vasavi Matha Temple & Annadanam Devasthanam',
+          date: donData.created_at ? new Date(donData.created_at).toLocaleString('en-IN') : 'Verified',
+          paymentMethod: donData.payment_method || 'UPI',
+          transactionId: donData.transaction_id || `TXN-${clean}`,
+          taxInfo: '80G Tax Exempted under Section 80G(5)(vi) of IT Act 1961',
+          verificationCode: donData.donation_id ? donData.donation_id.replace(/[^A-Z0-9]/g, '').slice(-8) : 'VK20268X',
+        });
+        return;
+      }
+
       setVerificationResult(null);
+    } catch (err) {
+      console.warn('[Supabase] Receipt verification error:', err);
+      setVerificationResult(null);
+    } finally {
+      setLoading(false);
     }
   };
 

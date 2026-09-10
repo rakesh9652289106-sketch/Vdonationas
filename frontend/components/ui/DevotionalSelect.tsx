@@ -8,6 +8,7 @@ export interface DevotionalSelectOption {
   label: string;
   sublabel?: string;
   badge?: string;
+  keywords?: string;
   icon?: React.ReactNode;
 }
 
@@ -71,13 +72,54 @@ export function DevotionalSelect({
       return {
         ...opt,
         badge: opt.badge || opt.label.charAt(0).toUpperCase(),
+        keywords: (opt as any).keywords,
       };
     });
   }, [options]);
 
-  // Find currently selected option
+  // Find currently selected option with flexible matching
   const selectedOption = useMemo(() => {
-    return normalizedOptions.find((opt) => opt.value === value);
+    if (!value || value === 'General Devotee') return undefined;
+    const cleanVal = value.trim().toLowerCase();
+
+    // 1. Exact match on value or label
+    const exact = normalizedOptions.find(
+      (opt) => opt.value === value || opt.label === value
+    );
+    if (exact) return exact;
+
+    // 2. Case-insensitive match on value or label
+    const caseInsensitive = normalizedOptions.find(
+      (opt) => opt.value.toLowerCase() === cleanVal || opt.label.toLowerCase() === cleanVal
+    );
+    if (caseInsensitive) return caseInsensitive;
+
+    // 3. Match without prefix number (e.g. "44 - MOUTHKALYASA" vs "MOUTHKALYASA" or "44. MOUTHKALYASA")
+    const valWithoutNum = cleanVal.replace(/^\d+\s*[-–.:]\s*/, '').trim();
+    if (valWithoutNum) {
+      const withoutNumMatch = normalizedOptions.find((opt) => {
+        const optWithoutNum = opt.value.toLowerCase().replace(/^\d+\s*[-–.:]\s*/, '').trim();
+        const labelWithoutNum = opt.label.toLowerCase().replace(/^\d+\s*[-–.:]\s*/, '').trim();
+        return (
+          optWithoutNum === valWithoutNum ||
+          labelWithoutNum === valWithoutNum ||
+          optWithoutNum.startsWith(valWithoutNum) ||
+          valWithoutNum.startsWith(optWithoutNum)
+        );
+      });
+      if (withoutNumMatch) return withoutNumMatch;
+    }
+
+    // 4. Match by ID only if value is a number or starts with a number (e.g. "44")
+    const numMatch = cleanVal.match(/^(\d+)/);
+    if (numMatch) {
+      const idMatch = normalizedOptions.find(
+        (opt) => opt.badge === numMatch[1] || opt.value.startsWith(`${numMatch[1]} -`) || opt.value.startsWith(`${numMatch[1]}.`)
+      );
+      if (idMatch) return idMatch;
+    }
+
+    return undefined;
   }, [normalizedOptions, value]);
 
   // Filter options based on search query
@@ -88,7 +130,8 @@ export function DevotionalSelect({
       (opt) =>
         opt.label.toLowerCase().includes(query) ||
         (opt.sublabel && opt.sublabel.toLowerCase().includes(query)) ||
-        opt.value.toLowerCase().includes(query)
+        opt.value.toLowerCase().includes(query) ||
+        (opt.keywords && opt.keywords.toLowerCase().includes(query))
     );
   }, [normalizedOptions, search]);
 
@@ -186,14 +229,14 @@ export function DevotionalSelect({
           ) : (
             <Sparkles
               className={`w-4 h-4 shrink-0 transition-transform ${
-                selectedOption
+                selectedOption || value
                   ? 'text-devotional-gold dark:text-devotional-gold'
                   : 'text-stone-400 dark:text-stone-500'
               }`}
             />
           )}
           <span className="truncate font-medium">
-            {selectedOption ? selectedOption.label : placeholder}
+            {selectedOption ? selectedOption.label : (value && value !== 'General Devotee') ? value : placeholder}
           </span>
         </span>
         <ChevronDown

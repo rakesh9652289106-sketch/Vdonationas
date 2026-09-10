@@ -26,10 +26,16 @@ import {
   Flame,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { useAuth } from '@/lib/auth-context';
 
 export default function DevoteeLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { t } = useLanguage();
+  const { user } = useAuth();
+
+  const devoteeName = user?.fullName || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_name') || 'Sri Vasavi Devotee' : 'Sri Vasavi Devotee');
+  const devoteeEmail = user?.email || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_email') || '' : '');
+  const devoteeGotram = user?.gotram || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_selected_gotram') || '' : '');
 
   const navItems = [
     { name: t('sidebarDevoteeHome'), href: '/devotee/dashboard', icon: LayoutDashboard },
@@ -42,7 +48,7 @@ export default function DevoteeLayout({ children }: { children: React.ReactNode 
     // { name: t('sidebarFavoriteShrines'), href: '/devotee/favorites', icon: Bookmark }, // Hidden for now
     { name: t('sidebarRecurringSeva'), href: '/devotee/recurring', icon: Repeat },
     { name: t('sidebarFamilyOccasions'), href: '/devotee/family', icon: Users },
-    { name: t('sidebarUpcomingFestivals'), href: '/devotee/festivals', icon: Calendar },
+    // { name: t('sidebarUpcomingFestivals'), href: '/devotee/festivals', icon: Calendar }, // Hidden for now
     { name: t('sidebarPoojaBookings'), href: '/devotee/poojas', icon: Sparkles },
     { name: t('sidebarNotifications'), href: '/devotee/notifications', icon: Bell },
     { name: t('sidebarMyProfile'), href: '/devotee/profile', icon: User },
@@ -58,10 +64,15 @@ export default function DevoteeLayout({ children }: { children: React.ReactNode 
           <div className="inline-flex items-center gap-1 text-devotional-saffron text-[10px] font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-950 px-2.5 py-0.5 rounded-full border border-amber-300">
             <Flame className="w-3 h-3 text-devotional-saffron animate-pulse" /> {t('navDevoteeDashboard')}
           </div>
-          <h2 className="text-xl font-serif font-bold text-devotional-maroon dark:text-amber-400">
-            Radha Krishna
+          <h2 className="text-xl font-serif font-bold text-devotional-maroon dark:text-amber-400 truncate">
+            {devoteeName}
           </h2>
-          <p className="text-[11px] text-stone-500">devotee@gmail.com</p>
+          {devoteeEmail && <p className="text-[11px] text-stone-500 truncate">{devoteeEmail}</p>}
+          {devoteeGotram && (
+            <p className="text-[10px] font-mono text-amber-700 dark:text-amber-400 truncate">
+              🪔 {devoteeGotram} Gotram
+            </p>
+          )}
         </div>
 
         <nav className="space-y-1 text-xs font-semibold max-h-[70vh] overflow-y-auto pr-1">

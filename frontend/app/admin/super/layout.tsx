@@ -1,8 +1,7 @@
 'use client';
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   ShieldCheck,
   Building2,
@@ -14,12 +13,68 @@ import {
   Flame,
   Sun,
   Sparkles,
+  AlertTriangle,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { t } = useLanguage();
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const role = localStorage.getItem('vdonations_active_role');
+      const sessionRaw = localStorage.getItem('vdonations_user_session');
+
+      if (!sessionRaw) {
+        router.replace('/login');
+        return;
+      }
+
+      try {
+        const session = JSON.parse(sessionRaw);
+        const isActualSuperAdmin =
+          session.role === 'SUPER_ADMIN' ||
+          session.role === 'SUPERADMIN' ||
+          session.role === 'superadmin' ||
+          session.role === 'super_admin';
+
+        if (!isActualSuperAdmin) {
+          // Strict Tenant Isolation: Non-super-admins cannot access the Super Admin panel!
+          if (
+            session.role === 'TEMPLE_ADMIN' ||
+            session.role === 'TEMPLE_MANAGER' ||
+            role === 'TEMPLE_ADMIN'
+          ) {
+            router.replace('/admin/temple/dashboard');
+          } else {
+            router.replace('/devotee/dashboard');
+          }
+          return;
+        }
+
+        // Authenticated Super Admin entering Super Admin panel:
+        // Ensure active role is SUPER_ADMIN and authorize immediately
+        localStorage.setItem('vdonations_active_role', 'SUPER_ADMIN');
+        setIsAuthorized(true);
+      } catch {
+        router.replace('/login');
+      }
+    }
+  }, [router]);
+
+  if (isAuthorized === null) {
+    return (
+      <div className="min-h-screen bg-stone-950 flex items-center justify-center text-amber-300 font-serif">
+        <div className="flex items-center gap-3">
+          <Flame className="w-6 h-6 text-devotional-saffron animate-pulse" />
+          <span>Verifying Super Admin Authorization...</span>
+        </div>
+      </div>
+    );
+  }
 
   const navItems = [
     { name: t('sidebarSuperDashboard'), href: '/admin/super/dashboard', icon: PieChart },
