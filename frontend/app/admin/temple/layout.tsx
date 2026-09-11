@@ -23,6 +23,7 @@ import { useLanguage } from '@/lib/language-context';
 import { getTempleAdminNotifications } from '@/lib/quota-store';
 import { templeService } from '@/lib/supabase-service';
 import { Temple } from '@/lib/types';
+import { isSuperAdminUser, isTempleAdminUser } from '@/lib/rbac';
 
 export default function TempleAdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -62,14 +63,15 @@ export default function TempleAdminLayout({ children }: { children: React.ReactN
 
       try {
         const session = JSON.parse(sessionRaw);
-        if (session.role === 'SUPER_ADMIN' || session.role === 'SUPERADMIN' || session.role === 'superadmin') {
+        const isSuper = isSuperAdminUser(session?.mobile, session?.email);
+        const canAccessTemple = isTempleAdminUser(session?.role, session?.mobile, session?.email);
+
+        if (isSuper) {
           setIsSuperAdmin(true);
-        } else if (
-          session.role !== 'TEMPLE_ADMIN' &&
-          session.role !== 'TEMPLE_MANAGER' &&
-          role !== 'TEMPLE_ADMIN'
-        ) {
-          // Devotees cannot access Temple Admin portal
+        } else if (!canAccessTemple) {
+          // General Devotees cannot access Temple Admin portal!
+          console.warn('[RBAC] Unauthorized access blocked from /admin/temple:', session?.mobile || session?.email);
+          localStorage.setItem('vdonations_active_role', 'DEVOTEE');
           router.replace('/devotee/dashboard');
           return;
         }

@@ -15,6 +15,7 @@ import { ConfirmAlertProvider } from '@/lib/confirm-alert-context';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { MOCK_USERS } from '@/lib/mock-data';
 import { UserRoleType } from '@/lib/types';
+import { isSuperAdminUser, isTempleAdminUser, isFinanceAdminUser } from '@/lib/rbac';
 import { Sparkles } from 'lucide-react';
 
 function LayoutShell({ children }: { children: React.ReactNode }) {
@@ -24,7 +25,7 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState(MOCK_USERS[0]);
+  const [currentUser, setCurrentUser] = useState(MOCK_USERS[3]);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
@@ -79,6 +80,15 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
   };
 
   const handleSwitchUser = (role: UserRoleType) => {
+    if (role === 'SUPER_ADMIN' && !isSuperAdminUser(user?.mobile, user?.email)) {
+      return;
+    }
+    if (role === 'TEMPLE_ADMIN' && !isTempleAdminUser(user?.role, user?.mobile, user?.email)) {
+      return;
+    }
+    if (role === 'FINANCE_ADMIN' && !isFinanceAdminUser(user?.role, user?.mobile, user?.email)) {
+      return;
+    }
     const found = MOCK_USERS.find((u) => u.role === role);
     if (found) {
       setCurrentUser(found);

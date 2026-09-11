@@ -5,6 +5,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import { UserRoleType } from './types';
 import { findGotramBySankethanamam } from './gothiram-data';
+import { isSuperAdminUser, isTempleAdminUser, isFinanceAdminUser, getEffectiveUserRole } from './rbac';
 
 export interface DevoteeUser {
   id?: string;
@@ -88,14 +89,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (gMatch) resolvedGotram = `${gMatch.id} - ${gMatch.name}`;
             }
 
+            const enrichedMobile = parsed?.mobile || storedMobile || '';
+            const effectiveRole = getEffectiveUserRole(parsed?.role, enrichedMobile, userEmail);
+
             const enrichedUser: DevoteeUser = {
               id: parsed?.id,
               fullName: parsed?.fullName || storedName || 'Sri Vasavi Devotee',
-              mobile: parsed?.mobile || storedMobile || '',
+              mobile: enrichedMobile,
               email: userEmail,
               gotram: resolvedGotram,
               sankethanamam: resolvedSanketh,
-              role: parsed?.role || storedRole || 'DEVOTEE',
+              role: effectiveRole,
               isGuest: parsed?.isGuest || false,
               authenticatedAt: parsed?.authenticatedAt || new Date().toISOString(),
               token: parsed?.token || (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.TOKEN) || undefined : undefined),
@@ -103,9 +107,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             setUser(enrichedUser);
             setIsAuthenticated(true);
-            const rawRole = (enrichedUser.role === 'SUPERADMIN' ? 'SUPER_ADMIN' : enrichedUser.role) as UserRoleType;
-            const effectiveRole = storedRole || rawRole || 'DEVOTEE';
             setActiveRole(effectiveRole);
+            localStorage.setItem(STORAGE_KEYS.ROLE, effectiveRole);
             setIsHydrated(true);
 
             if (resolvedGotram) localStorage.setItem(STORAGE_KEYS.GOTRAM, resolvedGotram);
@@ -160,14 +163,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (gMatch) liveGotram = `${gMatch.id} - ${gMatch.name}`;
           }
 
+          const fullUserMobile = profile?.mobile || session.user.user_metadata?.mobile || storedMobile || '';
+          const effectiveRole = getEffectiveUserRole(profile?.role, fullUserMobile, userEmail);
+
           const fullUser: DevoteeUser = {
             id: session.user.id,
             fullName: profile?.full_name || session.user.user_metadata?.full_name || storedName || 'Sri Vasavi Devotee',
-            mobile: profile?.mobile || session.user.user_metadata?.mobile || storedMobile || '',
+            mobile: fullUserMobile,
             email: userEmail,
             gotram: liveGotram,
             sankethanamam: liveSanketh,
-            role: profile?.role || 'DEVOTEE',
+            role: effectiveRole,
             isGuest: false,
             authenticatedAt: session.user.created_at || new Date().toISOString(),
             token: session.access_token,
@@ -175,6 +181,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           setUser(fullUser);
           setIsAuthenticated(true);
+          setActiveRole(effectiveRole);
+          localStorage.setItem(STORAGE_KEYS.ROLE, effectiveRole);
           localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(fullUser));
           localStorage.setItem(STORAGE_KEYS.TOKEN, session.access_token);
           if (fullUser.email) localStorage.setItem(STORAGE_KEYS.EMAIL, fullUser.email);
@@ -182,12 +190,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (fullUser.sankethanamam) localStorage.setItem(STORAGE_KEYS.SANKETHANAMAM, fullUser.sankethanamam);
           if (fullUser.fullName) localStorage.setItem(STORAGE_KEYS.NAME, fullUser.fullName);
           if (fullUser.mobile) localStorage.setItem(STORAGE_KEYS.MOBILE, fullUser.mobile);
-          
-          const rawRole = (fullUser.role === 'SUPERADMIN' ? 'SUPER_ADMIN' : fullUser.role) as UserRoleType;
-          const storedRole = localStorage.getItem(STORAGE_KEYS.ROLE) as UserRoleType | null;
-          const effectiveRole = storedRole || rawRole || 'DEVOTEE';
-          setActiveRole(effectiveRole);
-          localStorage.setItem(STORAGE_KEYS.ROLE, effectiveRole);
 
           if (typeof document !== 'undefined') {
             document.cookie = 'vdonations_auth=1; path=/; max-age=86400; SameSite=Lax';
@@ -248,14 +250,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (gMatch) liveGotram = `${gMatch.id} - ${gMatch.name}`;
         }
 
+        const fullUserMobile = profile?.mobile || session.user.user_metadata?.mobile || storedMobile || '';
+        const effectiveRole = getEffectiveUserRole(profile?.role, fullUserMobile, userEmail);
+
         const fullUser: DevoteeUser = {
           id: session.user.id,
           fullName: profile?.full_name || session.user.user_metadata?.full_name || storedName || 'Sri Vasavi Devotee',
-          mobile: profile?.mobile || session.user.user_metadata?.mobile || storedMobile || '',
+          mobile: fullUserMobile,
           email: userEmail,
           gotram: liveGotram,
           sankethanamam: liveSanketh,
-          role: profile?.role || 'DEVOTEE',
+          role: effectiveRole,
           isGuest: false,
           authenticatedAt: new Date().toISOString(),
           token: session.access_token,
@@ -263,6 +268,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setUser(fullUser);
         setIsAuthenticated(true);
+        setActiveRole(effectiveRole);
+        localStorage.setItem(STORAGE_KEYS.ROLE, effectiveRole);
         localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(fullUser));
         localStorage.setItem(STORAGE_KEYS.TOKEN, session.access_token);
         if (fullUser.email) localStorage.setItem(STORAGE_KEYS.EMAIL, fullUser.email);
@@ -270,12 +277,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (fullUser.sankethanamam) localStorage.setItem(STORAGE_KEYS.SANKETHANAMAM, fullUser.sankethanamam);
         if (fullUser.fullName) localStorage.setItem(STORAGE_KEYS.NAME, fullUser.fullName);
         if (fullUser.mobile) localStorage.setItem(STORAGE_KEYS.MOBILE, fullUser.mobile);
-
-        const rawRole = (fullUser.role === 'SUPERADMIN' ? 'SUPER_ADMIN' : fullUser.role) as UserRoleType;
-        const storedRole = localStorage.getItem(STORAGE_KEYS.ROLE) as UserRoleType | null;
-        const effectiveRole = storedRole || rawRole || 'DEVOTEE';
-        setActiveRole(effectiveRole);
-        localStorage.setItem(STORAGE_KEYS.ROLE, effectiveRole);
 
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('vdonations_profile_updated', { detail: fullUser }));
@@ -296,6 +297,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const switchActiveRole = (role: UserRoleType) => {
+    // RBAC: Only 9652289106 can switch to SUPER_ADMIN
+    if (role === 'SUPER_ADMIN' && !isSuperAdminUser(user?.mobile, user?.email)) {
+      console.warn('[RBAC] Blocked unauthorized attempt to switch to SUPER_ADMIN:', user?.mobile || user?.email);
+      return;
+    }
+    // Only 9652289106 or assigned Temple Admins can switch to TEMPLE_ADMIN
+    if (role === 'TEMPLE_ADMIN' && !isTempleAdminUser(user?.role, user?.mobile, user?.email)) {
+      console.warn('[RBAC] Blocked unauthorized attempt to switch to TEMPLE_ADMIN:', user?.mobile || user?.email);
+      return;
+    }
+    // Only 9652289106 or assigned Finance Admins can switch to FINANCE_ADMIN
+    if (role === 'FINANCE_ADMIN' && !isFinanceAdminUser(user?.role, user?.mobile, user?.email)) {
+      console.warn('[RBAC] Blocked unauthorized attempt to switch to FINANCE_ADMIN:', user?.mobile || user?.email);
+      return;
+    }
+
     setActiveRole(role);
     try {
       localStorage.setItem(STORAGE_KEYS.ROLE, role);
@@ -308,15 +325,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = (userData: Partial<DevoteeUser>, token?: string) => {
-    const rawRole = userData.role || 'DEVOTEE';
-    const normalizedRole = (rawRole === 'SUPERADMIN' ? 'SUPER_ADMIN' : rawRole) as UserRoleType;
-
     const storedEmail = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.EMAIL) || '' : '';
     const storedGotram = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.GOTRAM) || '' : '';
     const storedSankethanamam = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.SANKETHANAMAM) || '' : '';
     const storedName = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.NAME) || '' : '';
     const storedMobile = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.MOBILE) || '' : '';
     const userEmail = userData.email || storedEmail || `${userData.mobile || 'devotee'}@vasavi.dev`;
+    const userMobile = userData.mobile || storedMobile || '';
+
+    // Enforce RBAC: only 9652289106 is granted SUPER_ADMIN
+    const normalizedRole = getEffectiveUserRole(userData.role, userMobile, userEmail) as UserRoleType;
     let userGotram = userData.gotram || storedGotram || '';
     let userSanketh = userData.sankethanamam || storedSankethanamam || '';
 

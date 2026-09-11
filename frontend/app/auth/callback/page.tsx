@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { Sparkles, ShieldCheck } from 'lucide-react';
 import { templeAudio } from '@/lib/templeAudio';
 import { findGotramBySankethanamam } from '@/lib/gothiram-data';
+import { isSuperAdminUser, isTempleAdminUser, isFinanceAdminUser, getEffectiveUserRole } from '@/lib/rbac';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -77,21 +78,21 @@ export default function AuthCallbackPage() {
           }
         }
 
-        const role = (profile?.role || '').toUpperCase();
-        const isSuperAdmin =
-          role === 'SUPER_ADMIN' ||
-          role === 'SUPERADMIN' ||
-          user.email === 'rakesh9652289106@gmail.com';
-        const isTempleAdmin =
-          role === 'TEMPLE_ADMIN' || role === 'TEMPLE_MANAGER';
+        const devoteeEmail = user.email || profile?.email || '';
+        const rawDevoteeMobile = profile?.mobile || user.user_metadata?.mobile || '';
+        const isSuper = isSuperAdminUser(rawDevoteeMobile, devoteeEmail);
+        const devoteeMobile = rawDevoteeMobile || (isSuper ? '+919652289106' : '');
+        const rawRole = (profile?.role || '').toUpperCase();
+        const effectiveRole = isSuper ? 'SUPER_ADMIN' : getEffectiveUserRole(rawRole, devoteeMobile, devoteeEmail);
+        const isSuperAdmin = isSuper;
+        const isTempleAdmin = isTempleAdminUser(effectiveRole, devoteeMobile, devoteeEmail);
+        const isFinanceAdmin = isFinanceAdminUser(effectiveRole, devoteeMobile, devoteeEmail);
 
         const devoteeName =
           profile?.full_name ||
           user.user_metadata?.full_name ||
           user.user_metadata?.name ||
           (isSuperAdmin ? 'RAKESH' : 'Sri Vasavi Devotee');
-        const devoteeEmail = user.email || profile?.email || '';
-        const devoteeMobile = profile?.mobile || user.user_metadata?.mobile || (isSuperAdmin ? '+919652289106' : '');
         let devoteeGotram = profile?.gotram;
         let devoteeSankethanamam = profile?.sankethanamam;
 
@@ -199,6 +200,43 @@ export default function AuthCallbackPage() {
           setStatusMessage('Welcome, Temple Admin! Entering Devasthanam Portal...');
           setTimeout(() => {
             router.replace('/admin/temple/dashboard');
+          }, 600);
+          return;
+        }
+
+        if (isFinanceAdmin) {
+          const userSession = {
+            id: user.id,
+            fullName: devoteeName,
+            email: devoteeEmail,
+            mobile: devoteeMobile,
+            gotram: devoteeGotram || '1 - ACHAYANASA',
+            sankethanamam: devoteeSankethanamam || '',
+            role: 'FINANCE_ADMIN',
+            templeId: profile?.temple_id,
+            authProvider: 'google',
+            authenticatedAt: new Date().toISOString(),
+          };
+
+          try {
+            localStorage.setItem('vdonations_user_session', JSON.stringify(userSession));
+            localStorage.setItem('vdonations_auth_token', token);
+            localStorage.setItem('vdonations_active_role', 'FINANCE_ADMIN');
+            localStorage.setItem('vdonations_devotee_name', userSession.fullName);
+            localStorage.setItem('vdonations_devotee_mobile', userSession.mobile);
+            localStorage.setItem('vdonations_devotee_email', userSession.email);
+            if (userSession.gotram) localStorage.setItem('vdonations_selected_gotram', userSession.gotram);
+            if (userSession.sankethanamam) localStorage.setItem('vdonations_selected_sankethanamam', userSession.sankethanamam);
+            localStorage.removeItem('vdonations_pending_sankalpam');
+            document.cookie = 'vdonations_auth=1; path=/; max-age=86400; SameSite=Lax';
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('vdonations_profile_updated', { detail: userSession }));
+            }
+          } catch (e) {}
+
+          setStatusMessage('Welcome, Finance Admin! Entering Sanctuary Finance Portal...');
+          setTimeout(() => {
+            router.replace('/admin/finance/dashboard');
           }, 600);
           return;
         }

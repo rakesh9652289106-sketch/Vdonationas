@@ -16,6 +16,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { isSuperAdminUser, isTempleAdminUser, isFinanceAdminUser } from '@/lib/rbac';
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -25,7 +26,6 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const role = localStorage.getItem('vdonations_active_role');
       const sessionRaw = localStorage.getItem('vdonations_user_session');
 
       if (!sessionRaw) {
@@ -35,28 +35,24 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
       try {
         const session = JSON.parse(sessionRaw);
-        const isActualSuperAdmin =
-          session.role === 'SUPER_ADMIN' ||
-          session.role === 'SUPERADMIN' ||
-          session.role === 'superadmin' ||
-          session.role === 'super_admin';
+        // Strict RBAC: ONLY mobile 9652289106 can access the Super Admin panel!
+        const isAuthorizedSuperAdmin = isSuperAdminUser(session?.mobile, session?.email);
 
-        if (!isActualSuperAdmin) {
-          // Strict Tenant Isolation: Non-super-admins cannot access the Super Admin panel!
-          if (
-            session.role === 'TEMPLE_ADMIN' ||
-            session.role === 'TEMPLE_MANAGER' ||
-            role === 'TEMPLE_ADMIN'
-          ) {
+        if (!isAuthorizedSuperAdmin) {
+          console.warn('[RBAC] Non-superadmin blocked from /admin/super:', session?.mobile || session?.email);
+          localStorage.setItem('vdonations_active_role', 'DEVOTEE');
+
+          if (isTempleAdminUser(session?.role, session?.mobile, session?.email)) {
             router.replace('/admin/temple/dashboard');
+          } else if (isFinanceAdminUser(session?.role, session?.mobile, session?.email)) {
+            router.replace('/admin/finance/dashboard');
           } else {
             router.replace('/devotee/dashboard');
           }
           return;
         }
 
-        // Authenticated Super Admin entering Super Admin panel:
-        // Ensure active role is SUPER_ADMIN and authorize immediately
+        // Authenticated Super Admin (9652289106)
         localStorage.setItem('vdonations_active_role', 'SUPER_ADMIN');
         setIsAuthorized(true);
       } catch {

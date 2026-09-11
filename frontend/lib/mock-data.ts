@@ -20,9 +20,9 @@ import {
 export const MOCK_USERS: User[] = [
   {
     id: 'usr-super-admin',
-    email: 'admin@vasavimatha.org',
-    fullName: 'Ramesh Sharma (Super Admin)',
-    mobile: '+91 9876543210',
+    email: 'rakesh9652289106@gmail.com',
+    fullName: 'Sri Rakesh Kumar (Super Admin)',
+    mobile: '+91 9652289106',
     role: 'SUPER_ADMIN',
     isTwoFactorAuth: true,
     language: 'en',

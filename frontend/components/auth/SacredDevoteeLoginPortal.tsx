@@ -28,6 +28,7 @@ import { useConfirmAlert } from '@/lib/confirm-alert-context';
 import { supabase } from '@/lib/supabase';
 import { devoteeService, validateStrongPassword, generateHighEntropyNumberPassword } from '@/lib/supabase-service';
 import { findGotramBySankethanamam } from '@/lib/gothiram-data';
+import { isSuperAdminUser, isTempleAdminUser, isFinanceAdminUser, getEffectiveUserRole } from '@/lib/rbac';
 
 interface SacredDevoteeLoginPortalProps {
   onLoginSuccess?: (userSession: any) => void;
@@ -341,9 +342,11 @@ export default function SacredDevoteeLoginPortal({
       return;
     }
 
-    const isSuperAdmin = userSession.role === 'SUPER_ADMIN' || userSession.role === 'SUPERADMIN' || userSession.email?.toLowerCase() === 'rakesh9652289106@gmail.com';
-    const isTempleAdmin = userSession.role === 'TEMPLE_ADMIN' || userSession.role === 'TEMPLE_MANAGER';
-    const isFinanceAdmin = userSession.role === 'FINANCE_ADMIN';
+    const sessionMobile = userSession.mobile || cleanMobile;
+    const isSuperAdmin = isSuperAdminUser(sessionMobile, userSession.email);
+    userSession.role = getEffectiveUserRole(userSession.role, sessionMobile, userSession.email);
+    const isTempleAdmin = isTempleAdminUser(userSession.role, sessionMobile, userSession.email);
+    const isFinanceAdmin = isFinanceAdminUser(userSession.role, sessionMobile, userSession.email);
 
     let userGotram = userSession.gotram;
     let userSanketh = userSession.sankethanamam;
@@ -522,13 +525,12 @@ export default function SacredDevoteeLoginPortal({
 
     let userSession: any;
 
-    const role = (existingProfile?.role || 'DEVOTEE').toUpperCase();
-    const isSuperAdmin =
-      role === 'SUPER_ADMIN' ||
-      role === 'SUPERADMIN' ||
-      devoteeEmail === 'rakesh9652289106@gmail.com';
-    const isTempleAdmin =
-      role === 'TEMPLE_ADMIN' || role === 'TEMPLE_MANAGER';
+    const sessionMobile = existingProfile?.mobile || (devoteeEmail?.toLowerCase() === 'rakesh9652289106@gmail.com' ? '+919652289106' : '');
+    const isSuperAdmin = isSuperAdminUser(sessionMobile, devoteeEmail);
+    const rawRole = (existingProfile?.role || 'DEVOTEE').toUpperCase();
+    const effectiveRole = getEffectiveUserRole(rawRole, sessionMobile, devoteeEmail);
+    const isTempleAdmin = isTempleAdminUser(effectiveRole, sessionMobile, devoteeEmail);
+    const isFinanceAdmin = isFinanceAdminUser(effectiveRole, sessionMobile, devoteeEmail);
 
     let resolvedGotram = existingProfile?.gotram;
     let resolvedSankethanamam = existingProfile?.sankethanamam;
@@ -544,6 +546,7 @@ export default function SacredDevoteeLoginPortal({
     const hasCompletedSankalpam =
       isSuperAdmin ||
       isTempleAdmin ||
+      isFinanceAdmin ||
       (existingProfile?.sankalpam_completed === true &&
         resolvedGotram &&
         resolvedGotram !== 'General Devotee' &&
@@ -557,10 +560,10 @@ export default function SacredDevoteeLoginPortal({
         id: existingProfile?.id || 'vasavi_devotee_' + Date.now(),
         fullName: isSuperAdmin ? 'RAKESH' : (existingProfile?.full_name || devoteeName),
         email: existingProfile?.email || devoteeEmail,
-        mobile: existingProfile?.mobile || (isSuperAdmin ? '+919652289106' : '+91 9848012345'),
+        mobile: sessionMobile || (isSuperAdmin ? '+919652289106' : '+91 9848012345'),
         gotram: resolvedGotram || '44 - MOUTHKALYASA',
         sankethanamam: resolvedSankethanamam || 'NAABILLA',
-        role: isSuperAdmin ? 'SUPER_ADMIN' : isTempleAdmin ? 'TEMPLE_ADMIN' : 'DEVOTEE',
+        role: isSuperAdmin ? 'SUPER_ADMIN' : isTempleAdmin ? 'TEMPLE_ADMIN' : isFinanceAdmin ? 'FINANCE_ADMIN' : 'DEVOTEE',
         authProvider: 'google',
         authenticatedAt: new Date().toISOString(),
       };
@@ -599,8 +602,10 @@ export default function SacredDevoteeLoginPortal({
           router.push('/admin/super/dashboard');
         } else if (isTempleAdmin) {
           router.push('/admin/temple/dashboard');
+        } else if (isFinanceAdmin) {
+          router.push('/admin/finance/dashboard');
         } else {
-          router.push('/');
+          router.push('/devotee/dashboard');
         }
       }, 600);
     } else {

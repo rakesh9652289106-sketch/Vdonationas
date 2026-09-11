@@ -25,6 +25,7 @@ import { MOCK_USERS, MOCK_DONATIONS } from '@/lib/mock-data';
 import { calculateDevoteeMedals } from '@/lib/medals';
 import { UserRoleType } from '@/lib/types';
 import { useLanguage } from '@/lib/language-context';
+import { isSuperAdminUser, isTempleAdminUser, isFinanceAdminUser } from '@/lib/rbac';
 
 interface MobileAppDrawerProps {
   isOpen: boolean;
@@ -46,15 +47,9 @@ export default function MobileAppDrawer({
   const { t } = useLanguage();
   const medalProgress = calculateDevoteeMedals(MOCK_DONATIONS);
 
-  const userAccountRole = (user?.role || '').toUpperCase();
-  const isSuperAdmin =
-    userAccountRole === 'SUPER_ADMIN' || userAccountRole === 'SUPERADMIN';
-  const isTempleAdmin =
-    isSuperAdmin ||
-    userAccountRole === 'TEMPLE_ADMIN' ||
-    userAccountRole === 'TEMPLE_MANAGER';
-  const isFinanceAdmin =
-    isSuperAdmin || userAccountRole === 'FINANCE_ADMIN';
+  const isSuperAdmin = isSuperAdminUser(user?.mobile, user?.email);
+  const isTempleAdmin = isTempleAdminUser(user?.role, user?.mobile, user?.email);
+  const isFinanceAdmin = isFinanceAdminUser(user?.role, user?.mobile, user?.email);
 
   if (!isOpen) return null;
 
@@ -216,70 +211,76 @@ export default function MobileAppDrawer({
             })}
           </nav>
 
-          {/* Mobile Portal Access Switcher */}
-          <div className="pt-3 border-t border-stone-200 dark:border-stone-800 space-y-2">
-            <p className="text-[10px] uppercase font-bold text-stone-400 tracking-wider px-1">
-              Select Portal Access:
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleSelectPortal('DEVOTEE', '/devotee/dashboard')}
-                className={`p-2.5 rounded-xl border flex flex-col items-center text-center gap-1 transition-all ${
-                  activeRole === 'DEVOTEE'
-                    ? 'bg-amber-100 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
-                    : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300'
-                }`}
-              >
-                <UserIcon className="w-4 h-4 text-devotional-saffron" />
-                <span className="text-[11px]">🙏 Devotee</span>
-              </button>
-
-              {isTempleAdmin && (
+          {/* Mobile Portal Access Switcher (Visible only to authorized Administrators) */}
+          {(isSuperAdmin || isTempleAdmin || isFinanceAdmin) && (
+            <div className="pt-3 border-t border-stone-200 dark:border-stone-800 space-y-2">
+              <p className="text-[10px] uppercase font-bold text-stone-400 tracking-wider px-1">
+                Select Portal Access:
+              </p>
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => handleSelectPortal('TEMPLE_ADMIN', '/admin/temple/dashboard')}
+                  onClick={() => handleSelectPortal('DEVOTEE', '/devotee/dashboard')}
                   className={`p-2.5 rounded-xl border flex flex-col items-center text-center gap-1 transition-all ${
-                    activeRole === 'TEMPLE_ADMIN'
+                    activeRole === 'DEVOTEE'
                       ? 'bg-amber-100 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
                       : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300'
                   }`}
                 >
-                  <Building2 className="w-4 h-4 text-devotional-maroon dark:text-amber-400" />
-                  <span className="text-[11px]">🛕 Temple</span>
+                  <UserIcon className="w-4 h-4 text-devotional-saffron" />
+                  <span className="text-[11px]">🙏 Devotee</span>
                 </button>
-              )}
 
-              {isFinanceAdmin && (
-                <button
-                  type="button"
-                  onClick={() => handleSelectPortal('FINANCE_ADMIN', '/admin/finance/dashboard')}
-                  className={`p-2.5 rounded-xl border flex flex-col items-center text-center gap-1 transition-all ${
-                    activeRole === 'FINANCE_ADMIN'
-                      ? 'bg-amber-100 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
-                      : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300'
-                  }`}
-                >
-                  <Coins className="w-4 h-4 text-emerald-600" />
-                  <span className="text-[11px]">💰 Finance</span>
-                </button>
-              )}
+                {isTempleAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPortal('TEMPLE_ADMIN', '/admin/temple/dashboard')}
+                    className={`p-2.5 rounded-xl border flex flex-col items-center text-center gap-1 transition-all ${
+                      activeRole === 'TEMPLE_ADMIN'
+                        ? 'bg-amber-100 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
+                        : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300'
+                    }`}
+                  >
+                    <Building2 className="w-4 h-4 text-devotional-maroon dark:text-amber-400" />
+                    <span className="text-[11px]">🛕 Temple</span>
+                  </button>
+                )}
 
-              {isSuperAdmin && (
-                <button
-                  type="button"
-                  onClick={() => handleSelectPortal('SUPER_ADMIN', '/admin/super/dashboard')}
-                  className={`p-2.5 rounded-xl border flex flex-col items-center text-center gap-1 transition-all ${
-                    activeRole === 'SUPER_ADMIN'
-                      ? 'bg-amber-100 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
-                      : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300'
-                  }`}
-                >
-                  <Shield className="w-4 h-4 text-amber-500" />
-                  <span className="text-[11px]">👑 Super Admin</span>
-                </button>
-              )}
+                {isFinanceAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPortal('FINANCE_ADMIN', '/admin/finance/dashboard')}
+                    className={`p-2.5 rounded-xl border flex flex-col items-center text-center gap-1 transition-all ${
+                      activeRole === 'FINANCE_ADMIN'
+                        ? 'bg-amber-100 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
+                        : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300'
+                    }`}
+                  >
+                    <Coins className="w-4 h-4 text-emerald-600" />
+                    <span className="text-[11px]">💰 Finance</span>
+                  </button>
+                )}
+
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPortal('SUPER_ADMIN', '/admin/super/dashboard')}
+                    className={`p-2.5 rounded-xl border flex flex-col items-center text-center gap-1 transition-all ${
+                      activeRole === 'SUPER_ADMIN'
+                        ? 'bg-amber-100 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
+                        : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300'
+                    }`}
+                  >
+                    <Shield className="w-4 h-4 text-amber-500" />
+                    <span className="text-[11px]">👑 Super Admin</span>
+                  </button>
+                )}
+              </div>
             </div>
+          )}
+
+          {/* Sign Out Section */}
+          <div className="pt-3 border-t border-stone-200 dark:border-stone-800">
 
             {/* Sign Out Button */}
             <button

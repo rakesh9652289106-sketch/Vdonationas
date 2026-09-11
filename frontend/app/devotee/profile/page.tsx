@@ -32,6 +32,7 @@ import { supabase } from '@/lib/supabase';
 import { GOTHIRAM_DATA, findGotramBySankethanamam } from '@/lib/gothiram-data';
 import { NakshatraSelect, GotraSelect } from '@/components/ui/VedicSelects';
 import { UserRoleType } from '@/lib/types';
+import { isSuperAdminUser, isTempleAdminUser, isFinanceAdminUser } from '@/lib/rbac';
 import {
   IconDevoteeSacred,
   IconTempleMatha,
@@ -45,20 +46,16 @@ export default function DevoteeProfilePage() {
   const { confirmAction, showAlert } = useConfirmAlert();
   const { user, activeRole, switchActiveRole, logout, updateDevoteeProfile } = useAuth();
 
-  const userAccountRole = (user?.role || '').toUpperCase();
-  const isSuperAdmin =
-    userAccountRole === 'SUPER_ADMIN' || userAccountRole === 'SUPERADMIN';
-  const isTempleAdmin =
-    isSuperAdmin ||
-    userAccountRole === 'TEMPLE_ADMIN' ||
-    userAccountRole === 'TEMPLE_MANAGER';
-  const isFinanceAdmin =
-    isSuperAdmin || userAccountRole === 'FINANCE_ADMIN';
-
   // Profile Information - loaded dynamically from auth & storage
   const [name, setName] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_name') || '' : ''));
   const [email, setEmail] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_email') || '' : ''));
   const [mobile, setMobile] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_mobile') || '' : ''));
+
+  const effectiveMobile = user?.mobile || mobile;
+  const effectiveEmail = user?.email || email;
+  const isSuperAdmin = isSuperAdminUser(effectiveMobile, effectiveEmail);
+  const isTempleAdmin = isTempleAdminUser(user?.role, effectiveMobile, effectiveEmail);
+  const isFinanceAdmin = isFinanceAdminUser(user?.role, effectiveMobile, effectiveEmail);
   const [city, setCity] = useState('Hyderabad');
   const [state, setState] = useState('Telangana');
   const [gotram, setGotram] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_selected_gotram') || '' : ''));
@@ -657,95 +654,97 @@ export default function DevoteeProfilePage() {
         </div>
       </div>
 
-      {/* SWITCH PORTAL ACCESS (Moved from drawer to Profile Down) */}
-      <div className="space-y-2">
-        <p className="text-[10px] uppercase font-bold text-stone-500 tracking-wider px-2">
-          Switch Portal Access
-        </p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <button
-            type="button"
-            onClick={() => {
-              switchActiveRole('DEVOTEE');
-              router.push('/devotee/dashboard');
-            }}
-            className={`p-3.5 rounded-2xl border transition-all active-press flex flex-col items-center text-center gap-1.5 cursor-pointer ${
-              activeRole === 'DEVOTEE'
-                ? 'bg-amber-100/80 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
-                : 'bg-white dark:bg-stone-900 border-devotional-gold/50 shadow-xs hover:border-devotional-maroon text-stone-900 dark:text-stone-100'
-            }`}
-          >
-            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-stone-800 p-1.5 flex items-center justify-center border border-amber-300/40 shadow-xs shrink-0">
-              <IconDevoteeSacred size={24} active={true} />
-            </div>
-            <span className="font-serif font-bold text-xs">Devotee</span>
-            <span className="text-[10px] text-stone-400">Public Portal</span>
-          </button>
-
-          {isTempleAdmin && (
+      {/* SWITCH PORTAL ACCESS (Visible only to authorized Administrators) */}
+      {(isSuperAdmin || isTempleAdmin || isFinanceAdmin) && (
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase font-bold text-stone-500 tracking-wider px-2">
+            Switch Portal Access
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <button
               type="button"
               onClick={() => {
-                switchActiveRole('TEMPLE_ADMIN');
-                router.push('/admin/temple/dashboard');
+                switchActiveRole('DEVOTEE');
+                router.push('/devotee/dashboard');
               }}
               className={`p-3.5 rounded-2xl border transition-all active-press flex flex-col items-center text-center gap-1.5 cursor-pointer ${
-                activeRole === 'TEMPLE_ADMIN'
+                activeRole === 'DEVOTEE'
                   ? 'bg-amber-100/80 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
-                  : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 shadow-xs hover:border-devotional-maroon text-stone-900 dark:text-stone-100'
+                  : 'bg-white dark:bg-stone-900 border-devotional-gold/50 shadow-xs hover:border-devotional-maroon text-stone-900 dark:text-stone-100'
               }`}
             >
               <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-stone-800 p-1.5 flex items-center justify-center border border-amber-300/40 shadow-xs shrink-0">
-                <IconTempleMatha size={24} active={true} />
+                <IconDevoteeSacred size={24} active={true} />
               </div>
-              <span className="font-serif font-bold text-xs">Temple Admin</span>
-              <span className="text-[10px] text-stone-400">Pooja & Sevas</span>
+              <span className="font-serif font-bold text-xs">Devotee</span>
+              <span className="text-[10px] text-stone-400">Public Portal</span>
             </button>
-          )}
 
-          {isFinanceAdmin && (
-            <button
-              type="button"
-              onClick={() => {
-                switchActiveRole('FINANCE_ADMIN');
-                router.push('/admin/finance/dashboard');
-              }}
-              className={`p-3.5 rounded-2xl border transition-all active-press flex flex-col items-center text-center gap-1.5 cursor-pointer ${
-                activeRole === 'FINANCE_ADMIN'
-                  ? 'bg-amber-100/80 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
-                  : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 shadow-xs hover:border-devotional-maroon text-stone-900 dark:text-stone-100'
-              }`}
-            >
-              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-stone-800 p-1.5 flex items-center justify-center border border-amber-300/40 shadow-xs shrink-0">
-                <IconDevotionalCoin size={22} />
-              </div>
-              <span className="font-serif font-bold text-xs">Finance</span>
-              <span className="text-[10px] text-stone-400">80G & Accounts</span>
-            </button>
-          )}
+            {isTempleAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  switchActiveRole('TEMPLE_ADMIN');
+                  router.push('/admin/temple/dashboard');
+                }}
+                className={`p-3.5 rounded-2xl border transition-all active-press flex flex-col items-center text-center gap-1.5 cursor-pointer ${
+                  activeRole === 'TEMPLE_ADMIN'
+                    ? 'bg-amber-100/80 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
+                    : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 shadow-xs hover:border-devotional-maroon text-stone-900 dark:text-stone-100'
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-stone-800 p-1.5 flex items-center justify-center border border-amber-300/40 shadow-xs shrink-0">
+                  <IconTempleMatha size={24} active={true} />
+                </div>
+                <span className="font-serif font-bold text-xs">Temple Admin</span>
+                <span className="text-[10px] text-stone-400">Pooja & Sevas</span>
+              </button>
+            )}
 
-          {isSuperAdmin && (
-            <button
-              type="button"
-              onClick={() => {
-                switchActiveRole('SUPER_ADMIN');
-                router.push('/admin/super/dashboard');
-              }}
-              className={`p-3.5 rounded-2xl border transition-all active-press flex flex-col items-center text-center gap-1.5 cursor-pointer ${
-                activeRole === 'SUPER_ADMIN'
-                  ? 'bg-amber-100/80 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
-                  : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 shadow-xs hover:border-devotional-maroon text-stone-900 dark:text-stone-100'
-              }`}
-            >
-              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-stone-800 p-1.5 flex items-center justify-center border border-amber-300/40 shadow-xs shrink-0">
-                <IconDevoteeMedal size={22} />
-              </div>
-              <span className="font-serif font-bold text-xs">Super Admin</span>
-              <span className="text-[10px] text-stone-400">Full System</span>
-            </button>
-          )}
+            {isFinanceAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  switchActiveRole('FINANCE_ADMIN');
+                  router.push('/admin/finance/dashboard');
+                }}
+                className={`p-3.5 rounded-2xl border transition-all active-press flex flex-col items-center text-center gap-1.5 cursor-pointer ${
+                  activeRole === 'FINANCE_ADMIN'
+                    ? 'bg-amber-100/80 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
+                    : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 shadow-xs hover:border-devotional-maroon text-stone-900 dark:text-stone-100'
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-stone-800 p-1.5 flex items-center justify-center border border-amber-300/40 shadow-xs shrink-0">
+                  <IconDevotionalCoin size={22} />
+                </div>
+                <span className="font-serif font-bold text-xs">Finance</span>
+                <span className="text-[10px] text-stone-400">80G & Accounts</span>
+              </button>
+            )}
+
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  switchActiveRole('SUPER_ADMIN');
+                  router.push('/admin/super/dashboard');
+                }}
+                className={`p-3.5 rounded-2xl border transition-all active-press flex flex-col items-center text-center gap-1.5 cursor-pointer ${
+                  activeRole === 'SUPER_ADMIN'
+                    ? 'bg-amber-100/80 dark:bg-stone-800 border-amber-400 font-bold text-devotional-maroon dark:text-amber-400 shadow-xs'
+                    : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 shadow-xs hover:border-devotional-maroon text-stone-900 dark:text-stone-100'
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-stone-800 p-1.5 flex items-center justify-center border border-amber-300/40 shadow-xs shrink-0">
+                  <IconDevoteeMedal size={22} />
+                </div>
+                <span className="font-serif font-bold text-xs">Super Admin</span>
+                <span className="text-[10px] text-stone-400">Full System</span>
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* QUICK APP PREFERENCES (Language & Appearance) */}
       <div className="space-y-2">

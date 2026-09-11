@@ -19,6 +19,7 @@ import {
 import { useLanguage } from '@/lib/language-context';
 import { templeService } from '@/lib/supabase-service';
 import { Temple } from '@/lib/types';
+import { isSuperAdminUser, isFinanceAdminUser } from '@/lib/rbac';
 
 export default function FinanceAdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -77,25 +78,28 @@ export default function FinanceAdminLayout({ children }: { children: React.React
       const sessionRaw = localStorage.getItem('vdonations_user_session');
       const role = localStorage.getItem('vdonations_active_role');
 
-      if (sessionRaw) {
-        try {
-          const session = JSON.parse(sessionRaw);
-          const userEmail = session.email || '';
-          if (
-            session.role === 'SUPER_ADMIN' ||
-            session.role === 'SUPERADMIN' ||
-            session.role === 'superadmin' ||
-            userEmail.includes('admin') ||
-            userEmail === 'rakesh9652289106@gmail.com'
-          ) {
-            setIsSuperAdmin(true);
-          } else if (session.role !== 'FINANCE_ADMIN' && role !== 'FINANCE_ADMIN') {
-            router.replace('/devotee/dashboard');
-            return;
-          }
-        } catch {
-          // Keep accessible
+      if (!sessionRaw) {
+        router.replace('/login');
+        return;
+      }
+
+      try {
+        const session = JSON.parse(sessionRaw);
+        const isSuper = isSuperAdminUser(session?.mobile, session?.email);
+        const canAccessFinance = isFinanceAdminUser(session?.role, session?.mobile, session?.email);
+
+        if (isSuper) {
+          setIsSuperAdmin(true);
+        } else if (!canAccessFinance) {
+          // General Devotees cannot access Finance Admin portal!
+          console.warn('[RBAC] Unauthorized access blocked from /admin/finance:', session?.mobile || session?.email);
+          localStorage.setItem('vdonations_active_role', 'DEVOTEE');
+          router.replace('/devotee/dashboard');
+          return;
         }
+      } catch {
+        router.replace('/login');
+        return;
       }
 
       syncActiveTemple();

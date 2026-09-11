@@ -24,6 +24,7 @@ import { calculateDevoteeMedals } from '@/lib/medals';
 import { UserRoleType } from '@/lib/types';
 import { useLanguage } from '@/lib/language-context';
 import { useAuth } from '@/lib/auth-context';
+import { isSuperAdminUser, isTempleAdminUser, isFinanceAdminUser } from '@/lib/rbac';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -31,19 +32,15 @@ export default function Navbar() {
   const { language, setLanguage, t } = useLanguage();
   const { user, activeRole, switchActiveRole, logout } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [currentUser, setCurrentUser] = useState(MOCK_USERS[0]);
+  const [currentUser, setCurrentUser] = useState({ fullName: 'Sri Vasavi Devotee', email: 'devotee@vasavi.dev' });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const userAccountRole = (user?.role || '').toUpperCase();
-  const isSuperAdmin =
-    userAccountRole === 'SUPER_ADMIN' || userAccountRole === 'SUPERADMIN';
-  const isTempleAdmin =
-    isSuperAdmin ||
-    userAccountRole === 'TEMPLE_ADMIN' ||
-    userAccountRole === 'TEMPLE_MANAGER';
-  const isFinanceAdmin =
-    isSuperAdmin || userAccountRole === 'FINANCE_ADMIN';
+
+  // Strict RBAC: Only 9652289106 can access Super Admin and all 4 panels
+  const isSuperAdmin = isSuperAdminUser(user?.mobile, user?.email);
+  const isTempleAdmin = isTempleAdminUser(user?.role, user?.mobile, user?.email);
+  const isFinanceAdmin = isFinanceAdminUser(user?.role, user?.mobile, user?.email);
 
   const medalProgress = calculateDevoteeMedals(MOCK_DONATIONS);
 
