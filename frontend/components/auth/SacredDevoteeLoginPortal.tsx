@@ -16,14 +16,12 @@ import {
   Flame,
   Award,
   ArrowRight,
-  Heart,
   Volume2,
   VolumeX,
   Key,
   X,
   AlertCircle,
   Check,
-  Mail,
 } from 'lucide-react';
 import { templeAudio } from '@/lib/templeAudio';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
@@ -276,29 +274,17 @@ export default function SacredDevoteeLoginPortal({
     }
 
     // -------------------------------------------------------------
-    // SIGN IN FLOW (Mobile Number OR Email + Password)
+    // SIGN IN FLOW (Mobile Number + Password Only - No OTPs)
     // -------------------------------------------------------------
-    const trimmedIdent = mobileNumber.trim();
-    if (!trimmedIdent) {
-      setStatusMsg({ type: 'error', text: 'Please enter your registered mobile number or email.' });
+    const cleanMobile = mobileNumber.replace(/\D/g, '');
+    if (!cleanMobile || cleanMobile.length !== 10) {
+      setStatusMsg({ type: 'error', text: 'Please enter a valid 10-digit registered mobile number.' });
       return;
     }
 
     if (!password) {
       setStatusMsg({ type: 'error', text: 'Please enter your password / PIN.' });
       return;
-    }
-
-    const isEmail = trimmedIdent.includes('@');
-    let loginIdentifier = trimmedIdent;
-
-    if (!isEmail) {
-      const cleanMobile = trimmedIdent.replace(/\D/g, '');
-      if (!cleanMobile || cleanMobile.length < 10) {
-        setStatusMsg({ type: 'error', text: 'Please enter a valid 10-digit Indian mobile number or email address.' });
-        return;
-      }
-      loginIdentifier = cleanMobile;
     }
 
     setLoading(true);
@@ -312,24 +298,22 @@ export default function SacredDevoteeLoginPortal({
     let authToken = 'vasavi_jwt_' + Date.now();
 
     try {
-      // 1. Authenticate directly via devoteeService (RPC authenticate_devotee handles mobile & email)
-      const authResult = await devoteeService.signInDevotee(loginIdentifier, password);
+      // 1. Authenticate directly via devoteeService (Mobile Number & Password, no OTP needed)
+      const authResult = await devoteeService.signInDevotee(cleanMobile, password);
 
       if (!authResult.success) {
         setLoading(false);
-        if (!isEmail) {
-          const mobileExists = await devoteeService.checkMobileExists(loginIdentifier);
-          if (!mobileExists) {
-            setStatusMsg({
-              type: 'error',
-              text: `No devotee account found with mobile +91 ${loginIdentifier}. Please click "New Sankalpam" to register your sacred account.`,
-            });
-            return;
-          }
+        const mobileExists = await devoteeService.checkMobileExists(cleanMobile);
+        if (!mobileExists) {
+          setStatusMsg({
+            type: 'error',
+            text: `No devotee account found with mobile +91 ${cleanMobile}. Please click "New Sankalpam" to register your sacred account.`,
+          });
+          return;
         }
         setStatusMsg({
           type: 'error',
-          text: authResult.error || 'Invalid password. If you forgot your password, please click "Forgot Password?" below to reset it instantly.',
+          text: authResult.error || 'Invalid password. If you forgot your password, please click "Forgot Password?" below to reset it instantly without OTP.',
         });
         return;
       }
@@ -338,7 +322,7 @@ export default function SacredDevoteeLoginPortal({
 
       // Background attempt to maintain GoTrue session if available
       try {
-        const devoteeEmail = userSession?.email || (isEmail ? loginIdentifier : `${loginIdentifier}@vasavi.dev`);
+        const devoteeEmail = userSession?.email || `${cleanMobile}@vasavi.dev`;
         const { data: sData } = await supabase.auth.signInWithPassword({
           email: devoteeEmail,
           password: password,
@@ -387,8 +371,8 @@ export default function SacredDevoteeLoginPortal({
       setLoading(false);
       const pendingData = {
         fullName: userSession.fullName,
-        mobileNumber: userSession.mobile || loginIdentifier,
-        email: userSession.email || (isEmail ? loginIdentifier : `${loginIdentifier}@vasavi.dev`),
+        mobileNumber: userSession.mobile || cleanMobile,
+        email: userSession.email || `${cleanMobile}@vasavi.dev`,
         password: password,
         userId: userSession.id,
       };
@@ -424,7 +408,7 @@ export default function SacredDevoteeLoginPortal({
         localStorage.setItem('vdonations_temple_name', userSession.templeName);
       }
       localStorage.setItem('vdonations_devotee_name', userSession.fullName);
-      localStorage.setItem('vdonations_devotee_mobile', userSession.mobile || loginIdentifier);
+      localStorage.setItem('vdonations_devotee_mobile', userSession.mobile || cleanMobile);
       if (userSession.email) {
         localStorage.setItem('vdonations_devotee_email', userSession.email);
       }
@@ -649,8 +633,7 @@ export default function SacredDevoteeLoginPortal({
 
   // Open Forgot Password Modal
   const handleOpenForgotPassword = () => {
-    const raw = mobileNumber.trim();
-    const clean = raw.includes('@') ? raw : raw.replace(/\D/g, '');
+    const clean = mobileNumber.replace(/\D/g, '');
     setForgotMobile(clean);
     setForgotNewPassword('');
     setForgotConfirmPassword('');
@@ -660,37 +643,26 @@ export default function SacredDevoteeLoginPortal({
     setShowForgotPassword(true);
   };
 
-  // Verify Mobile / Email in Forgot Password Modal
+  // Verify Mobile in Forgot Password Modal (No OTP required)
   const handleVerifyForgotMobile = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError(null);
 
-    const ident = forgotMobile.trim();
-    if (!ident) {
-      setForgotError('Please enter your registered mobile number or email.');
+    const clean = forgotMobile.replace(/\D/g, '');
+    if (!clean || clean.length !== 10) {
+      setForgotError('Please enter a valid 10-digit registered mobile number.');
       return;
-    }
-
-    const isEmail = ident.includes('@');
-    if (!isEmail) {
-      const clean = ident.replace(/\D/g, '');
-      if (!clean || clean.length < 10) {
-        setForgotError('Please enter a valid 10-digit registered mobile number or email.');
-        return;
-      }
     }
 
     setForgotLoading(true);
     try {
-      if (!isEmail) {
-        const clean = ident.replace(/\D/g, '');
-        const exists = await devoteeService.checkMobileExists(clean);
-        if (!exists) {
-          setForgotError(`No devotee account found with mobile +91 ${clean}. Please verify your number or register a New Sankalpam.`);
-          setForgotLoading(false);
-          return;
-        }
+      const exists = await devoteeService.checkMobileExists(clean);
+      if (!exists) {
+        setForgotError(`No devotee account found with mobile +91 ${clean}. Please verify your number or register a New Sankalpam.`);
+        setForgotLoading(false);
+        return;
       }
+      // Instant transition to Step 2 (Reset Password) - NO OTP required!
       setForgotStep(2);
     } catch (err: any) {
       setForgotError(err?.message || 'Error verifying devotee account.');
@@ -699,7 +671,7 @@ export default function SacredDevoteeLoginPortal({
     }
   };
 
-  // Reset Devotee Password via Supabase RPC
+  // Reset Devotee Password via Supabase RPC (Instant - No OTP)
   const handleResetDevoteePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError(null);
@@ -716,8 +688,7 @@ export default function SacredDevoteeLoginPortal({
 
     setForgotLoading(true);
     try {
-      const ident = forgotMobile.trim();
-      const clean = ident.includes('@') ? ident : ident.replace(/\D/g, '');
+      const clean = forgotMobile.replace(/\D/g, '');
       const result = await devoteeService.resetPassword(clean, forgotNewPassword);
 
       if (!result.success) {
@@ -1069,41 +1040,36 @@ export default function SacredDevoteeLoginPortal({
                     </div>
                   )}
 
-                  {/* Field 2: Devotee Mobile Number or Email */}
+                  {/* Field 2: Devotee Mobile Number (Direct Number & Password Auth - No Email Login) */}
                   {activeTab === 'login' ? (
                     <div className="space-y-1">
                       <div className="flex justify-between items-center">
                         <label className="text-[11px] font-serif font-bold uppercase tracking-wider text-[#f5d77f] flex items-center gap-1.5">
-                          <span>📱 Devotee Mobile Number or Email</span>
+                          <span>📱 Registered Mobile Number</span>
                         </label>
                       </div>
                       <div className="flex items-center h-12 rounded-xl bg-[#130205] border border-[#d4af37]/40 px-3 focus-within:border-[#ffe18d] focus-within:shadow-[0_0_14px_rgba(245,215,127,0.35)] transition-all">
-                        {/* Dynamic Badge: Flag +91 for numeric mobile, Mail icon for email */}
-                        {(!mobileNumber.includes('@') && !/[a-zA-Z]/.test(mobileNumber)) ? (
-                          <div className="flex items-center gap-1.5 pr-2.5 border-r border-[#d4af37]/30 shrink-0">
-                            <svg viewBox="0 0 24 16" className="w-[18px] h-[12px] rounded-[1px] shadow-xs" aria-label="India Flag">
-                              <rect width="24" height="5.33" fill="#FF9933" />
-                              <rect y="5.33" width="24" height="5.33" fill="#FFFFFF" />
-                              <rect y="10.66" width="24" height="5.33" fill="#128807" />
-                              <circle cx="12" cy="8" r="2" fill="#000088" />
-                            </svg>
-                            <span className="text-xs font-serif font-bold text-[#ffe28a]">+91</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 pr-2.5 border-r border-[#d4af37]/30 shrink-0">
-                            <Mail className="w-4 h-4 text-[#e5a93b]" />
-                          </div>
-                        )}
+                        {/* Always Display Flag +91 for Devotee Mobile */}
+                        <div className="flex items-center gap-1.5 pr-2.5 border-r border-[#d4af37]/30 shrink-0">
+                          <svg viewBox="0 0 24 16" className="w-[18px] h-[12px] rounded-[1px] shadow-xs" aria-label="India Flag">
+                            <rect width="24" height="5.33" fill="#FF9933" />
+                            <rect y="5.33" width="24" height="5.33" fill="#FFFFFF" />
+                            <rect y="10.66" width="24" height="5.33" fill="#128807" />
+                            <circle cx="12" cy="8" r="2" fill="#000088" />
+                          </svg>
+                          <span className="text-xs font-serif font-bold text-[#ffe28a]">+91</span>
+                        </div>
                         <input
-                          type="text"
+                          type="tel"
                           required
+                          maxLength={10}
                           value={mobileNumber}
-                          autoComplete="username"
+                          autoComplete="tel-national"
                           onChange={(e) => {
-                            setMobileNumber(e.target.value);
+                            setMobileNumber(e.target.value.replace(/\D/g, ''));
                             setMobileAlreadyExistsError(null);
                           }}
-                          placeholder="10-digit mobile or devotee email"
+                          placeholder="10-digit registered mobile number"
                           className="w-full h-full bg-transparent pl-3 text-sm text-white placeholder:text-[#a88267]/50 outline-none font-sans"
                           style={{ WebkitBoxShadow: '0 0 0 1000px #130205 inset', WebkitTextFillColor: '#ffffff' }}
                         />
@@ -1332,7 +1298,7 @@ export default function SacredDevoteeLoginPortal({
                     <span className="flex-1 h-[1px] bg-[#d4af37]/30" />
                   </div>
 
-                  {/* Secondary Action: Continue with Google */}
+                  {/* Secondary Action: Continue with Google / Gmail */}
                   <button
                     type="button"
                     onClick={handleGoogleLogin}
@@ -1344,7 +1310,7 @@ export default function SacredDevoteeLoginPortal({
                       <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                       <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                     </svg>
-                    <span>Continue with Google</span>
+                    <span>Continue with Google / Gmail</span>
                   </button>
 
                   {/* Instant Atithi (Guest) Entry Button */}
@@ -1416,43 +1382,38 @@ export default function SacredDevoteeLoginPortal({
                   Sri Vasavi Sanctuary Access
                 </h3>
                 <p className="text-[11px] text-[#e8cda2]">
-                  {forgotStep === 1 && 'Enter your registered mobile number to verify your devotee account.'}
-                  {forgotStep === 2 && 'Create and sanctify a new strong password for your devotee account.'}
+                  {forgotStep === 1 && 'Enter your registered mobile number to reset your password instantly (no OTP required).'}
+                  {forgotStep === 2 && 'Create and sanctify a new strong password for your devotee account (instant - no OTP required).'}
                   {forgotStep === 3 && 'Password successfully updated in Sri Vasavi Sanctuary!'}
                 </p>
               </div>
 
-              {/* Step 1: Verify Mobile Number or Email */}
+              {/* Step 1: Verify Registered Mobile Number */}
               {forgotStep === 1 && (
                 <form onSubmit={handleVerifyForgotMobile} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-serif font-bold uppercase tracking-wider text-[#f5d77f]">
-                      Registered Mobile Number or Email
+                      Registered Mobile Number
                     </label>
                     <div className="flex items-center h-12 rounded-xl bg-[#130205] border border-[#d4af37]/40 px-3 focus-within:border-[#ffe18d] transition-all">
-                      {(!forgotMobile.includes('@') && !/[a-zA-Z]/.test(forgotMobile)) ? (
-                        <div className="flex items-center gap-1.5 pr-2.5 border-r border-[#d4af37]/30 shrink-0">
-                          <svg viewBox="0 0 24 16" className="w-[18px] h-[12px] rounded-[1px] shadow-xs" aria-label="India Flag">
-                            <rect width="24" height="5.33" fill="#FF9933" />
-                            <rect y="5.33" width="24" height="5.33" fill="#FFFFFF" />
-                            <rect y="10.66" width="24" height="5.33" fill="#128807" />
-                            <circle cx="12" cy="8" r="2" fill="#000088" />
-                          </svg>
-                          <span className="text-xs font-serif font-bold text-[#ffe28a]">+91</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 pr-2.5 border-r border-[#d4af37]/30 shrink-0">
-                          <Mail className="w-4 h-4 text-[#e5a93b]" />
-                        </div>
-                      )}
+                      <div className="flex items-center gap-1.5 pr-2.5 border-r border-[#d4af37]/30 shrink-0">
+                        <svg viewBox="0 0 24 16" className="w-[18px] h-[12px] rounded-[1px] shadow-xs" aria-label="India Flag">
+                          <rect width="24" height="5.33" fill="#FF9933" />
+                          <rect y="5.33" width="24" height="5.33" fill="#FFFFFF" />
+                          <rect y="10.66" width="24" height="5.33" fill="#128807" />
+                          <circle cx="12" cy="8" r="2" fill="#000088" />
+                        </svg>
+                        <span className="text-xs font-serif font-bold text-[#ffe28a]">+91</span>
+                      </div>
                       <input
-                        type="text"
+                        type="tel"
                         required
+                        maxLength={10}
                         value={forgotMobile}
                         autoComplete="off"
-                        onChange={(e) => setForgotMobile(e.target.value)}
-                        placeholder="10-digit mobile or devotee email"
-                        className="w-full h-full bg-transparent pl-3 text-sm text-white placeholder:text-[#a88267]/50 outline-none"
+                        onChange={(e) => setForgotMobile(e.target.value.replace(/\D/g, ''))}
+                        placeholder="10-digit registered mobile number"
+                        className="w-full h-full bg-transparent pl-3 text-sm text-white placeholder:text-[#a88267]/50 outline-none font-sans"
                         style={{ WebkitBoxShadow: '0 0 0 1000px #130205 inset', WebkitTextFillColor: '#ffffff' }}
                       />
                     </div>
@@ -1474,7 +1435,7 @@ export default function SacredDevoteeLoginPortal({
                       <span>Verifying Devotee Account...</span>
                     ) : (
                       <>
-                        <span>Verify Devotee Account</span>
+                        <span>Verify Devotee Account (No OTP)</span>
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
@@ -1488,7 +1449,7 @@ export default function SacredDevoteeLoginPortal({
                   <div className="flex items-center justify-between text-xs px-2 py-1.5 rounded-lg bg-[#2b080f] border border-[#d4af37]/30 text-[#fbe18d]">
                     <span>Devotee Account:</span>
                     <span className="font-bold font-mono">
-                      {forgotMobile.includes('@') ? forgotMobile : `+91 ${forgotMobile}`}
+                      +91 {forgotMobile}
                     </span>
                   </div>
 
@@ -1730,7 +1691,7 @@ export default function SacredDevoteeLoginPortal({
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                   </svg>
-                  <span>Instant Google Devotee Sign-In:</span>
+                  <span>Instant Google / Gmail Devotee Sign-In:</span>
                 </div>
 
                 <div className="space-y-2">
@@ -1748,7 +1709,7 @@ export default function SacredDevoteeLoginPortal({
                   </div>
                   <div>
                     <label className="text-[10px] font-serif uppercase tracking-wider text-[#f5d77f]">
-                      Google Email
+                      Google / Gmail Address
                     </label>
                     <input
                       type="email"
@@ -1765,7 +1726,7 @@ export default function SacredDevoteeLoginPortal({
                   onClick={() => handleDevoteeGoogleDirectSignIn(googleEmailInput, googleNameInput)}
                   className="w-full py-3 rounded-full font-serif font-bold text-xs text-[#240a0c] bg-gradient-to-r from-[#ffe494] via-[#f7d885] to-[#d4af37] hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-gold"
                 >
-                  <span>Sign In as Google Devotee (Proceed to Gotram)</span>
+                  <span>Sign In with Google / Gmail (Proceed to Gotram)</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>

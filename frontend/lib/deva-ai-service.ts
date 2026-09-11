@@ -568,7 +568,7 @@ Devotees can participate in sacred rituals at Sri Vasavi Kanyaka Parameswari Dev
 The Devotee Portal allows you to store your family's Vedic details once so every seva booking and receipt is effortless:
 
 📋 **Step-by-Step Walkthrough**:
-1. **Access Devotee Portal**: Log in with your mobile number and OTP.
+1. **Access Devotee Portal**: Log in with your registered 10-digit mobile number and password, or continue with Google / Gmail (no OTP needed).
 2. **Open Profile**: Click your avatar at the top right and select **"My Profile"** (or visit \`/devotee/profile\`).
 3. **Update Personal Info**: Enter your Full Name, Email, Mobile Number, and PAN (for automated 80G tax receipts).
 4. **Enter Vedic Sankalpam Details**: Enter your ancestral Gotram, Janma Nakshatram, and Rashi.

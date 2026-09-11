@@ -17,7 +17,7 @@ export default function DevoteeSecurityAndPrivacyPage() {
     const confirmed = await confirmAction({
       title: nextState ? 'Enable Two-Factor Authentication?' : 'Disable Two-Factor Authentication?',
       message: nextState
-        ? 'Enabling 2FA adds SMS OTP security before accessing tax certificates and changing bank details.'
+        ? 'Enabling 2FA adds extra verification protection before accessing tax certificates and changing bank details.'
         : 'Disabling 2FA will reduce account security. Are you sure you want to proceed?',
       confirmText: nextState ? 'Enable 2FA' : 'Disable 2FA',
       variant: nextState ? 'change' : 'warning',
@@ -115,7 +115,7 @@ export default function DevoteeSecurityAndPrivacyPage() {
           <div className="flex justify-between items-center py-2 border-b border-stone-100 dark:border-stone-800/60">
             <div className="pr-4 space-y-0.5">
               <h4 className="font-bold text-stone-900 dark:text-stone-100 text-sm">Two-Factor Authentication</h4>
-              <p className="text-stone-500 text-[11px]">Require OTP verification upon login to protect your 80G tax receipts.</p>
+              <p className="text-stone-500 text-[11px]">Enhanced verification security to protect your sensitive tax receipts and profile data.</p>
             </div>
             <button
               onClick={handleToggle2FA}
