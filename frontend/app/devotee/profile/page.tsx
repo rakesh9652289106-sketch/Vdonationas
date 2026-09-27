@@ -304,12 +304,18 @@ export default function DevoteeProfilePage() {
     }
   };
 
-  const menuItems = [
+  const menuItems: Array<{
+    icon: any;
+    label: string;
+    sublabel: string;
+    href?: string;
+    onClick?: () => void;
+  }> = [
     {
       icon: User,
       label: 'Personal Details',
       sublabel: gotram ? `${gotram} Gotram • ${sankethanamam ? sankethanamam + ' • ' : ''}${email || 'Verified Devotee'}` : 'Gotram, Sankethanamam, Email, PAN for 80G',
-      onClick: () => setIsEditing(true),
+      href: '/devotee/personal-details',
     },
     {
       icon: FileText,
@@ -362,67 +368,91 @@ export default function DevoteeProfilePage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto font-sans px-3 sm:px-0">
-      {/* DEVOTEE IDENTITY CARD */}
-      <div className="bg-gradient-to-br from-devotional-maroon via-devotional-maroon-dark to-stone-950 text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-devotional-gold/40 relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left relative z-10">
-          {/* Avatar with Gold Diya Ring */}
-          <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-amber-400 to-amber-600 p-1 shadow-xl">
-              <div className="w-full h-full rounded-full bg-devotional-maroon-dark flex items-center justify-center font-serif text-2xl font-black text-amber-300">
-                {name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'OM'}
+    <div className="space-y-4 sm:space-y-6 max-w-3xl mx-auto font-sans px-3.5 sm:px-0 pt-2 sm:pt-4">
+      {/* DEVOTEE SACRED IDENTITY PASS CARD */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#4A101D] via-[#380B15] to-[#20050C] text-white p-5 sm:p-6 shadow-xl border border-amber-500/30">
+        {/* Subtle Ambient Radial Light */}
+        <div 
+          className="absolute -top-10 -right-10 w-48 h-48 rounded-full pointer-events-none opacity-20"
+          style={{ background: 'radial-gradient(circle, #D4AF37 0%, transparent 70%)' }}
+        />
+
+        <div className="relative z-10 space-y-4">
+          {/* Header Row: Avatar + Devotee Info + Edit Button */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3.5 min-w-0">
+              {/* Refined Avatar with Gold Ring (No loose emojis) */}
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-600 p-0.5 shadow-md shrink-0">
+                <div className="w-full h-full rounded-full bg-[#2E0710] flex items-center justify-center font-serif text-lg sm:text-xl font-bold text-amber-300">
+                  {name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'OM'}
+                </div>
+              </div>
+
+              {/* Devotee Name & Status */}
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <h2 className="text-base sm:text-lg font-serif font-bold text-white tracking-wide truncate">
+                    {name || 'Sri Vasavi Devotee'}
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-bold uppercase tracking-wider border border-amber-400/30 inline-flex items-center gap-1">
+                    Patron
+                  </span>
+                </div>
+                <p className="text-xs text-stone-300/90 font-mono truncate pt-0.5">
+                  {mobile ? mobile : 'Mobile not set'}{email ? ` • ${email}` : ''}
+                </p>
               </div>
             </div>
-            <span className="absolute -bottom-1 -right-1 text-xl">🪔</span>
+
+            {/* Quick Edit Action Button */}
+            <Link
+              href="/devotee/personal-details?edit=true"
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-amber-200 border border-amber-400/30 text-xs font-bold active-press transition-all flex items-center gap-1 shrink-0"
+              title="Edit Profile Details"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Edit</span>
+            </Link>
           </div>
 
-          <div className="space-y-1.5 flex-1">
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-              <h2 className="text-xl sm:text-2xl font-serif font-bold text-amber-300">
-                {name || 'Sri Vasavi Devotee'}
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-bold uppercase border border-amber-400/30">
-                🥇 Sacred Seva Patron
+          {/* Devotee Lineage Details (Gotram & Sankethanamam) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 rounded-xl bg-black/30 border border-amber-400/20">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-[10px] uppercase font-bold text-amber-300/80 shrink-0">Gotram:</span>
+              <span className="text-xs font-serif font-bold text-white truncate">
+                {gotram ? gotram : 'General Devotee'}
               </span>
             </div>
-            <p className="text-xs text-amber-100/90 font-medium">
-              {mobile ? mobile : 'Mobile not set'} {email ? `• ${email}` : ''}
-            </p>
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-400/15 text-amber-200 border border-amber-400/30 text-xs font-serif font-semibold">
-                🪔 {gotram ? `${gotram} Gotram` : 'Gotram Lineage'}
-              </span>
-              {sankethanamam && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-devotional-saffron/20 text-amber-300 border border-devotional-saffron/40 text-xs font-mono font-bold tracking-wider">
-                  📜 Sankethanamam: {sankethanamam}
+            {sankethanamam && (
+              <div className="flex items-center gap-2 min-w-0 border-t sm:border-t-0 sm:border-l border-white/10 pt-1.5 sm:pt-0 sm:pl-3">
+                <span className="text-[10px] uppercase font-bold text-amber-300/80 shrink-0">Sankethanamam:</span>
+                <span className="text-xs font-mono font-bold text-amber-200 tracking-wider truncate">
+                  {sankethanamam}
                 </span>
-              )}
+              </div>
+            )}
+          </div>
+
+          {/* 3-Column Stats Row with Soft Dividers */}
+          <div className="grid grid-cols-3 divide-x divide-white/10 pt-3 border-t border-white/10 text-center">
+            <div className="px-2">
+              <span className="text-[10px] uppercase font-bold text-stone-300/80 block">Total Seva</span>
+              <span className="font-serif font-bold text-base sm:text-lg text-amber-300">
+                ₹{totalSeva.toLocaleString('en-IN')}
+              </span>
             </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsEditing(!isEditing)}
-            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-amber-300 border border-amber-300/40 text-xs font-bold active-press transition-all flex items-center gap-1.5 shrink-0"
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-            Edit
-          </button>
-        </div>
-
-        {/* Quick Stats Strip */}
-        <div className="grid grid-cols-3 gap-2 mt-6 pt-5 border-t border-white/10 text-center relative z-10">
-          <div>
-            <span className="text-[10px] uppercase font-bold text-amber-200/70 block">Total Seva</span>
-            <span className="font-serif font-bold text-base sm:text-lg text-amber-300">₹{totalSeva.toLocaleString('en-IN')}</span>
-          </div>
-          <div>
-            <span className="text-[10px] uppercase font-bold text-amber-200/70 block">Sevas Offered</span>
-            <span className="font-serif font-bold text-base sm:text-lg text-white">{sevasCount}</span>
-          </div>
-          <div>
-            <span className="text-[10px] uppercase font-bold text-amber-200/70 block">Mathas Supported</span>
-            <span className="font-serif font-bold text-base sm:text-lg text-white">1</span>
+            <div className="px-2">
+              <span className="text-[10px] uppercase font-bold text-stone-300/80 block">Sevas Offered</span>
+              <span className="font-serif font-bold text-base sm:text-lg text-white">
+                {sevasCount}
+              </span>
+            </div>
+            <div className="px-2">
+              <span className="text-[10px] uppercase font-bold text-stone-300/80 block">Mathas</span>
+              <span className="font-serif font-bold text-base sm:text-lg text-white">
+                1
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -589,13 +619,13 @@ export default function DevoteeProfilePage() {
       )}
 
       {/* 10-ITEM MENU LIST */}
-      <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-xs divide-y divide-stone-100 dark:divide-stone-800 overflow-hidden">
+      <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs divide-y divide-stone-100 dark:divide-stone-800 overflow-hidden">
         {menuItems.map((item, idx) => {
           const Icon = item.icon;
           const content = (
-            <div className="flex items-center justify-between p-4 hover:bg-amber-50/50 dark:hover:bg-stone-800/50 active-press transition-colors cursor-pointer">
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-devotional-cream dark:bg-stone-800 border border-devotional-gold/30 text-devotional-maroon dark:text-amber-400 flex items-center justify-center shrink-0">
+            <div className="flex items-center justify-between p-3.5 sm:p-4 hover:bg-amber-50/50 dark:hover:bg-stone-800/50 active-press transition-colors cursor-pointer">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-devotional-cream dark:bg-stone-800 border border-devotional-gold/30 text-devotional-maroon dark:text-amber-400 flex items-center justify-center shrink-0">
                   <Icon className="w-5 h-5" />
                 </div>
                 <div className="truncate">

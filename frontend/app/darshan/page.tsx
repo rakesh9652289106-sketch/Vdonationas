@@ -72,28 +72,28 @@ export default function DarshanPage() {
   };
 
   return (
-    <div className="space-y-12 pb-20 bg-[#FAF7F2] dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 pt-6">
+    <div className="space-y-6 sm:space-y-10 pb-20 bg-[#FAF7F2] dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans">
+      <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 space-y-6 sm:space-y-10 pt-3 sm:pt-6">
         {/* 2. HERO LIVE 3D SANCTUM EXPERIENCE */}
-        <section className="space-y-6">
+        <section className="space-y-4 sm:space-y-6">
           <div className="text-center space-y-2 max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-400/20 text-devotional-maroon dark:text-amber-300 font-bold text-xs uppercase tracking-widest border border-amber-400/40 shadow-sm">
-              <Flame className="w-4 h-4 text-devotional-saffron animate-pulse" /> IMMERSIVE DEVOTIONAL EXPERIENCE
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 text-devotional-maroon dark:text-amber-300 font-bold text-xs uppercase tracking-widest border border-amber-400/40 shadow-xs">
+              <Flame className="w-3.5 h-3.5 text-devotional-saffron animate-pulse" /> IMMERSIVE DEVOTIONAL EXPERIENCE
             </div>
-            <h1 className="text-3xl sm:text-5xl font-serif font-bold text-devotional-maroon dark:text-amber-400 tracking-tight">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-serif font-bold text-devotional-maroon dark:text-amber-400 tracking-tight">
               Sri Vasavi Matha 3D Virtual Darshan
             </h1>
-            <p className="text-stone-600 dark:text-stone-300 text-sm sm:text-base max-w-2xl mx-auto">
+            <p className="text-stone-600 dark:text-stone-300 text-xs sm:text-base max-w-2xl mx-auto">
               Perform online seva, offer Pushparchana flowers, ring the sacred temple ghanta, wave Karpoora Aarti, and drop digital coins in the sacred E-Hundi.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
             {/* 3D Main Sanctum WebGL Viewport */}
             <div className="lg:col-span-8 space-y-4">
-              <InteractiveDarshanSanctum3D className="w-full h-[540px]" />
+              <InteractiveDarshanSanctum3D className="w-full h-[400px] sm:h-[540px]" />
 
-              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-stone-900 border border-amber-300 dark:border-stone-800 text-xs text-stone-700 dark:text-stone-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-stone-900 border border-amber-300 dark:border-stone-800 text-xs text-stone-700 dark:text-stone-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
                 <div className="flex items-center gap-2">
                   <Sun className="w-4 h-4 text-amber-500" />
                   <span><strong>Sanctum Atmosphere:</strong> Switch morning, midday, evening, and Maha Aarti lighting above.</span>
@@ -105,7 +105,7 @@ export default function DarshanPage() {
             </div>
 
             {/* Right: E-Hundi & Live Devotee Sankalpa Box */}
-            <div className="lg:col-span-4 bg-white dark:bg-stone-900 rounded-3xl p-6 border-2 border-devotional-gold/60 shadow-xl space-y-5">
+            <div className="lg:col-span-4 bg-white dark:bg-stone-900 rounded-2xl p-5 sm:p-6 border border-amber-500/40 shadow-md space-y-4">
               <div className="border-b border-stone-200 dark:border-stone-800 pb-3">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-devotional-saffron flex items-center gap-1">
                   <QrCode className="w-3.5 h-3.5" /> DIGITAL E-HUNDI SEVA

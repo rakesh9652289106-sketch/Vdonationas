@@ -105,17 +105,17 @@ export default function DevoteeDonationsPage() {
   });
 
   return (
-    <div className="space-y-5 font-sans px-3 sm:px-0">
-      {/* 3D DEVOTIONAL HEADER BANNER */}
-      <div className="bg-gradient-to-r from-devotional-maroon via-devotional-maroon-dark to-stone-950 text-white p-6 sm:p-8 rounded-3xl shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border border-devotional-gold/40 relative overflow-hidden">
+    <div className="space-y-4 sm:space-y-5 font-sans px-3.5 sm:px-0 pt-2 sm:pt-4">
+      {/* Sleek Devotional Header Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#4A101D] via-[#380B15] to-[#20050C] text-white p-5 sm:p-6 shadow-lg border border-amber-500/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="space-y-1 relative z-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold uppercase border border-amber-400/30">
-            <Flame className="w-3.5 h-3.5 text-devotional-saffron animate-pulse" /> Seva History
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-bold uppercase tracking-wider border border-amber-400/30">
+            <Flame className="w-3.5 h-3.5 text-devotional-saffron" /> Seva History
           </div>
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-amber-300">
-            My Transactions
+          <h1 className="text-xl sm:text-2xl font-serif font-bold text-white tracking-tight">
+            My Transactions &amp; Receipts
           </h1>
-          <p className="text-amber-100/80 text-xs">
+          <p className="text-stone-300 text-xs max-w-xl">
             100% Traceable Seva Offerings with Instant 80G Digital Tax Receipts
           </p>
         </div>
@@ -128,10 +128,10 @@ export default function DevoteeDonationsPage() {
               message: 'Complete seva and donation history exported in CSV format.',
             })
           }
-          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-devotional-saffron via-amber-400 to-amber-500 text-stone-950 font-bold text-xs shadow-gold hover:brightness-110 active-press transition-all flex items-center gap-1.5 border border-amber-300 shrink-0 relative z-10"
+          className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-amber-200 font-bold text-xs shadow-xs hover:brightness-110 active-press transition-all flex items-center gap-1.5 border border-amber-400/30 shrink-0 relative z-10"
         >
-          <Download className="w-4 h-4 text-devotional-maroon" />
-          Export
+          <Download className="w-4 h-4 text-amber-300" />
+          <span>Export CSV</span>
         </button>
       </div>
 

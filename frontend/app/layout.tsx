@@ -124,7 +124,7 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
       <Navbar />
 
       {/* Main Application Viewport with Bottom Padding for Mobile Nav Bar */}
-      <main className="flex-1 pb-24 md:pb-0">{children}</main>
+      <main className="flex-1 pb-24 md:pb-0 w-full max-w-full overflow-x-hidden">{children}</main>
 
       {/* Desktop Footer (Visible on >= md) */}
       <Footer />
@@ -151,7 +151,7 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
       {/* Floating DevaAI Assistant Button */}
       <button
         onClick={() => setIsAiOpen(true)}
-        className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 p-3 sm:p-3.5 bg-gradient-to-r from-devotional-maroon via-devotional-saffron to-amber-600 text-white rounded-full shadow-2xl hover:scale-105 active-press transition-all flex items-center gap-2 border-2 border-amber-300 group cursor-pointer"
+        className="fixed bottom-20 right-3.5 sm:bottom-6 sm:right-6 z-40 p-2.5 sm:p-3.5 bg-gradient-to-r from-devotional-maroon via-devotional-saffron to-amber-600 text-white rounded-full shadow-2xl hover:scale-105 active-press transition-all flex items-center gap-2 border-2 border-amber-300 group cursor-pointer"
         title="Open DevaAI Assistant"
       >
         <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300 group-hover:rotate-12 transition-transform" />

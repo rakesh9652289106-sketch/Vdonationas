@@ -93,23 +93,23 @@ export default function DevoteeDashboardPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 font-sans">
-      {/* 3D DEVOTIONAL HERO BANNER */}
-      <div className="bg-gradient-to-r from-devotional-maroon via-devotional-maroon-dark to-stone-950 text-white p-8 rounded-3xl shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-2 border-devotional-gold/60 relative overflow-hidden diya-glow-pulse">
-        <div className="space-y-1 relative z-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold uppercase border border-amber-400/30">
-            <Flame className="w-3.5 h-3.5 text-devotional-saffron animate-pulse" /> {t('navDevoteeDashboard')}
+    <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-6 font-sans">
+      {/* Sleek Devotional Hero Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#4A101D] via-[#380B15] to-[#20050C] text-white p-5 sm:p-7 shadow-lg border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1.5 relative z-10">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-bold uppercase tracking-wider border border-amber-400/30">
+            <Flame className="w-3.5 h-3.5 text-devotional-saffron" /> {t('navDevoteeDashboard')}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-amber-300 flex flex-wrap items-center gap-2">
+          <h1 className="text-xl sm:text-3xl font-serif font-bold text-white flex flex-wrap items-center gap-2">
             Sri Vasavi Matha welcomes you 🙏
             {medalProgress.currentMedal && (
-              <span className="px-3.5 py-1 rounded-full bg-gradient-to-r from-amber-300 via-amber-200 to-amber-300 text-amber-950 font-sans font-bold text-xs border border-amber-400/80 shadow-md inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 leading-none">
+              <span className="px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-300 via-amber-200 to-amber-300 text-amber-950 font-sans font-bold text-xs border border-amber-400/80 shadow-xs inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 leading-none">
                 <span>{medalProgress.currentMedal.badge}</span>
                 <span>{medalProgress.currentMedal.name}</span>
               </span>
             )}
           </h1>
-          <p className="text-amber-100/80 text-xs max-w-xl">
+          <p className="text-stone-300 text-xs max-w-xl leading-relaxed">
             Manage your sacred Seva offerings, 80G tax receipts, digital Seva certificates, and Panchangam reminders.
           </p>
         </div>
@@ -117,22 +117,22 @@ export default function DevoteeDashboardPage() {
         <div className="flex flex-wrap gap-2 relative z-10">
           <button
             onClick={() => setShowDevaAI(true)}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-devotional-saffron to-amber-600 text-white font-bold text-xs hover:brightness-110 transition-all flex items-center gap-1.5 shadow-gold"
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-devotional-saffron to-amber-600 text-white font-bold text-xs hover:brightness-110 active-press transition-all flex items-center gap-1.5 shadow-xs"
           >
-            <Bot className="w-4 h-4" /> Ask DevaAI Assistant
+            <Bot className="w-4 h-4" /> Ask DevaAI
           </button>
           <button
             onClick={handleDownloadAnnualStatement}
-            className="px-4 py-2.5 rounded-xl bg-amber-400 text-stone-950 font-bold text-xs hover:bg-amber-300 transition-colors flex items-center gap-1.5 shadow-md"
+            className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-amber-200 border border-amber-400/30 font-bold text-xs active-press transition-colors flex items-center gap-1.5 shadow-xs"
           >
-            <Download className="w-4 h-4" /> Download 80G Statement
+            <Download className="w-4 h-4" /> 80G Statement
           </button>
         </div>
       </div>
 
-      {/* DEVOTEE 3D HIGHLIGHT METRIC CARDS WITH HOVER MOTION */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl border border-devotional-gold/40 shadow-xl hover:-translate-y-1.5 hover:shadow-2xl transition-all duration-300 transform hover:border-amber-400 hover:ring-2 hover:ring-amber-300/40 space-y-2">
+      {/* DEVOTEE HIGHLIGHT METRIC CARDS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-stone-900 p-4 sm:p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs hover:-translate-y-1 hover:shadow-lg transition-all duration-300 space-y-1.5">
           <p className="text-xs text-stone-500 font-bold uppercase tracking-wider flex items-center gap-1">
             <Heart className="w-3.5 h-3.5 text-devotional-saffron" /> Total Seva Contribution
           </p>
@@ -144,7 +144,7 @@ export default function DevoteeDashboardPage() {
           </p>
         </div>
 
-        <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl border border-devotional-gold/40 shadow-xl hover:-translate-y-1.5 hover:shadow-2xl transition-all duration-300 transform hover:border-amber-400 hover:ring-2 hover:ring-amber-300/40 space-y-2">
+        <div className="bg-white dark:bg-stone-900 p-4 sm:p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs hover:-translate-y-1 hover:shadow-lg transition-all duration-300 space-y-1.5">
           <p className="text-xs text-stone-500 font-bold uppercase tracking-wider flex items-center gap-1">
             <FileText className="w-3.5 h-3.5 text-amber-500" /> Total Offerings Made
           </p>
@@ -154,7 +154,7 @@ export default function DevoteeDashboardPage() {
           <p className="text-[10px] text-amber-700 font-semibold">{medalProgress.successfulDonationCount} Verifiable Receipts</p>
         </div>
 
-        <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl border border-devotional-gold/40 shadow-xl hover:-translate-y-1.5 hover:shadow-2xl transition-all duration-300 transform hover:border-amber-400 hover:ring-2 hover:ring-amber-300/40 space-y-2">
+        <div className="bg-white dark:bg-stone-900 p-4 sm:p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs hover:-translate-y-1 hover:shadow-lg transition-all duration-300 space-y-1.5">
           <p className="text-xs text-stone-500 font-bold uppercase tracking-wider flex items-center gap-1">
             <Award className="w-3.5 h-3.5 text-emerald-500" /> Devotee Medal Tier
           </p>
@@ -169,7 +169,7 @@ export default function DevoteeDashboardPage() {
           </p>
         </div>
 
-        <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl border border-devotional-gold/40 shadow-xl hover:-translate-y-1.5 hover:shadow-2xl transition-all duration-300 transform hover:border-amber-400 hover:ring-2 hover:ring-amber-300/40 space-y-2">
+        <div className="bg-white dark:bg-stone-900 p-4 sm:p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs hover:-translate-y-1 hover:shadow-lg transition-all duration-300 space-y-1.5">
           <p className="text-xs text-stone-500 font-bold uppercase tracking-wider flex items-center gap-1">
             <Repeat className="w-3.5 h-3.5 text-devotional-saffron" /> Monthly Autopay
           </p>

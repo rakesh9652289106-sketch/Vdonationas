@@ -9,20 +9,20 @@ interface TempleCardProps {
 
 export default function TempleCard({ temple }: TempleCardProps) {
   return (
-    <div className="bg-white dark:bg-stone-900 rounded-3xl overflow-hidden border border-stone-200 dark:border-stone-800 shadow-devotional hover:shadow-2xl transition-all duration-300 flex flex-col group">
+    <div className="bg-white dark:bg-stone-900 rounded-2xl overflow-hidden border border-stone-200 dark:border-stone-800 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group">
       {/* Temple Banner Image */}
-      <div className="relative h-48 w-full overflow-hidden bg-stone-200 dark:bg-stone-800">
+      <div className="relative h-44 sm:h-48 w-full overflow-hidden bg-stone-200 dark:bg-stone-800">
         <img
           src={temple.bannerUrl}
           alt={temple.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
 
         {/* Verification Status */}
-        <div className="absolute top-3 left-3 bg-emerald-900/90 text-emerald-200 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase flex items-center gap-1 border border-emerald-500/40">
+        <div className="absolute top-3 left-3 bg-emerald-950/90 text-emerald-300 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase flex items-center gap-1 border border-emerald-500/40 shadow-xs">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          VERIFIED TEMPLE
+          VERIFIED
         </div>
 
         {/* Code Badge */}
