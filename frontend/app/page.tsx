@@ -101,55 +101,70 @@ export default function HomePage() {
 
   const sevaCategories = [
     {
+      id: 'annadanam',
       icon: '🪔',
       title: t('catAnnadanamTitle'),
       subtitle: t('catAnnadanamSubtitle'),
       desc: t('catAnnadanamDesc'),
       amount: '₹1,001',
+      rawAmount: 1001,
     },
     {
+      id: 'pushpa',
       icon: '🌺',
       title: t('catPushpaTitle'),
       subtitle: t('catPushpaSubtitle'),
       desc: t('catPushpaDesc'),
       amount: '₹501',
+      rawAmount: 501,
     },
     {
+      id: 'matha',
       icon: '🛕',
       title: t('catMathaTitle'),
       subtitle: t('catMathaSubtitle'),
       desc: t('catMathaDesc'),
       amount: '₹5,001',
+      rawAmount: 5001,
     },
     {
+      id: 'pooja',
       icon: '📿',
       title: t('catPoojaTitle'),
       subtitle: t('catPoojaSubtitle'),
       desc: t('catPoojaDesc'),
       amount: '₹1,001',
+      rawAmount: 1001,
     },
     {
+      id: 'community',
       icon: '🏛️',
       title: t('catCommunityTitle'),
       subtitle: t('catCommunitySubtitle'),
       desc: t('catCommunityDesc'),
       amount: '₹10,001',
+      rawAmount: 10001,
     },
     {
+      id: 'education',
       icon: '📚',
       title: t('catEducationTitle'),
       subtitle: t('catEducationSubtitle'),
       desc: t('catEducationDesc'),
       amount: '₹2,501',
+      rawAmount: 2501,
     },
     {
+      id: 'social',
       icon: '🏥',
       title: t('catSocialTitle'),
       subtitle: t('catSocialSubtitle'),
       desc: t('catSocialDesc'),
       amount: '₹5,001',
+      rawAmount: 5001,
     },
   ];
+
 
   // ----------------------------------------------------------------------------
   // AUTH GUARD: Devotees must log in on /login before accessing the Home Page.
@@ -321,17 +336,17 @@ export default function HomePage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {sevaCategories.map((cat, idx) => (
+              {sevaCategories.map((cat) => (
                 <SevaCategoryCard3D
-                  key={idx}
+                  key={cat.id}
                   icon={cat.icon}
                   title={cat.title}
                   subtitle={cat.subtitle}
                   desc={cat.desc}
                   amount={cat.amount}
+                  href={`/donate?seva=${cat.id}&amount=${cat.rawAmount}`}
                   onSelect={() => {
-                    const el = document.getElementById('donate-section');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    router.push(`/donate?seva=${cat.id}&amount=${cat.rawAmount}`);
                   }}
                 />
               ))}

@@ -26,6 +26,7 @@ import { recordInitiativeDonation } from '@/lib/initiatives-data';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
 import { donationsService } from '@/lib/supabase-service';
 import { useAuth } from '@/lib/auth-context';
+import { DEVOTIONAL_SEVAS, findDevotionalSeva, DevotionalSeva } from '@/lib/seva-data';
 
 function DonationFormContent() {
   const searchParams = useSearchParams();
@@ -38,23 +39,34 @@ function DonationFormContent() {
   const initialCampaignId = searchParams.get('campaignId') || '';
   const initialInitiativeId = searchParams.get('initiativeId') || '';
   const initialInitiativeTitle = searchParams.get('title') || '';
+  const initialSevaParam = searchParams.get('seva') || searchParams.get('purpose') || initialCategoryId;
+
+  const matchedInitialSeva = findDevotionalSeva(initialSevaParam || initialInitiativeTitle);
 
   // Form State
   const [selectedTempleId, setSelectedTempleId] = useState(initialTempleId);
-  const [purpose, setPurpose] = useState(
-    initialInitiativeTitle
+  const [selectedSeva, setSelectedSeva] = useState<DevotionalSeva | undefined>(matchedInitialSeva);
+  const [showSevaSelector, setShowSevaSelector] = useState(false);
+
+  const [purpose, setPurpose] = useState<string>(
+    matchedInitialSeva
+      ? matchedInitialSeva.name
+      : initialInitiativeTitle
       ? `Initiative: ${initialInitiativeTitle}`
       : initialInitiativeId
       ? `Initiative: ${initialInitiativeId}`
-      : initialCategoryId
-      ? 'Nitya Annadanam'
-      : 'General Donation'
+      : 'Annadanam Seva'
   );
   const initialAmountParam = searchParams.get('amount');
   const [amount, setAmount] = useState<number>(
-    initialAmountParam ? parseInt(initialAmountParam, 10) || 102 : 102
+    initialAmountParam
+      ? parseInt(initialAmountParam, 10) || (matchedInitialSeva ? matchedInitialSeva.amount : 1001)
+      : matchedInitialSeva
+      ? matchedInitialSeva.amount
+      : 1001
   );
   const [customAmount, setCustomAmount] = useState('');
+
   const [donorName, setDonorName] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_name') || '' : ''));
   const [donorEmail, setDonorEmail] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_email') || '' : ''));
   const [donorPhone, setDonorPhone] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_mobile') || '' : ''));
@@ -111,7 +123,7 @@ function DonationFormContent() {
   const [receiptData, setReceiptData] = useState<any>(null);
 
   const currentTemple = MOCK_TEMPLES.find((t) => t.id === selectedTempleId) || MOCK_TEMPLES[0];
-  const presets = [102, 516, 1116, 2116, 5116, 10116];
+  const presets = selectedSeva?.presets || [102, 516, 1116, 2116, 5116, 10116];
 
   const handleShare = () => {
     if (typeof window !== 'undefined') {
@@ -199,7 +211,7 @@ function DonationFormContent() {
         trustName: currentTemple.trustName,
         donorName: isAnonymous ? 'Anonymous Devotee' : donorName,
         amount,
-        categoryName: purpose,
+        categoryName: selectedSeva ? selectedSeva.name : purpose,
         campaignTitle: initialInitiativeId
           ? `Initiative (${initialInitiativeId})`
           : initialCampaignId
@@ -246,6 +258,64 @@ function DonationFormContent() {
       <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-xl overflow-hidden">
         {step === 'DETAILS' && (
           <form onSubmit={handleProceedToPayment} className="p-4 sm:p-10 space-y-6 sm:space-y-8">
+            {/* Sacred Dedicated Seva Highlight Showcase */}
+            {selectedSeva && (
+              <div className="relative p-5 sm:p-7 rounded-3xl bg-gradient-to-br from-stone-900 via-amber-950/70 to-stone-950 border-2 border-amber-400/80 shadow-[0_12px_40px_rgba(212,175,55,0.25)] text-stone-100 overflow-hidden">
+                <div className="absolute top-0 right-0 transform translate-x-8 -translate-y-8 w-44 h-44 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+                  <div className="flex items-start sm:items-center gap-4">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-devotional-maroon via-devotional-saffron to-amber-400 text-amber-100 flex items-center justify-center text-3xl sm:text-4xl shadow-gold border-2 border-amber-300 shrink-0">
+                      {selectedSeva.icon}
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-950 text-emerald-300 border border-emerald-500/50 flex items-center gap-1 shadow-xs">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Selected Sacred Seva
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40 flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3 text-amber-400" /> Section 80G Certified
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-800 text-stone-300 font-semibold">
+                          {selectedSeva.tag}
+                        </span>
+                      </div>
+                      <h2 className="text-xl sm:text-2xl font-serif font-bold text-amber-300 flex flex-wrap items-baseline gap-2">
+                        <span>{selectedSeva.name}</span>
+                        <span className="text-xs sm:text-sm text-amber-200/80 font-normal">({selectedSeva.teluguName})</span>
+                      </h2>
+                      <p className="text-[11px] sm:text-xs font-bold text-devotional-saffron uppercase tracking-wider">
+                        {selectedSeva.subtitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-amber-400/20 gap-2 shrink-0">
+                    <div className="text-left sm:text-right">
+                      <span className="text-[10px] text-stone-400 uppercase tracking-wider block">Recommended Offering</span>
+                      <span className="text-xl sm:text-2xl font-serif font-bold text-amber-300">
+                        ₹{selectedSeva.amount.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowSevaSelector(!showSevaSelector)}
+                      className="text-[11px] px-3.5 py-1.5 rounded-xl border border-amber-400/50 bg-stone-900/90 hover:bg-amber-400/20 text-amber-300 font-semibold transition-all hover:border-amber-300 active-press"
+                    >
+                      {showSevaSelector ? '✕ Close Other Sevas' : '⇄ Change Seva'}
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-xs text-stone-300 mt-3.5 pt-3 border-t border-amber-400/20 leading-relaxed relative z-10">
+                  {selectedSeva.desc}
+                </p>
+                <div className="mt-2 text-[11px] text-amber-300/80 font-serif italic relative z-10">
+                  🙏 {selectedSeva.mantra}
+                </div>
+              </div>
+            )}
+
             {/* Sacred Initiative Highlight Banner */}
             {initialInitiativeId && (
               <div className="p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border-2 border-devotional-gold/60 flex items-start sm:items-center justify-between gap-3 shadow-md">
@@ -288,34 +358,100 @@ function DonationFormContent() {
               />
             </div>
 
-            {/* Step 2: Purpose */}
+            {/* Step 2: Seva Selection */}
             <div className="space-y-3">
-              <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
-                2. Donation Purpose / Seva Cause
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {[
-                  'Nitya Annadanam',
-                  'General Donation',
-                  'Gau Seva (Cows)',
-                  'Temple Development',
-                  'Daily Pooja',
-                  'Festival Seva',
-                ].map((p) => (
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
+                  2. Devotional Seva / Offering Cause
+                </label>
+                {selectedSeva && !showSevaSelector && (
                   <button
                     type="button"
-                    key={p}
-                    onClick={() => setPurpose(p)}
-                    className={`p-3 rounded-2xl text-xs font-bold border transition-all text-left ${
-                      purpose === p
-                        ? 'border-devotional-maroon bg-amber-50 dark:bg-stone-800 text-devotional-maroon dark:text-amber-400 shadow-sm'
-                        : 'border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300'
-                    }`}
+                    onClick={() => setShowSevaSelector(true)}
+                    className="text-xs text-amber-700 dark:text-amber-400 hover:underline font-semibold flex items-center gap-1"
                   >
-                    {p}
+                    <span>⇄ Browse all 7 sevas</span>
                   </button>
-                ))}
+                )}
               </div>
+
+              {/* If a specific seva is chosen and user hasn't clicked "Change Seva":
+                  ONLY SHOW THAT SPECIFIC SEVA SELECTED WITH A NEAT UI! */}
+              {selectedSeva && !showSevaSelector ? (
+                <div className="p-4 sm:p-5 rounded-2xl border-2 border-devotional-maroon bg-gradient-to-r from-amber-50 to-orange-50/50 dark:from-stone-950 dark:to-stone-900 dark:border-amber-400/70 flex items-center justify-between shadow-sm">
+                  <div className="flex items-center gap-3.5">
+                    <span className="text-3xl">{selectedSeva.icon}</span>
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-serif font-bold text-sm sm:text-base text-stone-900 dark:text-amber-300">
+                          {selectedSeva.name}
+                        </h4>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Selected
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-stone-600 dark:text-stone-300">
+                        {selectedSeva.subtitle} • <span className="italic">{selectedSeva.teluguName}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSevaSelector(true)}
+                    className="text-xs px-3.5 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 font-semibold shrink-0"
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                /* Full grid of all 7 Authentic Sevas with clean UI */
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {DEVOTIONAL_SEVAS.map((seva) => {
+                    const isSelected = (selectedSeva?.id === seva.id) || (purpose === seva.name);
+                    return (
+                      <button
+                        type="button"
+                        key={seva.id}
+                        onClick={() => {
+                          setSelectedSeva(seva);
+                          setPurpose(seva.name);
+                          setAmount(seva.amount);
+                          setCustomAmount('');
+                          setShowSevaSelector(false);
+                        }}
+                        className={`p-3.5 rounded-2xl text-left border transition-all relative overflow-hidden group ${
+                          isSelected
+                            ? 'border-devotional-maroon bg-amber-50 dark:bg-stone-950 text-devotional-maroon dark:text-amber-300 shadow-md dark:border-amber-400 ring-2 ring-amber-400/40'
+                            : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:border-amber-400 hover:shadow-xs'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-2xl">{seva.icon}</span>
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-amber-300 font-serif">
+                            ₹{seva.amount.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <div className="mt-2 space-y-0.5">
+                          <h4 className="font-serif font-bold text-xs sm:text-sm text-stone-900 dark:text-stone-100 group-hover:text-amber-400 transition-colors">
+                            {seva.name}
+                          </h4>
+                          <p className="text-[10px] font-bold text-devotional-saffron uppercase tracking-wider">
+                            {seva.subtitle}
+                          </p>
+                          <p className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-2 pt-0.5">
+                            {seva.desc}
+                          </p>
+                        </div>
+                        {isSelected && (
+                          <div className="mt-2 pt-1 border-t border-amber-300/40 dark:border-amber-400/20 flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 className="w-3 h-3" /> Selected Seva
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Step 3: Choose Amount */}

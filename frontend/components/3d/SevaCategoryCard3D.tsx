@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 
 interface SevaCategoryCard3DProps {
@@ -9,7 +10,8 @@ interface SevaCategoryCard3DProps {
   subtitle: string;
   desc: string;
   amount: string;
-  onSelect: () => void;
+  href?: string;
+  onSelect?: () => void;
 }
 
 export default function SevaCategoryCard3D({
@@ -18,9 +20,12 @@ export default function SevaCategoryCard3D({
   subtitle,
   desc,
   amount,
+  href,
   onSelect,
 }: SevaCategoryCard3DProps) {
+  const router = useRouter();
   const cardRef = useRef<HTMLDivElement>(null);
+
   const [transformStyle, setTransformStyle] = useState('perspective(1000px) rotateX(0deg) rotateY(0deg)');
   const [isHovered, setIsHovered] = useState(false);
 
@@ -47,20 +52,40 @@ export default function SevaCategoryCard3D({
     setTransformStyle('perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)');
   };
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (onSelect) {
+      onSelect();
+    } else if (href) {
+      router.push(href);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (onSelect) onSelect();
+      else if (href) router.push(href);
+    }
+  };
+
   return (
     <div
       ref={cardRef}
+      role="button"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      onClick={onSelect}
+      onClick={handleClick}
       style={{
         transform: transformStyle,
         transition: isHovered ? 'transform 0.1s ease-out' : 'transform 0.5s ease-out',
         transformStyle: 'preserve-3d',
       }}
-      className="relative p-6 rounded-3xl bg-stone-900 border-2 border-devotional-gold/60 shadow-[0_15px_40px_-10px_rgba(107,29,47,0.4)] cursor-pointer hover:border-amber-400 hover:shadow-gold transition-all space-y-4 overflow-hidden group text-left"
+      className="relative p-6 rounded-3xl bg-stone-900 border-2 border-devotional-gold/60 shadow-[0_15px_40px_-10px_rgba(107,29,47,0.4)] cursor-pointer hover:border-amber-400 hover:shadow-gold transition-all space-y-4 overflow-hidden group text-left focus:outline-none focus:ring-2 focus:ring-amber-400"
     >
+
       {/* Background Gold Shimmer on Hover */}
       {isHovered && <div className="absolute inset-0 shimmer-gold pointer-events-none opacity-20" />}
 
