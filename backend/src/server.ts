@@ -36,22 +36,26 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 
-// Health check endpoints for Render
+// Health check and keep-alive endpoints for Render & Cron-job.org
+const healthHandler = (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'healthy',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    service: 'Vasavi Temple Digital Donations API',
+  });
+};
+
+app.all(['/health', '/api/v1/health', '/cron', '/api/v1/cron'], healthHandler);
+
 app.get('/', (_req: Request, res: Response) => {
   res.json({
     status: 'online',
     service: 'Vasavi Temple Digital Donations & SaaS Platform Backend API',
     version: '2.0.0',
+    uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
   });
-});
-
-app.get('/health', (_req: Request, res: Response) => {
-  res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
-});
-
-app.get('/api/v1/health', (_req: Request, res: Response) => {
-  res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
 // API Routes
@@ -71,16 +75,15 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-// Start Server & Auto-Initialize Supabase Tables
-async function start() {
-  await initDb();
-  app.listen(PORT, () => {
-    console.log(`🛕 Vasavi Temple Backend API running smoothly on port ${PORT}`);
-    console.log(`📡 Ready to serve Vercel frontend requests at /api/v1`);
-  });
-}
-
-start().catch((err) => {
-  console.error('Fatal startup error:', err);
-  process.exit(1);
+// Start Server immediately so Render port binding succeeds instantly (< 5ms)
+const server = app.listen(PORT, () => {
+  console.log(`🛕 Vasavi Temple Backend API running smoothly on port ${PORT}`);
+  console.log(`📡 Ready to serve Vercel frontend requests at /api/v1`);
+  console.log(`⏰ Cron keep-alive endpoints available at /health and /cron`);
 });
+
+// Asynchronously initialize database in background without blocking port binding or returning 503
+initDb().catch((err) => {
+  console.warn('⚠️ Non-fatal DB initialization warning (in-memory fallback active):', err?.message || err);
+});
+

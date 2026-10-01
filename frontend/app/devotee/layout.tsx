@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -32,10 +32,15 @@ export default function DevoteeLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const { t } = useLanguage();
   const { user } = useAuth();
+  const [isMounted, setIsMounted] = useState(false);
 
-  const devoteeName = user?.fullName || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_name') || 'Sri Vasavi Devotee' : 'Sri Vasavi Devotee');
-  const devoteeEmail = user?.email || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_devotee_email') || '' : '');
-  const devoteeGotram = user?.gotram || (typeof window !== 'undefined' ? localStorage.getItem('vdonations_selected_gotram') || '' : '');
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const devoteeName = user?.fullName || (isMounted ? localStorage.getItem('vdonations_devotee_name') || 'Sri Vasavi Devotee' : 'Sri Vasavi Devotee');
+  const devoteeEmail = user?.email || (isMounted ? localStorage.getItem('vdonations_devotee_email') || '' : '');
+  const devoteeGotram = user?.gotram || (isMounted ? localStorage.getItem('vdonations_selected_gotram') || '' : '');
 
   const navItems = [
     { name: t('sidebarDevoteeHome'), href: '/devotee/dashboard', icon: LayoutDashboard },
@@ -64,7 +69,7 @@ export default function DevoteeLayout({ children }: { children: React.ReactNode 
           <div className="inline-flex items-center gap-1 text-devotional-saffron text-[10px] font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-950 px-2.5 py-0.5 rounded-full border border-amber-300">
             <Flame className="w-3 h-3 text-devotional-saffron animate-pulse" /> {t('navDevoteeDashboard')}
           </div>
-          <h2 className="text-xl font-serif font-bold text-devotional-maroon dark:text-amber-400 truncate">
+          <h2 className="text-xl font-serif font-bold text-devotional-maroon dark:text-amber-400 truncate" suppressHydrationWarning>
             {devoteeName}
           </h2>
           {devoteeEmail && <p className="text-[11px] text-stone-500 truncate">{devoteeEmail}</p>}

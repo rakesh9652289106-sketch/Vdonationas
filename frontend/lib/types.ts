@@ -301,10 +301,25 @@ export interface PanchangamData {
   templeName: string;
   date: string;
   location: string;
+  // Authentic Telugu Panchangam Properties
+  samvatsaram?: string;
+  ayanam?: string;
+  rutuvu?: string;
+  masam?: string;
+  paksham?: string;
+  vaaram?: string;
   tithi: string;
+  tithiTelugu?: string;
   nakshatram: string;
+  nakshatramTelugu?: string;
   yogam: string;
+  yogamTelugu?: string;
   karanam: string;
+  karanamTelugu?: string;
+  durmuhurtham?: string;
+  varjyam?: string;
+  amruthaKalam?: string;
+  brahmaMuhurtham?: string;
   sunrise: string;
   sunset: string;
   abhijitMuhurtham: string;

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { MOCK_TEMPLES, MOCK_PANCHANGAM } from '@/lib/mock-data';
+import { MOCK_TEMPLES } from '@/lib/mock-data';
 import {
   Sun,
   Calendar as CalendarIcon,
@@ -15,8 +15,15 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Compass,
+  CheckCircle,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import {
+  calculateTeluguPanchangam,
+  TeluguPanchangamDetails,
+  TELUGU_VAARAMULU,
+} from '@/lib/telugu-calendar';
 
 export default function PanchangamCalculator() {
   const { t } = useLanguage();
@@ -33,7 +40,7 @@ export default function PanchangamCalculator() {
   // Calendar navigation month and year
   const initialDateObj = useMemo(() => new Date(selectedDate), [selectedDate]);
   const [viewYear, setViewYear] = useState<number>(initialDateObj.getFullYear() || 2026);
-  const [viewMonth, setViewMonth] = useState<number>(initialDateObj.getMonth() || 7); // 0-indexed (7 = Aug)
+  const [viewMonth, setViewMonth] = useState<number>(initialDateObj.getMonth() || 9); // 0-indexed (9 = Oct)
 
   const [bellRung, setBellRung] = useState(false);
 
@@ -89,13 +96,24 @@ export default function PanchangamCalculator() {
     }
   };
 
-  // Month Names
+  // Gregorian Month Names
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  // Calendar Grid Days Calculation
+  // Calculate authentic Telugu Panchangam for the currently active/selected date
+  const activeTelugu: TeluguPanchangamDetails = useMemo(() => {
+    return calculateTeluguPanchangam(selectedDate);
+  }, [selectedDate]);
+
+  // Sample mid-month date to display the representative Telugu month in the calendar header
+  const headerTeluguInfo = useMemo(() => {
+    const midMonthDate = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-15`;
+    return calculateTeluguPanchangam(midMonthDate);
+  }, [viewYear, viewMonth]);
+
+  // Calendar Grid Days Calculation with full Telugu Panchangam metadata per day
   const calendarGrid = useMemo(() => {
     const firstDayIndex = new Date(viewYear, viewMonth, 1).getDay(); // 0 = Sun
     const daysInCurrentMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -109,13 +127,15 @@ export default function PanchangamCalculator() {
       const prevMonth = viewMonth === 0 ? 11 : viewMonth - 1;
       const prevYear = viewMonth === 0 ? viewYear - 1 : viewYear;
       const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      grid.push({ day, isCurrentMonth: false, dateStr });
+      const teluguData = calculateTeluguPanchangam(dateStr);
+      grid.push({ day, isCurrentMonth: false, dateStr, teluguData });
     }
 
-    // Current month days
+    // Current month days with authentic Telugu calendar Tithi
     for (let day = 1; day <= daysInCurrentMonth; day++) {
       const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      grid.push({ day, isCurrentMonth: true, dateStr });
+      const teluguData = calculateTeluguPanchangam(dateStr);
+      grid.push({ day, isCurrentMonth: true, dateStr, teluguData });
     }
 
     // Next month padding days to make total multiples of 7 (up to 35 or 42)
@@ -124,11 +144,33 @@ export default function PanchangamCalculator() {
       const nextMonth = viewMonth === 11 ? 0 : viewMonth + 1;
       const nextYear = viewMonth === 11 ? viewYear + 1 : viewYear;
       const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      grid.push({ day, isCurrentMonth: false, dateStr });
+      const teluguData = calculateTeluguPanchangam(dateStr);
+      grid.push({ day, isCurrentMonth: false, dateStr, teluguData });
     }
 
     return grid;
   }, [viewYear, viewMonth]);
+
+  // Find next upcoming sacred tithis for quick selection
+  const quickSacredDates = useMemo(() => {
+    const today = new Date();
+    let ekadashiDate = '';
+    let purnimaDate = '';
+    let amavasyaDate = '';
+
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
+      const ds = d.toISOString().split('T')[0];
+      const p = calculateTeluguPanchangam(ds);
+      if (!ekadashiDate && p.isEkadashi) ekadashiDate = ds;
+      if (!purnimaDate && p.isPurnima) purnimaDate = ds;
+      if (!amavasyaDate && p.isAmavasya) amavasyaDate = ds;
+      if (ekadashiDate && purnimaDate && amavasyaDate) break;
+    }
+
+    return { ekadashiDate, purnimaDate, amavasyaDate };
+  }, []);
 
   // Format date display: YYYY-MM-DD -> DD - MM - YYYY
   const formattedDateDisplay = useMemo(() => {
@@ -142,153 +184,6 @@ export default function PanchangamCalculator() {
 
   // Find linked temple from directory
   const activeTemple = MOCK_TEMPLES.find((tpl) => tpl.id === selectedTempleId) || MOCK_TEMPLES[0];
-
-  // Dynamically calculate or lookup panchangam record for selected date & temple
-  const activeRecord = useMemo(() => {
-    // 1. Check if an explicit admin record exists for this temple & date
-    const exactRecord = MOCK_PANCHANGAM.find(
-      (p) => p.templeId === selectedTempleId && p.date === selectedDate
-    );
-    if (exactRecord) return exactRecord;
-
-    // 2. Otherwise calculate dynamically based on date
-    const baseDate = new Date('2026-08-28T00:00:00Z');
-    const targetDate = new Date(selectedDate + 'T00:00:00Z');
-    const isValidDate = !isNaN(targetDate.getTime());
-    const dateObj = isValidDate ? targetDate : new Date();
-
-    const diffDays = Math.round((dateObj.getTime() - baseDate.getTime()) / (1000 * 3600 * 24));
-    const dayOfWeek = dateObj.getUTCDay(); // 0 = Sun, 1 = Mon, ...
-
-    const tithis = [
-      'Shukla Ekadashi (Holy Vasavi Tithi)',
-      'Shukla Dwadashi',
-      'Shukla Trayodashi (Pradosham)',
-      'Shukla Chaturdashi',
-      'Purnima (Full Moon - Sacred Alankaram Day)',
-      'Krishna Pratipada',
-      'Krishna Dwitiya',
-      'Krishna Tritiya',
-      'Krishna Chaturthi (Sankashti Ganesha Seva)',
-      'Krishna Panchami',
-      'Krishna Shashthi',
-      'Krishna Saptami',
-      'Krishna Ashtami',
-      'Krishna Navami',
-      'Krishna Dashami',
-      'Krishna Ekadashi (Ekadashi Vratam)',
-      'Krishna Dwadashi',
-      'Krishna Trayodashi',
-      'Krishna Chaturdashi',
-      'Amavasya (New Moon - Pitru Seva)',
-      'Shukla Pratipada',
-      'Shukla Dwitiya',
-      'Shukla Tritiya',
-      'Shukla Chaturthi',
-      'Shukla Panchami',
-      'Shukla Shashthi',
-      'Shukla Saptami',
-      'Shukla Ashtami',
-      'Shukla Navami',
-      'Shukla Dashami',
-    ];
-
-    const nakshatras = [
-      'Uttara Phalguni', 'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha',
-      'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishta', 'Shatabhisha',
-      'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati', 'Ashwini', 'Bharani', 'Krittika',
-      'Rohini', 'Mrigashira', 'Ardra', 'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni'
-    ];
-
-    const yogas = [
-      'Ayushman', 'Saubhagya', 'Shobhana', 'Atiganda', 'Sukarma', 'Dhriti', 'Shoola', 'Ganda',
-      'Vriddhi', 'Dhruva', 'Vyaghata', 'Harshana', 'Vajra', 'Siddhi', 'Vyatipata', 'Variyan',
-      'Parigha', 'Shiva', 'Siddha', 'Sadhya', 'Shubha', 'Shukla', 'Brahma', 'Indra', 'Vaidhriti',
-      'Vishkambha', 'Priti'
-    ];
-
-    const karanas = ['Bava', 'Balava', 'Kaulava', 'Taitila', 'Gara', 'Vanija', 'Vishti (Bhadra)', 'Shakuni', 'Chatushpada', 'Naga', 'Kintughna'];
-
-    const rahukalamByDay = [
-      '04:30 PM - 06:00 PM', // Sun
-      '07:30 AM - 09:00 AM', // Mon
-      '03:00 PM - 04:30 PM', // Tue
-      '12:00 PM - 01:30 PM', // Wed
-      '01:30 PM - 03:00 PM', // Thu
-      '10:30 AM - 12:00 PM', // Fri
-      '09:00 AM - 10:30 AM', // Sat
-    ];
-
-    const yamagandamByDay = [
-      '12:00 PM - 01:30 PM', // Sun
-      '10:30 AM - 12:00 PM', // Mon
-      '09:00 AM - 10:30 AM', // Tue
-      '07:30 AM - 09:00 AM', // Wed
-      '06:00 AM - 07:30 AM', // Thu
-      '03:00 PM - 04:30 PM', // Fri
-      '01:30 PM - 03:00 PM', // Sat
-    ];
-
-    const gulikakalamByDay = [
-      '03:00 PM - 04:30 PM', // Sun
-      '01:30 PM - 03:00 PM', // Mon
-      '12:00 PM - 01:30 PM', // Tue
-      '10:30 AM - 12:00 PM', // Wed
-      '09:00 AM - 10:30 AM', // Thu
-      '07:30 AM - 09:00 AM', // Fri
-      '06:00 AM - 07:30 AM', // Sat
-    ];
-
-    const tithiIndex = ((diffDays % 30) + 30) % 30;
-    const nakshatraIndex = ((diffDays % 27) + 27) % 27;
-    const yogaIndex = ((diffDays % 27) + 27) % 27;
-    const karanaIndex = ((diffDays % 11) + 11) % 11;
-
-    const currentTithi = tithis[tithiIndex];
-
-    let specialObservance = '';
-    if (currentTithi.includes('Ekadashi')) {
-      specialObservance = '🌟 Sacred Vasavi Ammavaru Sahasranama Kumkumarchana & Ekadashi Vratam Day';
-    } else if (currentTithi.includes('Pradosham')) {
-      specialObservance = '🕉️ Sacred Pradosha Kala Abhishekam & Siva Pooja';
-    } else if (currentTithi.includes('Purnima')) {
-      specialObservance = '🌕 Sri Vasavi Matha Grand Chariot & Full Moon Deepotsavam';
-    } else if (currentTithi.includes('Sankashti')) {
-      specialObservance = '🐘 Sankashti Hara Ganesha Chathurthi & Modaka Seva';
-    } else if (currentTithi.includes('Amavasya')) {
-      specialObservance = '🌑 Amavasya Pitru Tarpanam & Special Annadanam';
-    } else if (dayOfWeek === 5) {
-      specialObservance = '🌸 Friday Special Sri Vasavi Kanyaka Parameswari Alankaram & Archana';
-    } else if (dayOfWeek === 2) {
-      specialObservance = '🔥 Tuesday Special Mangala Gauri Pooja & Kumkuma Seva';
-    }
-
-    return {
-      id: `panch-calc-${selectedDate}`,
-      templeId: activeTemple.id,
-      templeName: activeTemple.name,
-      date: selectedDate,
-      location: `${activeTemple.address}, ${activeTemple.city}, ${activeTemple.state}`,
-      tithi: currentTithi,
-      nakshatram: nakshatras[nakshatraIndex],
-      yogam: yogas[yogaIndex],
-      karanam: karanas[karanaIndex],
-      sunrise: '06:04 AM',
-      sunset: '06:38 PM',
-      abhijitMuhurtham: '11:45 AM - 12:35 PM (Most Auspicious)',
-      rahukalam: rahukalamByDay[dayOfWeek],
-      yamagandam: yamagandamByDay[dayOfWeek],
-      gulikakalam: gulikakalamByDay[dayOfWeek],
-      auspiciousPoojaSlots: [
-        '07:30 AM - 09:00 AM (Vasavi Kumkumarchana)',
-        '11:45 AM - 12:30 PM (Maha Naivedyam & Annadanam)',
-        '06:30 PM - 07:30 PM (Sahasranama Archana & Deeparadhana)',
-      ],
-      specialObservance: specialObservance || '✨ Daily Sanctified Shrine Archana & Nitya Seva',
-      updatedBy: 'Automated Astronomical Calculation',
-      updatedAt: new Date().toISOString(),
-    };
-  }, [selectedDate, selectedTempleId, activeTemple]);
 
   const handleRingBell = () => {
     setBellRung(true);
@@ -305,13 +200,13 @@ export default function PanchangamCalculator() {
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold uppercase tracking-wider border border-amber-400/40">
             <Sun className="w-4 h-4 text-devotional-saffron animate-spin" style={{ animationDuration: '12s' }} />
-            SHRINE PANCHANGAM & MUHURTHAM CALCULATOR
+            <span>తెలుగు పంచాంగం & ముహూర్తం • TELUGU PANCHANGAM & MUHURTHAM</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-serif font-bold text-amber-300">
-            Daily Sacred Panchangam & Auspicious Muhurtham
+            Daily Sacred Telugu Panchangam & Auspicious Muhurtham
           </h2>
           <p className="text-amber-100/80 text-xs">
-            Linked to {activeTemple.name} • Astronomical Calculations
+            Linked to {activeTemple.name} • చాంద్రమాన తెలుగు పంచాంగ ఖగోళ గణనలు
           </p>
         </div>
 
@@ -328,11 +223,11 @@ export default function PanchangamCalculator() {
         </button>
       </div>
 
-      {/* COMBINED 2-COLUMN ROW: LEFT = SHRINE DETAILS CARD | RIGHT = DATE CALENDAR PICKER */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 relative z-20 items-stretch">
+      {/* COMBINED 2-COLUMN ROW: LEFT = SHRINE DETAILS CARD | RIGHT = TELUGU CALENDAR DATE SELECTOR */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 relative z-20 items-stretch">
         
-        {/* LEFT SIDE: SHRINE DETAILS CARD (takes 2 columns on lg screens) */}
-        <div className="lg:col-span-2 bg-amber-500/10 p-4 rounded-2xl border border-amber-400/40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs">
+        {/* LEFT SIDE: SHRINE DETAILS CARD (7 columns on lg screens) */}
+        <div className="lg:col-span-7 bg-amber-500/10 p-4 rounded-2xl border border-amber-400/40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-base font-serif font-bold text-amber-300">{activeTemple.name}</span>
@@ -354,58 +249,55 @@ export default function PanchangamCalculator() {
           </Link>
         </div>
 
-        {/* RIGHT SIDE: CUSTOM SIDE CALENDAR DATE SELECTOR */}
-        <div className="lg:col-span-1 relative bg-stone-900/90 p-4 rounded-2xl border border-amber-400/30 flex flex-col justify-center" ref={calendarRef}>
-          <label className="block text-amber-200 font-bold mb-1.5 flex items-center gap-1.5 text-xs">
-            <CalendarIcon className="w-3.5 h-3.5 text-devotional-saffron" /> Select Panchangam Date
-          </label>
+        {/* RIGHT SIDE: INTERACTIVE TELUGU CALENDAR DATE SELECTOR (5 columns on lg screens) */}
+        <div className="lg:col-span-5 relative bg-stone-900/90 p-4 rounded-2xl border border-amber-400/30 flex flex-col justify-center" ref={calendarRef}>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-amber-200 font-bold flex items-center gap-1.5 text-xs">
+              <CalendarIcon className="w-3.5 h-3.5 text-devotional-saffron" /> Select Telugu Panchangam Date
+            </label>
+            <span className="px-2 py-0.5 rounded-full bg-[#3d0d16] text-[#f5d77f] text-[10px] font-serif font-bold border border-[#f5d77f]/40">
+              తెలుగు క్యాలెండర్
+            </span>
+          </div>
 
-          {/* Trigger Input Field with Side Calendar Symbol */}
+          {/* Trigger Input Field with Side Calendar Symbol & Telugu Tithi preview */}
           <div
             onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-            className="w-full px-3.5 py-2 rounded-xl bg-stone-950 border border-amber-500/30 hover:border-amber-400 text-amber-200 font-mono font-bold flex items-center justify-between cursor-pointer transition-all shadow-inner group select-none"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-stone-950 border border-amber-500/30 hover:border-amber-400 text-amber-200 font-sans flex items-center justify-between cursor-pointer transition-all shadow-inner group select-none"
           >
-            <span className="text-amber-300 text-sm font-semibold tracking-wider">
-              {formattedDateDisplay}
-            </span>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="text-amber-300 text-sm font-semibold tracking-wider font-mono">
+                  {formattedDateDisplay}
+                </span>
+                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-400/40">
+                  {activeTelugu.vaaramTelugu}
+                </span>
+              </div>
+              <span className="text-[11px] text-[#f3cf7a] font-serif font-medium mt-0.5">
+                {activeTelugu.masam} • {activeTelugu.tithiFullTelugu}
+              </span>
+            </div>
+
             <button
               type="button"
-              className="p-1 rounded-lg bg-amber-500/10 text-amber-400 group-hover:bg-amber-400 group-hover:text-stone-950 transition-colors"
-              title="Open Side Panchangam Calendar"
+              className="p-2 rounded-xl bg-amber-500/10 text-amber-400 group-hover:bg-amber-400 group-hover:text-stone-950 transition-colors"
+              title="Open Telugu Panchangam Calendar"
             >
               <CalendarIcon className="w-4 h-4" />
             </button>
           </div>
 
-          {/* DYNAMIC PANCHANGAM CALENDAR POPOVER */}
+          {/* AUTHENTIC TELUGU PANCHANGAM CALENDAR POPOVER */}
           {isCalendarOpen && (
-            <div className="absolute right-0 lg:right-0 top-full mt-2 z-50 w-full sm:w-[360px] bg-[#12100e] border-2 border-devotional-gold/70 rounded-2xl p-4 shadow-2xl space-y-4 backdrop-blur-xl text-white font-sans animate-in fade-in zoom-in-95 duration-200">
-              {/* Popover Header */}
-              <div className="flex items-center justify-between border-b border-amber-500/20 pb-3">
-                <div className="flex items-center gap-2 text-amber-300 font-serif font-bold text-sm">
-                  <CalendarIcon className="w-4 h-4 text-devotional-saffron" />
-                  <span>Panchangam Calendar</span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 bg-stone-900 px-2 py-1 rounded-lg border border-amber-500/30 text-xs font-bold text-amber-200">
-                    <button
-                      onClick={handlePrevMonth}
-                      className="p-1 hover:text-amber-400 transition-colors"
-                      title="Previous Month"
-                    >
-                      <ChevronLeft className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="px-1 text-[11px]">
-                      {monthNames[viewMonth]} {viewYear}
-                    </span>
-                    <button
-                      onClick={handleNextMonth}
-                      className="p-1 hover:text-amber-400 transition-colors"
-                      title="Next Month"
-                    >
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
+            <div className="absolute right-0 top-full mt-2 z-50 w-full sm:w-[400px] bg-[#140e0c] border-2 border-devotional-gold/80 rounded-2xl p-4 shadow-2xl space-y-3.5 backdrop-blur-xl text-white font-sans animate-in fade-in zoom-in-95 duration-200">
+              
+              {/* Popover Header with Telugu Month & Gregorian Month */}
+              <div className="border-b border-amber-500/20 pb-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-amber-300 font-serif font-bold text-sm">
+                    <CalendarIcon className="w-4 h-4 text-devotional-saffron" />
+                    <span>తెలుగు పంచాంగం క్యాలెండర్</span>
                   </div>
 
                   <button
@@ -415,27 +307,56 @@ export default function PanchangamCalculator() {
                     <X className="w-4 h-4" />
                   </button>
                 </div>
+
+                {/* Month Navigator with Telugu Masam */}
+                <div className="flex items-center justify-between bg-stone-950/90 px-3 py-1.5 rounded-xl border border-amber-500/30">
+                  <button
+                    onClick={handlePrevMonth}
+                    className="p-1 hover:text-amber-400 text-stone-300 transition-colors"
+                    title="Previous Month"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  
+                  <div className="text-center">
+                    <span className="text-xs font-bold text-amber-300 block font-serif">
+                      {headerTeluguInfo.masam} • {headerTeluguInfo.samvatsaram}
+                    </span>
+                    <span className="text-[10px] text-stone-400 font-mono">
+                      {monthNames[viewMonth]} {viewYear}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={handleNextMonth}
+                    className="p-1 hover:text-amber-400 text-stone-300 transition-colors"
+                    title="Next Month"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
-              {/* Quick Action Date Pills Row */}
-              <div className="grid grid-cols-4 gap-1.5 text-[11px] font-bold">
+              {/* Quick Action Sacred Day Pills */}
+              <div className="grid grid-cols-5 gap-1 text-[10px] font-bold">
                 {[
-                  { label: 'Today', days: 0 },
-                  { label: 'Tomorrow', days: 1 },
-                  { label: '+2 Days', days: 2 },
-                  { label: '+3 Days', days: 3 },
+                  { label: 'నేడు (Today)', date: todayStr },
+                  { label: 'రేపు (Tomorrow)', date: getOffsetDate(1) },
+                  { label: '🌟 ఏకాదశి', date: quickSacredDates.ekadashiDate },
+                  { label: '🌕 పౌర్ణమి', date: quickSacredDates.purnimaDate },
+                  { label: '🌑 అమావాస్య', date: quickSacredDates.amavasyaDate },
                 ].map((pill) => {
-                  const targetDate = getOffsetDate(pill.days);
-                  const isSelected = selectedDate === targetDate;
+                  const isSelected = selectedDate === pill.date;
                   return (
                     <button
                       key={pill.label}
-                      onClick={() => handleSelectDate(targetDate)}
-                      className={`py-1.5 px-2 rounded-xl transition-all border text-center ${
+                      onClick={() => pill.date && handleSelectDate(pill.date)}
+                      className={`py-1.5 px-1 rounded-lg transition-all border text-center truncate ${
                         isSelected
-                          ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-bold border-amber-300 shadow-gold'
+                          ? 'bg-amber-400 text-stone-950 font-bold border-amber-200 shadow-gold'
                           : 'bg-stone-900/90 text-stone-300 hover:bg-amber-500/20 hover:text-amber-300 border-amber-500/20'
                       }`}
+                      title={pill.label}
                     >
                       {pill.label}
                     </button>
@@ -443,30 +364,35 @@ export default function PanchangamCalculator() {
                 })}
               </div>
 
-              {/* Day of Week Header */}
-              <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-amber-400 uppercase tracking-wider py-1 border-y border-stone-800">
-                <span>SUN</span>
-                <span>MON</span>
-                <span>TUE</span>
-                <span>WED</span>
-                <span>THU</span>
-                <span>FRI</span>
-                <span>SAT</span>
+              {/* Telugu & English Day of Week Header */}
+              <div className="grid grid-cols-7 gap-1 text-center py-1 border-y border-amber-500/20">
+                {TELUGU_VAARAMULU.map((v) => (
+                  <div key={v.english} className="flex flex-col items-center">
+                    <span className="text-[10px] font-bold text-amber-400 font-serif leading-none">
+                      {v.shortTelugu}
+                    </span>
+                    <span className="text-[8px] text-stone-400 uppercase tracking-tighter">
+                      {v.shortEnglish}
+                    </span>
+                  </div>
+                ))}
               </div>
 
-              {/* 7-Column Days Grid */}
-              <div className="grid grid-cols-7 gap-1 text-center text-xs">
+              {/* 7-Column Days Grid Showing Gregorian Day & Telugu Tithi */}
+              <div className="grid grid-cols-7 gap-1 text-center">
                 {calendarGrid.map((item, idx) => {
                   const isSelected = item.dateStr === selectedDate;
                   const isToday = item.dateStr === todayStr;
+                  const isSpecial = item.teluguData.isEkadashi || item.teluguData.isPurnima || item.teluguData.isAmavasya;
 
                   if (!item.isCurrentMonth) {
                     return (
                       <div
                         key={idx}
-                        className="py-2 rounded-xl text-stone-700 font-semibold select-none text-[11px]"
+                        className="py-1.5 rounded-lg text-stone-700 font-semibold select-none text-[10px] flex flex-col items-center opacity-40"
                       >
-                        {item.day}
+                        <span>{item.day}</span>
+                        <span className="text-[8px] truncate max-w-[40px]">{item.teluguData.tithiAbbreviation}</span>
                       </div>
                     );
                   }
@@ -475,27 +401,39 @@ export default function PanchangamCalculator() {
                     <button
                       key={idx}
                       onClick={() => handleSelectDate(item.dateStr)}
-                      className={`py-2 rounded-xl transition-all font-semibold flex flex-col items-center justify-center relative ${
+                      className={`py-1.5 px-0.5 rounded-xl transition-all font-semibold flex flex-col items-center justify-center relative min-h-[46px] border ${
                         isSelected
-                          ? 'bg-amber-400 text-stone-950 font-bold shadow-gold scale-105 border border-amber-200'
+                          ? 'bg-gradient-to-b from-amber-400 to-amber-500 text-stone-950 font-bold shadow-gold scale-105 border-white z-10'
                           : isToday
-                          ? 'bg-devotional-maroon text-amber-300 font-bold border border-amber-400/60 hover:bg-devotional-maroon/80'
-                          : 'bg-stone-900/60 text-stone-200 hover:bg-amber-500/20 hover:text-amber-300 border border-stone-800'
+                          ? 'bg-[#4a101b] text-[#f7d885] font-bold border-amber-400/70 hover:bg-[#5e1422]'
+                          : isSpecial
+                          ? 'bg-amber-950/40 text-amber-200 border-amber-500/40 hover:bg-amber-500/20'
+                          : 'bg-stone-900/70 text-stone-200 hover:bg-amber-500/20 hover:text-amber-300 border-stone-800'
                       }`}
                     >
-                      <span>{item.day}</span>
+                      <span className="text-xs leading-none font-bold">{item.day}</span>
+                      <span className={`text-[8px] mt-0.5 leading-tight truncate max-w-[46px] ${
+                        isSelected ? 'text-stone-950 font-bold' : isSpecial ? 'text-amber-300 font-bold' : 'text-stone-400'
+                      }`}>
+                        {item.teluguData.tithiAbbreviation}
+                      </span>
                       {isToday && !isSelected && (
-                        <span className="w-1 h-1 rounded-full bg-amber-400 mt-0.5 animate-ping" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-0.5 animate-pulse" />
                       )}
                     </button>
                   );
                 })}
               </div>
 
-              {/* Popover Footer */}
-              <div className="flex justify-between items-center pt-2 border-t border-amber-500/20 text-[11px]">
-                <span className="text-stone-400 font-bold">Selected Date:</span>
-                <span className="font-mono font-bold text-amber-300">{selectedDate}</span>
+              {/* Popover Footer with Full Telugu Date Summary */}
+              <div className="flex flex-col gap-1 pt-2 border-t border-amber-500/20 text-[11px] text-stone-300">
+                <div className="flex justify-between items-center">
+                  <span className="text-stone-400">ఎంచుకున్న తేదీ (Selected):</span>
+                  <span className="font-mono font-bold text-amber-300">{selectedDate} ({activeTelugu.vaaramTelugu})</span>
+                </div>
+                <div className="text-center font-serif text-[#ffe28a] text-[11px] font-semibold bg-stone-950/60 py-1 px-2 rounded-lg border border-amber-500/20">
+                  {activeTelugu.samvatsaram} • {activeTelugu.masam} • {activeTelugu.tithiFullTelugu}
+                </div>
               </div>
             </div>
           )}
@@ -503,84 +441,210 @@ export default function PanchangamCalculator() {
 
       </div>
 
-      {/* Special Observance Notice */}
-      {activeRecord.specialObservance && (
-        <div className="bg-gradient-to-r from-devotional-maroon via-amber-950 to-devotional-maroon p-3 rounded-xl border border-amber-400/50 flex items-center justify-between text-xs text-amber-200 font-semibold shadow-inner">
+      {/* GRAND TELUGU PANCHANGAM RIBBON (సంవత్సరం, ఆయనం, ఋతువు, మాసం, పక్షం, వారం) */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/70 via-[#2f0810]/80 to-amber-950/70 border border-amber-400/40 shadow-inner grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-center">
+        <div className="space-y-0.5 border-r border-amber-500/10 last:border-r-0">
+          <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider block">సంవత్సరం (Year)</span>
+          <p className="font-serif font-bold text-[#ffe28a] text-xs sm:text-sm">{activeTelugu.samvatsaram}</p>
+          <span className="text-[9px] text-stone-400 block">{activeTelugu.samvatsaramEnglish}</span>
+        </div>
+
+        <div className="space-y-0.5 border-r border-amber-500/10 last:border-r-0">
+          <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider block">ఆయనం (Solstice)</span>
+          <p className="font-serif font-bold text-[#ffe28a] text-xs sm:text-sm">{activeTelugu.ayanam}</p>
+          <span className="text-[9px] text-stone-400 block">{activeTelugu.ayanamEnglish}</span>
+        </div>
+
+        <div className="space-y-0.5 border-r border-amber-500/10 last:border-r-0">
+          <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider block">ఋతువు (Season)</span>
+          <p className="font-serif font-bold text-[#ffe28a] text-xs sm:text-sm">{activeTelugu.rutuvu}</p>
+          <span className="text-[9px] text-stone-400 block">{activeTelugu.rutuvuEnglish}</span>
+        </div>
+
+        <div className="space-y-0.5 border-r border-amber-500/10 last:border-r-0">
+          <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider block">మాసం (Month)</span>
+          <p className="font-serif font-bold text-[#ffe28a] text-xs sm:text-sm">{activeTelugu.masam}</p>
+          <span className="text-[9px] text-stone-400 block">{activeTelugu.masamEnglish}</span>
+        </div>
+
+        <div className="space-y-0.5 border-r border-amber-500/10 last:border-r-0">
+          <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider block">పక్షం (Fortnight)</span>
+          <p className="font-serif font-bold text-[#ffe28a] text-xs sm:text-sm">{activeTelugu.paksham}</p>
+          <span className="text-[9px] text-stone-400 block">{activeTelugu.pakshamEnglish}</span>
+        </div>
+
+        <div className="space-y-0.5">
+          <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider block">వారం (Weekday)</span>
+          <p className="font-serif font-bold text-[#ffe28a] text-xs sm:text-sm">{activeTelugu.vaaramTelugu}</p>
+          <span className="text-[9px] text-stone-400 block">{activeTelugu.vaaramEnglish}</span>
+        </div>
+      </div>
+
+      {/* Special Observance & Festival Notice */}
+      {activeTelugu.festivalOrVratam && (
+        <div className="bg-gradient-to-r from-devotional-maroon via-amber-950 to-devotional-maroon p-3.5 rounded-2xl border border-amber-400/50 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-200 font-semibold shadow-inner">
           <span className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-            {activeRecord.specialObservance}
+            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse shrink-0" />
+            <span className="font-serif text-amber-100 font-bold text-sm sm:text-base">
+              {activeTelugu.festivalOrVratam}
+            </span>
           </span>
-          <span className="text-[10px] text-amber-400 font-mono bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/30">
-            ASTRONOMICAL CALCULATION
+          <span className="text-[10px] text-amber-300 font-mono bg-amber-400/15 px-2.5 py-1 rounded-full border border-amber-400/30">
+            తెలుగు పంచాంగ గణన
           </span>
         </div>
       )}
 
-      {/* Panchangam Astronomical Grid */}
+      {/* 4 Primary Limbs of Panchangam (తిథి, నక్షత్రం, యోగం, కరణం) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 relative z-10 text-xs">
-        <div className="bg-stone-900/80 p-4 rounded-2xl border border-amber-400/30 space-y-1 hover:border-amber-400 transition-all">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400/90 block">Tithi (తిథి)</span>
-          <p className="font-serif font-bold text-stone-100 text-sm">{activeRecord.tithi}</p>
+        <div className="bg-stone-900/80 p-4 rounded-2xl border border-amber-400/30 space-y-1.5 hover:border-amber-400 transition-all">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400/90 block">
+            Tithi (తిథి)
+          </span>
+          <p className="font-serif font-bold text-amber-200 text-sm sm:text-base">{activeTelugu.tithiFullTelugu}</p>
+          <p className="text-[11px] text-stone-300">{activeTelugu.tithiFullEnglish}</p>
         </div>
 
-        <div className="bg-stone-900/80 p-4 rounded-2xl border border-amber-400/30 space-y-1 hover:border-amber-400 transition-all">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400/90 block">Nakshatram (నక్షత్రం)</span>
-          <p className="font-serif font-bold text-stone-100 text-sm">{activeRecord.nakshatram}</p>
+        <div className="bg-stone-900/80 p-4 rounded-2xl border border-amber-400/30 space-y-1.5 hover:border-amber-400 transition-all">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400/90 block">
+            Nakshatram (నక్షత్రం)
+          </span>
+          <p className="font-serif font-bold text-amber-200 text-sm sm:text-base">{activeTelugu.nakshatramTelugu}</p>
+          <p className="text-[11px] text-stone-300">{activeTelugu.nakshatramEnglish}</p>
         </div>
 
-        <div className="bg-stone-900/80 p-4 rounded-2xl border border-amber-400/30 space-y-1 hover:border-amber-400 transition-all">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400/90 block">Yogam (యోగం)</span>
-          <p className="font-serif font-bold text-stone-100 text-sm">{activeRecord.yogam}</p>
+        <div className="bg-stone-900/80 p-4 rounded-2xl border border-amber-400/30 space-y-1.5 hover:border-amber-400 transition-all">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400/90 block">
+            Yogam (యోగం)
+          </span>
+          <p className="font-serif font-bold text-amber-200 text-sm sm:text-base">{activeTelugu.yogamTelugu}</p>
+          <p className="text-[11px] text-stone-300">{activeTelugu.yogamEnglish}</p>
         </div>
 
-        <div className="bg-stone-900/80 p-4 rounded-2xl border border-amber-400/30 space-y-1 hover:border-amber-400 transition-all">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400/90 block">Karanam (కరణం)</span>
-          <p className="font-serif font-bold text-stone-100 text-sm">{activeRecord.karanam}</p>
+        <div className="bg-stone-900/80 p-4 rounded-2xl border border-amber-400/30 space-y-1.5 hover:border-amber-400 transition-all">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400/90 block">
+            Karanam (కరణం)
+          </span>
+          <p className="font-serif font-bold text-amber-200 text-sm sm:text-base">{activeTelugu.karanamTelugu}</p>
+          <p className="text-[11px] text-stone-300">{activeTelugu.karanamEnglish}</p>
         </div>
       </div>
 
-      {/* Sun Timings & Auspicious Muhurtham Grid */}
+      {/* Auspicious Muhurthams & Sun Timings vs Inauspicious Periods */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-10 text-xs">
-        <div className="bg-stone-900/90 p-5 rounded-2xl border border-emerald-500/40 space-y-3">
-          <h4 className="font-serif font-bold text-emerald-400 flex items-center gap-1.5 text-sm">
-            <Sun className="w-4 h-4 text-emerald-400" /> Sunrise, Sunset & Abhijit Muhurtham
+        
+        {/* AUSPICIOUS TIMINGS (శుభ సమయాలు) */}
+        <div className="bg-stone-900/90 p-5 rounded-2xl border border-emerald-500/40 space-y-3.5">
+          <h4 className="font-serif font-bold text-emerald-400 flex items-center justify-between text-sm">
+            <span className="flex items-center gap-1.5">
+              <Sun className="w-4 h-4 text-emerald-400" /> శుభ సమయాలు (Auspicious Timings)
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-sans border border-emerald-500/30">
+              అమృత ఘడియలు
+            </span>
           </h4>
+
           <div className="grid grid-cols-2 gap-2 text-stone-300">
             <div>
-              <span className="text-[10px] text-stone-400 block font-semibold">SUNRISE (సూర్యోదయం)</span>
-              <p className="font-mono font-bold text-emerald-300">{activeRecord.sunrise}</p>
+              <span className="text-[10px] text-stone-400 block font-semibold">సూర్యోదయం (SUNRISE)</span>
+              <p className="font-mono font-bold text-emerald-300 text-sm">{activeTelugu.sunrise}</p>
             </div>
             <div>
-              <span className="text-[10px] text-stone-400 block font-semibold">SUNSET (సూర్యాస్తమయం)</span>
-              <p className="font-mono font-bold text-amber-300">{activeRecord.sunset}</p>
+              <span className="text-[10px] text-stone-400 block font-semibold">సూర్యాస్తమయం (SUNSET)</span>
+              <p className="font-mono font-bold text-amber-300 text-sm">{activeTelugu.sunset}</p>
             </div>
           </div>
-          <div className="pt-2 border-t border-stone-800">
-            <span className="text-[10px] text-emerald-400 font-bold block">ABHIJIT MUHURTHAM (అభిజిత్ ముహూర్తం)</span>
-            <p className="font-serif font-bold text-amber-300 text-sm">{activeRecord.abhijitMuhurtham}</p>
+
+          <div className="space-y-2 pt-2 border-t border-stone-800">
+            <div>
+              <span className="text-[10px] text-emerald-400 font-bold block">అభిజిత్ ముహూర్తం (ABHIJIT MUHURTHAM)</span>
+              <p className="font-serif font-bold text-amber-300 text-sm">{activeTelugu.abhijitMuhurtham}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div>
+                <span className="text-[10px] text-stone-400 font-semibold block">అమృత కాలం (AMRUTHA KALAM)</span>
+                <p className="font-mono font-bold text-emerald-300">{activeTelugu.amruthaKalam}</p>
+              </div>
+              <div>
+                <span className="text-[10px] text-stone-400 font-semibold block">బ్రహ్మ ముహూర్తం (BRAHMA MUHURTHAM)</span>
+                <p className="font-mono text-amber-200">{activeTelugu.brahmaMuhurtham}</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="bg-stone-900/90 p-5 rounded-2xl border border-rose-500/40 space-y-3">
-          <h4 className="font-serif font-bold text-rose-400 flex items-center gap-1.5 text-sm">
-            <Clock className="w-4 h-4 text-rose-400" /> Rahukalam & Inauspicious Time Bands
+        {/* INAUSPICIOUS TIMINGS & VARJYAM (అశుభ సమయాలు & వర్జ్యం) */}
+        <div className="bg-stone-900/90 p-5 rounded-2xl border border-rose-500/40 space-y-3.5">
+          <h4 className="font-serif font-bold text-rose-400 flex items-center justify-between text-sm">
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-rose-400" /> అశుభ సమయాలు (Inauspicious Bands)
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-rose-950 text-rose-300 font-sans border border-rose-500/30">
+              వర్జ్య కాలాలు
+            </span>
           </h4>
+
           <div className="grid grid-cols-3 gap-2 text-stone-300 text-[11px]">
             <div>
-              <span className="text-[9px] text-stone-400 block font-semibold">RAHUKALAM</span>
-              <p className="font-mono font-bold text-rose-300">{activeRecord.rahukalam}</p>
+              <span className="text-[9px] text-stone-400 block font-semibold">రాహుకాలం</span>
+              <p className="font-mono font-bold text-rose-300">{activeTelugu.rahukalam}</p>
             </div>
             <div>
-              <span className="text-[9px] text-stone-400 block font-semibold">YAMAGANDAM</span>
-              <p className="font-mono text-stone-300">{activeRecord.yamagandam}</p>
+              <span className="text-[9px] text-stone-400 block font-semibold">యమగండం</span>
+              <p className="font-mono text-stone-300">{activeTelugu.yamagandam}</p>
             </div>
             <div>
-              <span className="text-[9px] text-stone-400 block font-semibold">GULIKAKALAM</span>
-              <p className="font-mono text-stone-300">{activeRecord.gulikakalam}</p>
+              <span className="text-[9px] text-stone-400 block font-semibold">గుళికాకాలం</span>
+              <p className="font-mono text-stone-300">{activeTelugu.gulikakalam}</p>
             </div>
           </div>
-          <div className="pt-2 border-t border-stone-800 text-[10px] text-stone-400 italic">
-            * Avoid commencing new business ventures during Rahukalam time window.
+
+          <div className="space-y-2 pt-2 border-t border-stone-800 text-[11px]">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className="text-[10px] text-rose-300 font-semibold block">దుర్ముహూర్తం (DURMUHURTHAM)</span>
+                <p className="font-mono text-rose-200">{activeTelugu.durmuhurtham}</p>
+              </div>
+              <div>
+                <span className="text-[10px] text-rose-300 font-semibold block">వర్జ్యం (VARJYAM)</span>
+                <p className="font-mono text-rose-200">{activeTelugu.varjyam}</p>
+              </div>
+            </div>
+            <div className="text-[10px] text-stone-400 italic pt-1">
+              * ముఖ్యమైన మరియు నూతన కార్యాలను రాహుకాలం, దుర్ముహూర్తం సమయాల్లో ప్రారంభించరాదు.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* TEMPLE POOJA & SEVA TIMINGS */}
+      <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-400/20 space-y-2 text-xs">
+        <span className="text-amber-300 font-serif font-bold flex items-center gap-1.5 text-sm">
+          <Flame className="w-4 h-4 text-devotional-saffron" />
+          శ్రీ వాసవి కన్యకా పరమేశ్వరి అమ్మవారి నిత్యార్చన & ఆరాధనా సమయాలు
+        </span>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-stone-300">
+          <div className="p-2.5 rounded-xl bg-stone-900/60 border border-stone-800 flex items-center gap-2">
+            <CheckCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <div>
+              <span className="text-amber-200 font-bold block text-[11px]">07:30 AM - 09:00 AM</span>
+              <span className="text-[10px] text-stone-400">వాసవి నిత్య కుంకుమార్చన & అభిషేకం</span>
+            </div>
+          </div>
+          <div className="p-2.5 rounded-xl bg-stone-900/60 border border-stone-800 flex items-center gap-2">
+            <CheckCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <div>
+              <span className="text-amber-200 font-bold block text-[11px]">11:45 AM - 12:30 PM</span>
+              <span className="text-[10px] text-stone-400">మహా నైవేద్యం & నిత్యాన్నదాన సేవ</span>
+            </div>
+          </div>
+          <div className="p-2.5 rounded-xl bg-stone-900/60 border border-stone-800 flex items-center gap-2">
+            <CheckCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <div>
+              <span className="text-amber-200 font-bold block text-[11px]">06:30 PM - 07:30 PM</span>
+              <span className="text-[10px] text-stone-400">సహస్రనామార్చన & మహామంగళ హారతి</span>
+            </div>
           </div>
         </div>
       </div>

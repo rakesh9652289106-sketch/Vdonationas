@@ -11,13 +11,9 @@ import {
   Sparkles,
   CheckCircle2,
   ShieldCheck,
-  BellRing,
-  Sun,
   Flame,
   Award,
   ArrowRight,
-  Volume2,
-  VolumeX,
   Key,
   X,
   AlertCircle,
@@ -100,9 +96,6 @@ export default function SacredDevoteeLoginPortal({
     }
   }, []);
 
-  // Visual Effects State
-  const [isBellRinging, setIsBellRinging] = useState(false);
-  const [isChantPlaying, setIsChantPlaying] = useState(false);
 
   // Status & Feedback
   const [loading, setLoading] = useState(false);
@@ -112,37 +105,6 @@ export default function SacredDevoteeLoginPortal({
     title: '',
     desc: '',
   });
-
-  // Ring Temple Bell Audio & Vibration with Visual Ripples
-  const handleRingBell = () => {
-    setIsBellRinging(true);
-    try {
-      templeAudio.playTempleBell(0.85);
-    } catch (e) {}
-
-    setTimeout(() => {
-      setIsBellRinging(false);
-    }, 1600);
-
-    showAlert({
-      type: 'info',
-      title: 'Sacred Temple Bell Resonating',
-      message: '🔔 Om Sri Vasavi Kanyaka Parameswaryai Namaha! May divine blessings of Penugonda Devasthanam illuminate your home with peace and prosperity.',
-    });
-  };
-
-  // Toggle Sacred Mantra / Chime
-  const handleToggleMantra = () => {
-    if (!isChantPlaying) {
-      try {
-        templeAudio.playFlowerChime(0.5);
-        setTimeout(() => templeAudio.playTempleBell(0.6), 350);
-      } catch (e) {}
-      setIsChantPlaying(true);
-    } else {
-      setIsChantPlaying(false);
-    }
-  };
 
   // Generate a Sacred Strong Password with MORE NUMBERS THAN WORDS and high entropy
   const handleGenerateStrongPassword = () => {
@@ -815,14 +777,6 @@ export default function SacredDevoteeLoginPortal({
         aria-hidden="true" 
       />
 
-      {/* Bell Ripple Effect Overlay */}
-      {isBellRinging && (
-        <div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center">
-          <div className="w-[300px] h-[300px] rounded-full border-2 border-[#f7d885] animate-ping opacity-75" />
-          <div className="w-[500px] h-[500px] rounded-full border border-[#f5b041] animate-ping opacity-50" style={{ animationDelay: '150ms' }} />
-          <div className="w-[700px] h-[700px] rounded-full border border-[#f39c12] animate-ping opacity-30" style={{ animationDelay: '300ms' }} />
-        </div>
-      )}
 
       {/* ----------------------------------------------------------------------
           2. MAIN CONTAINER: SPLIT SCREEN DEVOTEE SANCTUARY
@@ -846,9 +800,6 @@ export default function SacredDevoteeLoginPortal({
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#fff7de] via-[#f7d885] to-[#d4af37] leading-[1.18] tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.8)]">
                 Sri Vasavi Kanyaka Parameswari Matha
               </h1>
-              <p className="text-sm sm:text-base font-serif text-[#f3cf7a] italic font-medium">
-                Penugonda Moola Sthalam • Arya Vysya 102 Gothirams Heritage Portal
-              </p>
             </div>
 
             {/* ----------------------------------------------------------------
@@ -880,13 +831,13 @@ export default function SacredDevoteeLoginPortal({
                     <img
                       src="/images/vasavi_goddess_hd.png"
                       alt="Sri Vasavi Kanyaka Parameswari Matha"
-                      className="w-full h-full object-cover object-top scale-105 group-hover:scale-115 transition-transform duration-700"
+                      className="w-full h-full object-cover object-center scale-100 group-hover:scale-105 transition-transform duration-700"
                       onError={(e) => {
                         (e.currentTarget as HTMLImageElement).src = '/welcome/welcome-mobile.jpg';
                       }}
                     />
-                    {/* Golden Atmospheric Vignette */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#160407] via-transparent to-[#d4af37]/15 opacity-70" />
+                    {/* Subtle Golden Sheen Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-[#d4af37]/10 pointer-events-none" />
                   </div>
 
                   {/* Floating Sanctum Location Crest */}
@@ -908,37 +859,6 @@ export default function SacredDevoteeLoginPortal({
               <p className="text-[12px] text-[#e8cda2]/90 text-center leading-relaxed font-sans">
                 Official digital sanctuary for Darshan, 80G Tax-Exempt Sevas, Swarna Hundi, and Arya Vysya 102 Gothirams Heritage.
               </p>
-            </div>
-
-            {/* Interactive Panchangam & Ring Temple Bell Ticker */}
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-1">
-              <div className="px-4 py-2 rounded-full bg-[#3d0d16]/90 border border-[#f5d77f]/40 text-xs font-serif text-[#ffe28a] flex items-center gap-2 shadow-sm">
-                <Sun className="w-3.5 h-3.5 text-[#f6b43d]" />
-                <span>Today: Shravana Masa • Ekadashi Tithi</span>
-              </div>
-              
-              <button
-                type="button"
-                onClick={handleRingBell}
-                className="px-4 py-2 rounded-full bg-gradient-to-r from-[#a12338] via-[#85192b] to-[#63111e] hover:from-[#ba2840] hover:to-[#781525] border-2 border-[#f5d77f]/70 text-xs font-serif font-bold text-[#fff3cb] flex items-center gap-2 shadow-[0_4px_15px_rgba(161,35,56,0.5)] hover:shadow-[0_6px_20px_rgba(245,215,127,0.4)] hover:scale-105 active:scale-95 transition-all cursor-pointer"
-              >
-                <BellRing className={`w-4 h-4 text-[#ffe28a] ${isBellRinging ? 'animate-bounce' : ''}`} />
-                <span>Ring Temple Bell</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleToggleMantra}
-                className={`px-3.5 py-2 rounded-full border text-xs font-serif flex items-center gap-1.5 transition-all cursor-pointer ${
-                  isChantPlaying
-                    ? 'bg-[#d4af37] text-[#240c02] border-[#ffe89e] font-bold shadow-gold'
-                    : 'bg-[#2b080f]/80 text-[#f5d77f] border-[#d4af37]/30 hover:bg-[#3d0d16]'
-                }`}
-                title="Play Sacred Temple Chimes"
-              >
-                {isChantPlaying ? <Volume2 className="w-3.5 h-3.5 animate-pulse" /> : <VolumeX className="w-3.5 h-3.5" />}
-                <span>{isChantPlaying ? 'Sacred Chime Active' : 'Temple Chime'}</span>
-              </button>
             </div>
 
             {/* Three Pillars of Trust */}

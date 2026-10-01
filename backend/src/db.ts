@@ -23,6 +23,12 @@ export const pool = new Pool({
   max: 10,
 });
 
+// Prevent unhandled error events on idle clients from crashing the Node process
+pool.on('error', (err) => {
+  console.warn('⚠️ Unexpected idle PostgreSQL client error (handled gracefully):', err.message);
+});
+
+
 // Fallback in-memory cache for graceful dev offline operation
 export const memoryStore = {
   temples: [
