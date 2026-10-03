@@ -17,7 +17,12 @@ import {
   addInitiativeUpdate,
   INITIATIVE_TYPE_LABELS,
   STAGE_STEPS,
+  toLocalDatetimeInputString,
+  fromLocalDatetimeInputString,
+  getUpcomingBrahmaMuhurthamIso,
+  validateCountdownTiming,
 } from '@/lib/initiatives-data';
+import InitiativePhotoPicker from '@/components/initiatives/InitiativePhotoPicker';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
 import {
   ArrowLeft,
@@ -37,6 +42,10 @@ import {
   X,
   Save,
   AlertTriangle,
+  Image as ImageIcon,
+  Calendar,
+  Bell,
+  Radio,
 } from 'lucide-react';
 
 export default function AdminInitiativeManagePage() {
@@ -61,7 +70,14 @@ export default function AdminInitiativeManagePage() {
     state: '',
     is_urgent: false,
     priority: 'NORMAL' as InitiativePriority,
+    status: 'PUBLISHED' as InitiativeStatus,
+    scheduled_publish_at: '',
+    muhurtham_name: '',
+    is_teaser_enabled: true,
     teaser_start_at: '',
+    broadcast_on_publish: true,
+    cover_image: '',
+    gallery_images: [] as string[],
   });
 
   // Expense form state
@@ -216,6 +232,39 @@ export default function AdminInitiativeManagePage() {
     await loadData();
   };
 
+  const applyEditMuhurthamPreset = (presetName: string, hour: number, minute: number, dayOffset = 1) => {
+    const d = new Date();
+    d.setDate(d.getDate() + dayOffset);
+    d.setHours(hour, minute, 0, 0);
+    setEditForm((prev) => ({
+      ...prev,
+      status: 'SCHEDULED',
+      scheduled_publish_at: toLocalDatetimeInputString(d),
+      muhurtham_name: presetName,
+    }));
+  };
+
+  const applyCountdownPreset = (hoursBefore: number) => {
+    if (!editForm.scheduled_publish_at) {
+      showAlert({
+        type: 'info',
+        title: 'Release Date Required',
+        message: 'Please choose the releasing date & time before setting the countdown start timing.',
+      });
+      return;
+    }
+    const relDate = new Date(editForm.scheduled_publish_at);
+    if (isNaN(relDate.getTime())) return;
+    // User Rule: Greater than 24 hours and less than 10 days (24h to 240h)
+    const clampedHours = Math.min(Math.max(hoursBefore, 24.5), 239);
+    const countdownTime = new Date(relDate.getTime() - clampedHours * 60 * 60 * 1000);
+    setEditForm((prev) => ({
+      ...prev,
+      is_teaser_enabled: true,
+      teaser_start_at: toLocalDatetimeInputString(countdownTime),
+    }));
+  };
+
   const handleOpenEditModal = () => {
     if (!initiative) return;
     setEditForm({
@@ -228,7 +277,14 @@ export default function AdminInitiativeManagePage() {
       state: initiative.state,
       is_urgent: initiative.is_urgent,
       priority: initiative.priority || 'NORMAL',
-      teaser_start_at: initiative.teaser_start_at || '',
+      status: initiative.status,
+      scheduled_publish_at: toLocalDatetimeInputString(initiative.scheduled_publish_at),
+      muhurtham_name: initiative.muhurtham_name || 'Brahma Muhurtham Sacred Launch',
+      is_teaser_enabled: initiative.is_teaser_enabled !== false,
+      teaser_start_at: toLocalDatetimeInputString(initiative.teaser_start_at),
+      broadcast_on_publish: initiative.broadcast_on_publish !== false,
+      cover_image: initiative.cover_image || '',
+      gallery_images: initiative.gallery_images || [],
     });
     setShowEditModal(true);
   };
@@ -237,9 +293,41 @@ export default function AdminInitiativeManagePage() {
     e.preventDefault();
     if (!initiative) return;
 
+    if (editForm.status === 'SCHEDULED' && !editForm.scheduled_publish_at) {
+      showAlert({
+        type: 'warning',
+        title: 'Release Date Required',
+        message: 'Please choose an auspicious release date & time (Muhurtham) for this scheduled initiative.',
+      });
+      return;
+    }
+
+    // User Rule: Countdown time must be greater than 24 hours and less than 10 days before releasing date & time
+    if (editForm.status === 'SCHEDULED' && editForm.is_teaser_enabled && editForm.teaser_start_at.trim()) {
+      const scheduledIso = fromLocalDatetimeInputString(editForm.scheduled_publish_at);
+      const teaserStartIso = fromLocalDatetimeInputString(editForm.teaser_start_at);
+      const val = validateCountdownTiming(scheduledIso, teaserStartIso);
+      if (!val.isValid) {
+        showAlert({
+          type: 'warning',
+          title: 'Invalid Countdown Timing',
+          message: val.error || 'Countdown time must be greater than 24 hours and less than 10 days before the release date and time.',
+        });
+        return;
+      }
+    }
+
+    const scheduledIso = editForm.scheduled_publish_at.trim()
+      ? fromLocalDatetimeInputString(editForm.scheduled_publish_at)
+      : undefined;
+
+    const teaserStartIso = editForm.teaser_start_at.trim()
+      ? fromLocalDatetimeInputString(editForm.teaser_start_at)
+      : undefined;
+
     const confirmed = await confirmAction({
       title: 'Save Initiative Modifications?',
-      message: `Apply updated parameters (Urgent: ${editForm.is_urgent ? 'YES' : 'NO'}, Priority: ${editForm.priority}, Budget: ₹${Number(editForm.target_amount).toLocaleString('en-IN')}) for "${editForm.title}"? Changes take effect immediately across devotee feeds.`,
+      message: `Apply updated parameters (Status: ${editForm.status}, Urgent: ${editForm.is_urgent ? 'YES' : 'NO'}, Priority: ${editForm.priority}, Budget: ₹${Number(editForm.target_amount).toLocaleString('en-IN')}${editForm.status === 'SCHEDULED' ? `, Launch: ${editForm.scheduled_publish_at}` : ''}) for "${editForm.title}"? Changes take effect immediately.`,
       confirmText: 'Yes, Save Changes',
       variant: 'change',
     });
@@ -256,7 +344,14 @@ export default function AdminInitiativeManagePage() {
       state: editForm.state,
       is_urgent: editForm.is_urgent,
       priority: editForm.priority,
-      teaser_start_at: editForm.teaser_start_at.trim() ? editForm.teaser_start_at : undefined,
+      status: editForm.status,
+      scheduled_publish_at: editForm.status === 'SCHEDULED' ? scheduledIso : (scheduledIso || undefined),
+      muhurtham_name: editForm.muhurtham_name.trim() || undefined,
+      is_teaser_enabled: editForm.is_teaser_enabled,
+      teaser_start_at: teaserStartIso,
+      broadcast_on_publish: editForm.broadcast_on_publish,
+      cover_image: editForm.cover_image,
+      gallery_images: editForm.gallery_images,
     });
 
     setShowEditModal(false);
@@ -649,6 +744,52 @@ export default function AdminInitiativeManagePage() {
               </div>
             </div>
 
+            {/* Visual Cover Photo & Media Card */}
+            <div className="relative rounded-2xl overflow-hidden border border-stone-800 bg-stone-900/60 shadow-lg">
+              <div className="relative h-56 sm:h-64 w-full overflow-hidden">
+                <img
+                  src={initiative.cover_image || 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=1200&q=80'}
+                  alt={initiative.title}
+                  className="w-full h-full object-cover object-center"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/40 to-transparent" />
+
+                <div className="absolute top-4 right-4 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleOpenEditModal}
+                    className="px-3.5 py-2 rounded-xl bg-black/70 hover:bg-black/90 text-amber-300 border border-amber-400/50 font-bold text-xs flex items-center gap-1.5 shadow-lg backdrop-blur-sm transition-all cursor-pointer"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" /> Change Photo / Browse Media
+                  </button>
+                </div>
+
+                <div className="absolute bottom-4 left-4 right-4 flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+                  <div>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                      Primary Cover Photo
+                    </span>
+                    <h3 className="font-serif font-bold text-base sm:text-lg text-white mt-1">
+                      {initiative.title}
+                    </h3>
+                  </div>
+                  {initiative.gallery_images && initiative.gallery_images.length > 0 && (
+                    <div className="flex items-center gap-1.5 bg-stone-950/80 p-1.5 rounded-xl border border-stone-800 backdrop-blur-xs">
+                      <span className="text-[10px] font-bold text-stone-400 px-1">Gallery:</span>
+                      {initiative.gallery_images.slice(0, 3).map((img, i) => (
+                        <img key={i} src={img} alt="Gallery" className="w-8 h-8 rounded-lg object-cover border border-stone-700" />
+                      ))}
+                      {initiative.gallery_images.length > 3 && (
+                        <span className="text-[10px] font-mono font-bold text-amber-300 px-1">
+                          +{initiative.gallery_images.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <h4 className="font-serif font-bold text-sm text-stone-200">Description</h4>
               <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-line">{initiative.description}</p>
@@ -899,7 +1040,7 @@ export default function AdminInitiativeManagePage() {
       {/* Edit Initiative Details & Urgent Modal */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-          <div className="w-full max-w-xl bg-stone-950 p-6 sm:p-7 rounded-3xl border-2 border-devotional-gold/60 shadow-2xl space-y-5 text-xs text-stone-200 my-8">
+          <div className="w-full max-w-3xl max-h-[92vh] overflow-y-auto bg-stone-950 p-6 sm:p-7 rounded-3xl border-2 border-devotional-gold/60 shadow-2xl space-y-5 text-xs text-stone-200 my-8 scrollbar-thin">
             <div className="flex items-center justify-between border-b border-stone-800 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center border border-amber-500/30">
@@ -986,35 +1127,288 @@ export default function AdminInitiativeManagePage() {
                 </div>
               </div>
 
-              {/* Optional Countdown Display Start Time if SCHEDULED */}
-              {initiative.status === 'SCHEDULED' && (
-                <div className="p-3.5 rounded-2xl bg-stone-900 border border-amber-500/40 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-bold text-amber-300 uppercase flex items-center gap-1.5">
-                      <Clock className="w-3 h-3 text-devotional-saffron" />
-                      Countdown Display Start Time (Optional)
-                    </label>
-                    {editForm.teaser_start_at && (
+              {/* AUSPICIOUS RELEASE & SCHEDULING PROTOCOL */}
+              <div className="p-4 rounded-2xl bg-stone-900/90 border border-amber-500/40 space-y-3.5 shadow-lg">
+                <div className="flex items-center justify-between border-b border-stone-800 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-devotional-gold" />
+                    <span className="font-serif font-bold text-xs text-amber-200">
+                      Release Protocol & Auspicious Timing (Muhurtham)
+                    </span>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                    editForm.status === 'PUBLISHED'
+                      ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                      : editForm.status === 'SCHEDULED'
+                      ? 'bg-amber-950 text-amber-300 border border-amber-600'
+                      : editForm.status === 'PAUSED'
+                      ? 'bg-amber-900/60 text-amber-400 border border-amber-800'
+                      : 'bg-stone-800 text-stone-300'
+                  }`}>
+                    {editForm.status}
+                  </span>
+                </div>
+
+                {/* Status Switcher */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-stone-400 uppercase">Initiative Status</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {(['PUBLISHED', 'SCHEDULED', 'PAUSED', 'DRAFT'] as InitiativeStatus[]).map((st) => (
                       <button
                         type="button"
-                        onClick={() => setEditForm((prev) => ({ ...prev, teaser_start_at: '' }))}
-                        className="text-[9px] text-amber-400 hover:text-red-400 font-bold underline"
+                        key={st}
+                        onClick={() => {
+                          setEditForm((prev) => {
+                            let nextSched = prev.scheduled_publish_at;
+                            if (st === 'SCHEDULED' && !nextSched) {
+                              const d = new Date();
+                              d.setDate(d.getDate() + 1);
+                              d.setHours(4, 30, 0, 0);
+                              nextSched = toLocalDatetimeInputString(d);
+                            }
+                            return { ...prev, status: st, scheduled_publish_at: nextSched };
+                          });
+                        }}
+                        className={`py-2 px-2.5 rounded-xl border text-center font-bold text-[11px] transition-all ${
+                          editForm.status === st
+                            ? st === 'PUBLISHED'
+                              ? 'bg-emerald-700 text-white border-emerald-500 shadow-md'
+                              : st === 'SCHEDULED'
+                              ? 'bg-amber-600 text-white border-amber-400 shadow-md ring-1 ring-amber-400'
+                              : st === 'PAUSED'
+                              ? 'bg-amber-700 text-white border-amber-600'
+                              : 'bg-stone-700 text-white border-stone-600'
+                            : 'bg-stone-950 border-stone-800 text-stone-400 hover:text-stone-200'
+                        }`}
                       >
-                        Clear (Show Immediately)
+                        {st === 'PUBLISHED' ? '🚀 Published' : st === 'SCHEDULED' ? '⏰ Scheduled' : st === 'PAUSED' ? '⏸️ Paused' : '📝 Draft'}
                       </button>
-                    )}
+                    ))}
                   </div>
-                  <input
-                    type="datetime-local"
-                    value={editForm.teaser_start_at}
-                    onChange={(e) => setEditForm((prev) => ({ ...prev, teaser_start_at: e.target.value }))}
-                    className="w-full p-2.5 rounded-xl bg-stone-950 border border-stone-800 text-stone-100 text-xs focus:border-amber-400 outline-none font-mono"
-                  />
-                  <p className="text-[10px] text-stone-400">
-                    Devotees will only see the countdown clock in their portal starting from this timestamp. If cleared, countdown is visible immediately upon scheduling.
-                  </p>
                 </div>
-              )}
+
+                {/* Scheduling Parameters (Active when SCHEDULED or when setting a schedule) */}
+                {editForm.status === 'SCHEDULED' && (
+                  <div className="space-y-3 pt-2 border-t border-stone-800/80">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-amber-300 uppercase flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-devotional-gold" />
+                          Auspicious Release Date & Time (IST)
+                        </label>
+                        <span className="text-[10px] text-amber-400/80 font-mono">
+                          Local / IST Timezone
+                        </span>
+                      </div>
+                      <input
+                        type="datetime-local"
+                        required={editForm.status === 'SCHEDULED'}
+                        value={editForm.scheduled_publish_at}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, scheduled_publish_at: e.target.value }))}
+                        className="w-full p-2.5 rounded-xl bg-stone-950 border border-amber-500/50 text-amber-100 text-xs focus:border-amber-400 outline-none font-mono shadow-inner"
+                      />
+                    </div>
+
+                    {/* Quick 1-Tap Muhurtham Presets */}
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-stone-400 uppercase flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-amber-400" />
+                        Quick Auspicious Presets
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => applyEditMuhurthamPreset('Brahma Muhurtham Sacred Launch (04:30 AM)', 4, 30, 1)}
+                          className="px-2 py-1 rounded-lg bg-stone-950 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                        >
+                          🌅 Tomorrow Brahma Muhurtham (04:30 AM)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyEditMuhurthamPreset('Vijaya Muhurtham Auspicious Release (02:15 PM)', 14, 15, 1)}
+                          className="px-2 py-1 rounded-lg bg-stone-950 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                        >
+                          ✨ Tomorrow Vijaya Muhurtham (02:15 PM)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyEditMuhurthamPreset('Pradosham Sandhya Muhurtham (05:45 PM)', 17, 45, 1)}
+                          className="px-2 py-1 rounded-lg bg-stone-950 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                        >
+                          🕉️ Tomorrow Pradosham (05:45 PM)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyEditMuhurthamPreset('Sacred Muhurtham Consecration (04:30 AM)', 4, 30, 2)}
+                          className="px-2 py-1 rounded-lg bg-stone-950 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                        >
+                          📅 In 2 Days (04:30 AM)
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Muhurtham Label / Occasion */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-stone-400 uppercase">
+                        Muhurtham Sacred Title / Occasion
+                      </label>
+                      <input
+                        type="text"
+                        value={editForm.muhurtham_name}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, muhurtham_name: e.target.value }))}
+                        placeholder="e.g. Brahma Muhurtham Sacred Launch, Vijaya Dasami Muhurtham"
+                        className="w-full p-2.5 rounded-xl bg-stone-950 border border-stone-800 text-stone-100 text-xs focus:border-amber-400 outline-none"
+                      />
+                    </div>
+
+                    {/* Devotee Pre-launch Countdown Clock Controller */}
+                    <div className="p-3.5 rounded-xl bg-stone-950 border border-amber-500/30 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-amber-300 flex items-center gap-1.5 cursor-pointer uppercase">
+                          <input
+                            type="checkbox"
+                            checked={editForm.is_teaser_enabled}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, is_teaser_enabled: e.target.checked }))}
+                            className="rounded border-stone-700 text-amber-500 focus:ring-amber-500"
+                          />
+                          Enable Live Countdown Clock for Devotees
+                        </label>
+                        {editForm.teaser_start_at && (
+                          <button
+                            type="button"
+                            onClick={() => setEditForm((prev) => ({ ...prev, teaser_start_at: '' }))}
+                            className="text-[9px] text-amber-400 hover:text-red-400 font-bold underline"
+                          >
+                            Clear (Show from default 7 days before)
+                          </button>
+                        )}
+                      </div>
+
+                      {editForm.is_teaser_enabled && (() => {
+                        const scheduledIso = editForm.scheduled_publish_at.trim()
+                          ? fromLocalDatetimeInputString(editForm.scheduled_publish_at)
+                          : undefined;
+                        const teaserStartIso = editForm.teaser_start_at.trim()
+                          ? fromLocalDatetimeInputString(editForm.teaser_start_at)
+                          : undefined;
+                        const validation = validateCountdownTiming(scheduledIso, teaserStartIso);
+
+                        const relMs = scheduledIso ? new Date(scheduledIso).getTime() : NaN;
+                        const minAllowedLocal = !isNaN(relMs)
+                          ? toLocalDatetimeInputString(new Date(relMs - 10 * 24 * 60 * 60 * 1000))
+                          : undefined;
+                        const maxAllowedLocal = !isNaN(relMs)
+                          ? toLocalDatetimeInputString(new Date(relMs - 24 * 60 * 60 * 1000))
+                          : undefined;
+
+                        return (
+                          <div className="space-y-2.5 pt-1">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[10px] font-bold text-amber-300 uppercase flex items-center gap-1.5">
+                                <Clock className="w-3.5 h-3.5 text-devotional-saffron" />
+                                Countdown Display Start Time (Optional)
+                              </label>
+                              <span className="text-[9px] text-amber-400 font-semibold bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                                ⏱️ Must be &gt; 24h &amp; &lt; 10 days of release
+                              </span>
+                            </div>
+
+                            <input
+                              type="datetime-local"
+                              min={minAllowedLocal}
+                              max={maxAllowedLocal}
+                              value={editForm.teaser_start_at}
+                              onChange={(e) => setEditForm((prev) => ({ ...prev, teaser_start_at: e.target.value }))}
+                              className={`w-full p-2.5 rounded-xl bg-stone-900 border text-stone-100 text-xs focus:outline-none font-mono ${
+                                !validation.isValid
+                                  ? 'border-red-500 focus:border-red-400 ring-1 ring-red-500/50'
+                                  : 'border-stone-800 focus:border-amber-400'
+                              }`}
+                            />
+
+                            {/* 1-Tap Quick Countdown Presets (> 24h & < 10 days) */}
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-bold text-stone-400 uppercase flex items-center gap-1">
+                                <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                                Quick Countdown Presets (24h to 10 Days Before Release)
+                              </label>
+                              <div className="flex flex-wrap gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => applyCountdownPreset(7 * 24)}
+                                  className="px-2 py-1 rounded-lg bg-stone-900 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                                >
+                                  📅 7 Days Before (Default)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => applyCountdownPreset(5 * 24)}
+                                  className="px-2 py-1 rounded-lg bg-stone-900 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                                >
+                                  📅 5 Days Before
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => applyCountdownPreset(3 * 24)}
+                                  className="px-2 py-1 rounded-lg bg-stone-900 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                                >
+                                  📅 3 Days Before
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => applyCountdownPreset(25)}
+                                  className="px-2 py-1 rounded-lg bg-stone-900 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                                >
+                                  ⏳ 25h Before (&gt; 24h)
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Inline Error Alert if outside >24h & <10d */}
+                            {!validation.isValid && (
+                              <div className="p-2.5 rounded-xl bg-red-950/80 border border-red-500 text-red-200 text-[11px] flex items-center justify-between gap-2 shadow-sm animate-pulse">
+                                <span className="flex items-center gap-1.5 font-bold">
+                                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                                  {validation.error}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => applyCountdownPreset(7 * 24)}
+                                  className="px-2.5 py-1 rounded-lg bg-red-700 hover:bg-red-600 text-white font-extrabold text-[10px] shrink-0"
+                                >
+                                  Auto-Fix to 7 Days
+                                </button>
+                              </div>
+                            )}
+
+                            <p className="text-[10px] text-stone-400 leading-relaxed">
+                              Devotees will only see the countdown clock in their portal starting from this timestamp.
+                              <br />
+                              <strong className="text-amber-300/90 font-mono">Note:</strong> Countdown time must be greater than 24 hours and less than 10 days before the releasing date and time. If cleared, countdown defaults to 7 days before release.
+                            </p>
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* WhatsApp & SMS Devotee Broadcast Notification */}
+                    <div className="p-3 rounded-xl bg-stone-950 border border-stone-800">
+                      <label className="flex items-center gap-2 text-[11px] font-semibold text-stone-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editForm.broadcast_on_publish}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, broadcast_on_publish: e.target.checked }))}
+                          className="rounded border-stone-700 text-emerald-500 focus:ring-emerald-500"
+                        />
+                        <span className="flex items-center gap-1.5">
+                          <Bell className="w-3.5 h-3.5 text-emerald-400" />
+                          Automated Devotee Broadcast (WhatsApp & SMS) upon Release
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Title & Short Title */}
               <div className="space-y-3">
@@ -1095,6 +1489,26 @@ export default function AdminInitiativeManagePage() {
                   value={editForm.description}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
                   className="w-full p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-stone-100 focus:border-amber-400 outline-none"
+                />
+              </div>
+
+              {/* Cover Photo & Curated Visual Media Picker */}
+              <div className="p-4 rounded-2xl bg-stone-900 border border-stone-800 space-y-2">
+                <InitiativePhotoPicker
+                  selectedCoverUrl={editForm.cover_image}
+                  onSelectCover={(url) => setEditForm((prev) => ({ ...prev, cover_image: url }))}
+                  initiativeType={initiative.initiative_type}
+                  galleryUrls={editForm.gallery_images}
+                  onToggleGallery={(url) => {
+                    const exists = editForm.gallery_images.includes(url);
+                    setEditForm((prev) => ({
+                      ...prev,
+                      gallery_images: exists
+                        ? prev.gallery_images.filter((u) => u !== url)
+                        : [...prev.gallery_images, url],
+                    }));
+                  }}
+                  label="Initiative Cover Photo & Gallery"
                 />
               </div>
 

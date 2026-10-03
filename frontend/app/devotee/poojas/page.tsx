@@ -390,40 +390,42 @@ export default function DevoteePoojaBookingsPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans pb-16">
       {/* 3D DEVOTIONAL HEADER BANNER */}
-      <div className="bg-gradient-to-r from-devotional-maroon via-devotional-maroon-dark to-stone-950 text-white p-6 sm:p-8 rounded-3xl shadow-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-2 border-devotional-gold/60 relative overflow-hidden diya-glow-pulse">
-        <div className="space-y-1 relative z-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold uppercase border border-amber-400/30">
-            <Flame className="w-3.5 h-3.5 text-devotional-saffron animate-pulse" /> {t('sidebarPoojaBookings')}
+      <div className="bg-gradient-to-r from-devotional-maroon via-devotional-maroon-dark to-stone-950 text-white p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 border-2 border-devotional-gold/60 relative overflow-hidden diya-glow-pulse">
+        <div className="space-y-1 relative z-10 w-full sm:w-auto">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] sm:text-xs font-bold uppercase border border-amber-400/30">
+            <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-devotional-saffron animate-pulse" /> {t('sidebarPoojaBookings')}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-amber-300">
+          <h1 className="text-base sm:text-2xl md:text-3xl font-serif font-bold text-amber-300 leading-snug">
             {t('sidebarPoojaBookings')} & Sacred Seva Slots
           </h1>
-          <p className="text-amber-100/80 text-xs sm:text-sm max-w-2xl">
+          <p className="text-amber-100/80 text-[11px] sm:text-xs md:text-sm max-w-2xl">
             Book specific dates &amp; auspicious time slots for temple sevas and poojas.
           </p>
         </div>
 
         {/* View Switcher Tabs */}
-        <div className="flex bg-stone-900/80 backdrop-blur-sm p-1 rounded-2xl border border-amber-400/40 shrink-0">
+        <div className="w-full sm:w-auto grid grid-cols-2 sm:flex p-1 rounded-xl sm:rounded-2xl bg-stone-900/80 backdrop-blur-sm border border-amber-400/40 shrink-0 gap-1">
           <button
             onClick={() => setActiveTab('catalog')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-2 sm:px-4 py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 sm:gap-1.5 text-center ${
               activeTab === 'catalog'
                 ? 'bg-gradient-to-r from-devotional-saffron to-amber-600 text-white shadow-gold'
                 : 'text-amber-200/70 hover:text-white'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" /> Pooja Catalog ({poojas.length})
+            <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+            <span className="truncate">Pooja Catalog ({poojas.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('my-bookings')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-2 sm:px-4 py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 sm:gap-1.5 text-center ${
               activeTab === 'my-bookings'
                 ? 'bg-gradient-to-r from-devotional-saffron to-amber-600 text-white shadow-gold'
                 : 'text-amber-200/70 hover:text-white'
             }`}
           >
-            <CalendarIcon className="w-3.5 h-3.5" /> My Booked Poojas ({myBookings.length})
+            <CalendarIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+            <span className="truncate">My Booked Poojas ({myBookings.length})</span>
           </button>
         </div>
       </div>
@@ -452,10 +454,6 @@ export default function DevoteePoojaBookingsPage() {
                 </div>
               )}
             </div>
-
-            <span className="px-2.5 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] rounded-full border border-emerald-300 shrink-0">
-              1-Day Prior Auto-Alert Active
-            </span>
           </div>
         );
       })()}

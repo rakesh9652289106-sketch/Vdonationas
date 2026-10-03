@@ -7,6 +7,8 @@ import {
   InitiativeType,
   getInitiatives,
   isInitiativeTeaserVisible,
+  isInitiativeVisibleToUsers,
+  isWithin24HoursOfRelease,
   INITIATIVE_TYPE_LABELS,
 } from '@/lib/initiatives-data';
 import InitiativeCard3D from '@/components/3d/InitiativeCard3D';
@@ -51,16 +53,16 @@ export default function InitiativesCatalogPage() {
 
   // Filter & Sort
   const filteredInitiatives = useMemo(() => {
-    // Include PUBLISHED as well as SCHEDULED initiatives that have teaser visible to devotees
-    let list = initiatives.filter(
-      (item) => item.status === 'PUBLISHED' || isInitiativeTeaserVisible(item)
-    );
+    // When countdown starts, then only should it be visible to users
+    let list = initiatives.filter(isInitiativeVisibleToUsers);
 
     if (urgentOnly) {
       list = list.filter((i) => i.is_urgent);
     }
 
-    if (selectedCategory !== 'ALL') {
+    if (selectedCategory === 'SCHEDULED') {
+      list = list.filter((i) => i.status === 'SCHEDULED' && (isWithin24HoursOfRelease(i) || isInitiativeTeaserVisible(i)));
+    } else if (selectedCategory !== 'ALL') {
       list = list.filter((i) => i.initiative_type === selectedCategory);
     }
 
@@ -93,9 +95,9 @@ export default function InitiativesCatalogPage() {
     });
   }, [initiatives, selectedCategory, urgentOnly, searchQuery, sortBy]);
 
-  // Extract active scheduled initiatives with teaser enabled and visible
+  // User Rule: Here at the top, countdown teaser is only visible from before 24hrs of release
   const activeTeasers = useMemo(() => {
-    return initiatives.filter((i) => isInitiativeTeaserVisible(i));
+    return initiatives.filter((i) => isWithin24HoursOfRelease(i));
   }, [initiatives]);
 
   // Aggregate stats
@@ -104,6 +106,7 @@ export default function InitiativesCatalogPage() {
 
   const categoryPills = [
     { key: 'ALL', label: 'All Causes', icon: '✨' },
+    { key: 'SCHEDULED', label: 'Upcoming Muhurtham', icon: '⏳' },
     { key: 'TEMPLE_CONSTRUCTION', label: 'Construction', icon: '🛕' },
     { key: 'TEMPLE_RENOVATION', label: 'Renovation', icon: '🏛️' },
     { key: 'ANNADANAM', label: 'Annadanam', icon: '🍲' },
@@ -137,7 +140,9 @@ export default function InitiativesCatalogPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 max-w-4xl mx-auto pt-4">
             <div className="bg-stone-900/80 backdrop-blur-md p-4 rounded-2xl border border-devotional-gold/30 text-center space-y-0.5">
               <p className="text-[10px] text-amber-300/70 uppercase font-bold tracking-wider">Active Causes</p>
-              <p className="text-xl sm:text-2xl font-serif font-bold text-white">{initiatives.length}</p>
+              <p className="text-xl sm:text-2xl font-serif font-bold text-white">
+                {initiatives.filter(isInitiativeVisibleToUsers).length}
+              </p>
             </div>
 
             <div className="bg-stone-900/80 backdrop-blur-md p-4 rounded-2xl border border-devotional-gold/30 text-center space-y-0.5">

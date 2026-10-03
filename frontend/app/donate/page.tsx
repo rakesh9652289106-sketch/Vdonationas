@@ -181,7 +181,7 @@ function DonationFormContent() {
 
     try {
       // 1. Record real verified donation into Supabase (activates triggers for receipts, stats, and notifications)
-      const { donation, transactionId } = await donationsService.createDonation({
+      const { donation, transactionId, receipt: dbReceipt } = await donationsService.createDonation({
         amount,
         paymentMethod,
         donorName: isAnonymous ? 'Anonymous Devotee' : donorName,
@@ -201,8 +201,8 @@ function DonationFormContent() {
         recordInitiativeDonation(initialInitiativeId, amount);
       }
 
-      const receiptNo = `RCP-${new Date().getFullYear()}-${donation?.id ? donation.id.slice(0, 6).toUpperCase() : '1082'}`;
-      const verificationCode = `VRF-${transactionId.slice(-6).toUpperCase()}`;
+      const receiptNo = dbReceipt?.receipt_no || `RCP-${new Date().getFullYear()}-${donation?.id ? donation.id.slice(0, 6).toUpperCase() : '1082'}`;
+      const verificationCode = dbReceipt?.verification_code || `VRF-${transactionId.slice(-6).toUpperCase()}`;
 
       const receipt = {
         receiptNo: receiptNo,
@@ -821,26 +821,6 @@ function DonationFormContent() {
           </div>
         )}
       </div>
-
-      {/* Sticky Bottom CTA for Mobile */}
-      {(step === 'DETAILS' || step === 'PAYMENT') && (
-        <div className="fixed bottom-16 left-0 right-0 z-30 p-3.5 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-devotional-gold/30 md:hidden flex items-center justify-between shadow-2xl px-5">
-          <div>
-            <p className="text-[10px] text-stone-500 font-bold uppercase tracking-wider">Total Offering</p>
-            <p className="text-lg font-serif font-black text-devotional-maroon dark:text-amber-400">
-              ₹{amount.toLocaleString('en-IN')}
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={isProcessing}
-            onClick={step === 'DETAILS' ? handleProceedToPayment : handleConfirmPayment}
-            className="px-8 py-3 rounded-xl bg-gradient-to-r from-devotional-saffron to-amber-600 text-white font-bold text-sm shadow-gold active-press disabled:opacity-60"
-          >
-            {isProcessing ? 'Processing...' : 'Pay'}
-          </button>
-        </div>
-      )}
 
       {/* Receipt Modal Trigger */}
       {receiptData && (

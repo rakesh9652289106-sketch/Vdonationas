@@ -3,6 +3,16 @@ import { memoryStore } from '../db.js';
 
 const router = Router();
 
+function getUpcomingBrahmaMuhurthamIso(): string {
+  const d = new Date();
+  const target = new Date();
+  target.setHours(4, 30, 0, 0);
+  if (target.getTime() <= d.getTime()) {
+    target.setDate(target.getDate() + 1);
+  }
+  return target.toISOString();
+}
+
 // Default seed data for backend initiatives
 const DEFAULT_INITIATIVES = [
   {
@@ -53,7 +63,7 @@ const DEFAULT_INITIATIVES = [
     min_donation: 501,
     current_stage: 'PROPOSED',
     status: 'SCHEDULED',
-    scheduled_publish_at: '2026-09-06T04:30',
+    scheduled_publish_at: getUpcomingBrahmaMuhurthamIso(),
     muhurtham_name: 'Brahma Muhurtham (04:30 AM - 06:00 AM)',
     is_teaser_enabled: true,
     broadcast_on_publish: true,

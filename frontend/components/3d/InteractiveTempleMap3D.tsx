@@ -14,17 +14,17 @@ export default function InteractiveTempleMap3D() {
   ];
 
   return (
-    <div className="relative w-full bg-gradient-to-b from-stone-900 via-stone-950 to-stone-900 text-white rounded-3xl p-6 sm:p-10 border border-devotional-gold/40 shadow-2xl overflow-hidden">
+    <div className="relative w-full bg-gradient-to-b from-stone-900 via-stone-950 to-stone-900 text-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-devotional-gold/40 shadow-2xl overflow-hidden">
       {/* Background Ambient Grid */}
       <div className="absolute inset-0 bg-[radial-gradient(#d4af37_1px,transparent_1px)] [background-size:24px_24px] opacity-15 pointer-events-none" />
 
-      <div className="relative z-10 space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="relative z-10 space-y-5 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
           <div>
             <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-bold text-xs uppercase tracking-wider border border-amber-400/30">
               <Sparkles className="w-3.5 h-3.5" /> INTERACTIVE 3D TEMPLE NETWORK MAP
             </span>
-            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-amber-300 mt-1">
+            <h2 className="text-xl sm:text-3xl font-serif font-bold text-amber-300 mt-1">
               Discover Verified Shrines Across India
             </h2>
           </div>
@@ -34,9 +34,9 @@ export default function InteractiveTempleMap3D() {
         </div>
 
         {/* 3D Map Container */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6 items-center">
           {/* Map Node Area */}
-          <div className="lg:col-span-2 relative h-[380px] bg-stone-950/80 rounded-2xl border border-stone-800 p-4 shadow-inner flex items-center justify-center overflow-hidden">
+          <div className="lg:col-span-2 relative h-[270px] sm:h-[380px] bg-stone-950/80 rounded-2xl border border-stone-800 p-3 sm:p-4 shadow-inner flex items-center justify-center overflow-hidden">
             {/* India Contour Stylized Mesh */}
             <div className="relative w-full h-full max-w-md mx-auto flex items-center justify-center opacity-40">
               <div className="text-[120px] font-serif font-bold text-amber-400/10 select-none">
@@ -84,7 +84,7 @@ export default function InteractiveTempleMap3D() {
           </div>
 
           {/* Floating 3D Shrine Info Panel */}
-          <div className="bg-stone-900/90 backdrop-blur-md p-6 rounded-2xl border border-devotional-gold/40 shadow-2xl space-y-4 text-xs">
+          <div className="bg-stone-900/90 backdrop-blur-md p-4 sm:p-6 rounded-2xl border border-devotional-gold/40 shadow-2xl space-y-3.5 sm:space-y-4 text-xs">
             <div className="flex items-center gap-2 text-emerald-400 font-bold text-[10px] uppercase">
               <ShieldCheck className="w-4 h-4" /> VERIFIED TEMPLE DEVASTHANAM
             </div>

@@ -175,6 +175,89 @@ export const STAGE_STEPS: { stage: InitiativeStage; label: string; description: 
   { stage: 'COMPLETED', label: 'Completed', description: 'Maha Kumbhabhishekam & Consecration', stepNumber: 5 },
 ];
 
+export function getUpcomingBrahmaMuhurthamIso(): string {
+  const d = new Date();
+  const target = new Date();
+  target.setHours(4, 30, 0, 0);
+  if (target.getTime() <= d.getTime()) {
+    target.setDate(target.getDate() + 1);
+  }
+  return target.toISOString();
+}
+
+// Convert ISO timestamp or Date object to YYYY-MM-DDTHH:mm string for <input type="datetime-local"> in local timezone
+export function toLocalDatetimeInputString(isoOrDate?: string | Date | null): string {
+  if (!isoOrDate) return '';
+  const d = typeof isoOrDate === 'string' ? new Date(isoOrDate) : isoOrDate;
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+// Convert YYYY-MM-DDTHH:mm input string back to standard ISO-8601 string
+export function fromLocalDatetimeInputString(localStr?: string | null): string | undefined {
+  if (!localStr || !localStr.trim()) return undefined;
+  const d = new Date(localStr);
+  if (isNaN(d.getTime())) return undefined;
+  return d.toISOString();
+}
+
+// User Rule: Countdown time must be greater than 24 hours and less than 10 days before the release
+export function validateCountdownTiming(
+  scheduledPublishAt?: string | null,
+  teaserStartAt?: string | null
+): {
+  isValid: boolean;
+  error?: string;
+  earliestAllowedIso?: string;
+  latestAllowedIso?: string;
+} {
+  if (!scheduledPublishAt) return { isValid: true };
+  const pubMs = new Date(scheduledPublishAt).getTime();
+  if (isNaN(pubMs)) return { isValid: true };
+
+  const min24hMs = 24 * 60 * 60 * 1000; // 24 hours
+  const max10DaysMs = 10 * 24 * 60 * 60 * 1000; // 10 days
+  const earliestAllowedMs = pubMs - max10DaysMs; // 10 days before release
+  const latestAllowedMs = pubMs - min24hMs; // 24 hours before release
+  const earliestAllowedIso = new Date(earliestAllowedMs).toISOString();
+  const latestAllowedIso = new Date(latestAllowedMs).toISOString();
+
+  if (!teaserStartAt || !teaserStartAt.trim()) {
+    return { isValid: true, earliestAllowedIso, latestAllowedIso };
+  }
+
+  const teaserMs = new Date(teaserStartAt).getTime();
+  if (isNaN(teaserMs)) return { isValid: true, earliestAllowedIso, latestAllowedIso };
+
+  if (teaserMs > latestAllowedMs) {
+    return {
+      isValid: false,
+      error: 'Countdown time must be greater than 24 hours before the releasing date and time.',
+      earliestAllowedIso,
+      latestAllowedIso,
+    };
+  }
+
+  if (teaserMs < earliestAllowedMs) {
+    return {
+      isValid: false,
+      error: 'Countdown time must be less than 10 days before the releasing date and time.',
+      earliestAllowedIso,
+      latestAllowedIso,
+    };
+  }
+
+  return { isValid: true, earliestAllowedIso, latestAllowedIso };
+}
+
+
+
 export const INITIAL_INITIATIVES: Initiative[] = [
   {
     id: 'ini-001',
@@ -202,11 +285,11 @@ export const INITIAL_INITIATIVES: Initiative[] = [
     suggested_amounts: [501, 1001, 2501, 5001, 10001, 25001],
     start_date: '2026-05-01',
     end_date: '2027-04-30',
-    cover_image: 'https://images.unsplash.com/photo-1590077428593-a55bb07c4665?auto=format&fit=crop&w=1200&q=80',
+    cover_image: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=1200&q=80',
     gallery_images: [
-      'https://images.unsplash.com/photo-1590077428593-a55bb07c4665?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1609766857041-ed402ea8069a?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1621847468516-1ed5d0df56fe?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80',
     ],
     documents: [
       { name: 'Architectural Agamic Plan.pdf', size: '4.2 MB', type: 'PDF Blueprint' },
@@ -294,7 +377,9 @@ export const INITIAL_INITIATIVES: Initiative[] = [
     end_date: '2026-12-31',
     cover_image: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=1200&q=80',
     gallery_images: [
-      'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1605371924599-2d0365da1ae0?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1567157577867-05ccb1388e66?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1545128485-c400e7702796?auto=format&fit=crop&w=800&q=80',
     ],
     documents: [],
     current_stage: 'STRUCTURE',
@@ -351,9 +436,11 @@ export const INITIAL_INITIATIVES: Initiative[] = [
     suggested_amounts: [251, 501, 1001, 2501, 5001, 10001],
     start_date: '2026-07-01',
     end_date: '2026-11-30',
-    cover_image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80',
+    cover_image: 'https://images.unsplash.com/photo-1610192244261-3f33de3f55e4?auto=format&fit=crop&w=1200&q=80',
     gallery_images: [
-      'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1596797038530-2c107229654b?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1596178065887-1198b6148b2b?auto=format&fit=crop&w=800&q=80',
     ],
     documents: [],
     current_stage: 'FINISHING',
@@ -418,7 +505,8 @@ export const INITIAL_INITIATIVES: Initiative[] = [
     end_date: '2026-10-31',
     cover_image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80',
     gallery_images: [
-      'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=800&q=80',
     ],
     documents: [],
     current_stage: 'STRUCTURE',
@@ -476,7 +564,8 @@ export const INITIAL_INITIATIVES: Initiative[] = [
     end_date: '2026-10-15',
     cover_image: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=1200&q=80',
     gallery_images: [
-      'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=800&q=80',
     ],
     documents: [],
     current_stage: 'FINISHING',
@@ -534,7 +623,8 @@ export const INITIAL_INITIATIVES: Initiative[] = [
     end_date: '2026-09-25',
     cover_image: 'https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?auto=format&fit=crop&w=1200&q=80',
     gallery_images: [
-      'https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=800&q=80',
     ],
     documents: [],
     current_stage: 'STRUCTURE',
@@ -598,15 +688,16 @@ export const INITIAL_INITIATIVES: Initiative[] = [
     min_donation: 501,
     suggested_amounts: [501, 1116, 2501, 5001, 11116, 25001],
     start_date: '2026-09-06',
-    cover_image: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=1200&q=80',
+    cover_image: 'https://images.unsplash.com/photo-1608889175123-8ee362201f81?auto=format&fit=crop&w=1200&q=80',
     gallery_images: [
-      'https://images.unsplash.com/photo-1590077428593-a55bb07c4665?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1609766857041-ed402ea8069a?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1519817650390-64a93db51149?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1572953109213-3be62398eb95?auto=format&fit=crop&w=800&q=80',
     ],
     documents: [{ name: 'Vedic Sanctum Blueprint.pdf', size: '3.4 MB', type: 'PDF' }],
     current_stage: 'PROPOSED',
     status: 'SCHEDULED',
-    scheduled_publish_at: '2026-09-06T04:30',
+    scheduled_publish_at: getUpcomingBrahmaMuhurthamIso(),
     muhurtham_name: 'Brahma Muhurtham (04:30 AM - 06:00 AM)',
     is_teaser_enabled: true,
     broadcast_on_publish: true,
@@ -680,18 +771,45 @@ export function normalizeInitiative(raw: any): Initiative {
   const percentage_funded = target_amount > 0 ? Math.min(Math.round((current_raised / target_amount) * 100), 100) : 0;
   const remaining_funds = Math.max(current_raised - approvedTotal, 0);
 
-  // If scheduled and the time has already arrived, automatically activate to PUBLISHED
+  // If scheduled, ensure scheduled_publish_at is preserved exactly as set
   let computedStatus: InitiativeStatus = (raw.status || 'PUBLISHED') as InitiativeStatus;
-  if (computedStatus === 'SCHEDULED' && raw.scheduled_publish_at) {
-    if (new Date(raw.scheduled_publish_at).getTime() <= Date.now()) {
-      computedStatus = 'PUBLISHED';
-      if (raw.broadcast_on_publish !== false && typeof window !== 'undefined') {
-        setTimeout(() => {
-          dispatchInitiativeBroadcastNotification({ ...raw, status: 'PUBLISHED' } as any);
-        }, 100);
+  let scheduled_publish_at = raw.scheduled_publish_at;
+  if (scheduled_publish_at) {
+    const parsed = new Date(scheduled_publish_at);
+    if (!isNaN(parsed.getTime())) {
+      scheduled_publish_at = parsed.toISOString();
+    }
+  } else if (computedStatus === 'SCHEDULED') {
+    // Only generate default upcoming Brahma Muhurtham if completely missing
+    scheduled_publish_at = getUpcomingBrahmaMuhurthamIso();
+  }
+
+  let teaser_start_at = raw.teaser_start_at;
+  if (teaser_start_at) {
+    const parsedTeaser = new Date(teaser_start_at);
+    if (!isNaN(parsedTeaser.getTime())) {
+      teaser_start_at = parsedTeaser.toISOString();
+    }
+  }
+
+  // User Rule: Countdown time must be greater than 24 hours and less than 10 days before the release
+  if (scheduled_publish_at && teaser_start_at) {
+    const pubMs = new Date(scheduled_publish_at).getTime();
+    const tzsMs = new Date(teaser_start_at).getTime();
+    const min24hMs = 24 * 60 * 60 * 1000;
+    const max10DaysMs = 10 * 24 * 60 * 60 * 1000;
+    if (!isNaN(pubMs) && !isNaN(tzsMs)) {
+      if (tzsMs < pubMs - max10DaysMs) {
+        // Enforce max 10 days before release
+        teaser_start_at = new Date(pubMs - max10DaysMs).toISOString();
+      } else if (tzsMs > pubMs - min24hMs) {
+        // Enforce min 24 hours before release
+        teaser_start_at = new Date(pubMs - min24hMs).toISOString();
       }
     }
   }
+
+
 
   return {
     id: String(raw.id || `ini-${Date.now()}`),
@@ -725,10 +843,10 @@ export function normalizeInitiative(raw: any): Initiative {
     documents: Array.isArray(raw.documents) ? raw.documents : [],
     current_stage: raw.current_stage || 'PROPOSED',
     status: computedStatus,
-    scheduled_publish_at: raw.scheduled_publish_at || undefined,
+    scheduled_publish_at: scheduled_publish_at || undefined,
     is_teaser_enabled: raw.is_teaser_enabled !== false,
     teaser_start_at: raw.teaser_start_at || undefined,
-    muhurtham_name: raw.muhurtham_name || undefined,
+    muhurtham_name: raw.muhurtham_name || (computedStatus === 'SCHEDULED' ? 'Brahma Muhurtham Sacred Launch' : undefined),
     broadcast_on_publish: raw.broadcast_on_publish !== false,
     excess_funds_policy: raw.excess_funds_policy || 'Excess funds will be directed to temple Annadanam and devotee welfare.',
     breakdown_items,
@@ -776,17 +894,58 @@ export function isInitiativeTeaserVisible(initiative: Initiative): boolean {
     return false;
   }
   const now = Date.now();
-  if (initiative.scheduled_publish_at && new Date(initiative.scheduled_publish_at).getTime() <= now) {
+  if (!initiative.scheduled_publish_at) {
     return false;
   }
-  // Optional countdown start time: only visible to devotees from that timestamp onwards
-  if (initiative.teaser_start_at) {
-    const startMs = new Date(initiative.teaser_start_at).getTime();
-    if (now < startMs) {
-      return false; // Not yet time for devotees to see the countdown
-    }
+  const publishMs = new Date(initiative.scheduled_publish_at).getTime();
+  if (isNaN(publishMs) || publishMs <= now) {
+    return false;
   }
+
+  // User Rule: Countdown time must be greater than 24 hours and less than 10 days before the release
+  // Maximum allowed lead time is 10 days before launch
+  const max10DaysMs = 10 * 24 * 60 * 60 * 1000;
+  const earliestAllowedMs = publishMs - max10DaysMs;
+  if (now < earliestAllowedMs) {
+    return false; // Devotees cannot see countdown more than 10 days before release
+  }
+
+  // If specific start time is provided, show from that timestamp onwards.
+  // Defaults to 7 days before launch if left empty.
+  const defaultTeaserMs = publishMs - 7 * 24 * 60 * 60 * 1000;
+  const startMs = initiative.teaser_start_at
+    ? new Date(initiative.teaser_start_at).getTime()
+    : defaultTeaserMs;
+
+  if (!isNaN(startMs) && now < startMs) {
+    return false; // Not yet time for devotees to see the countdown
+  }
+
   return true;
+}
+
+// User Rule: From before 24 hr of release, that initiative time and details should be uniquely displayed automatically
+export function isWithin24HoursOfRelease(initiative: Initiative): boolean {
+  if (initiative.status !== 'SCHEDULED' || !initiative.scheduled_publish_at) {
+    return false;
+  }
+  const now = Date.now();
+  const publishMs = new Date(initiative.scheduled_publish_at).getTime();
+  if (isNaN(publishMs)) return false;
+  const diff = publishMs - now;
+  // Automatically true when within 24 hours of release: 0 < diff <= 24 hours
+  return diff > 0 && diff <= 24 * 60 * 60 * 1000;
+}
+
+// User Rule: When countdown starts OR within 24 hours of release, then only should a scheduled initiative be visible to users
+export function isInitiativeVisibleToUsers(initiative: Initiative): boolean {
+  if (initiative.status === 'PUBLISHED') {
+    return true;
+  }
+  if (initiative.status === 'SCHEDULED') {
+    return isWithin24HoursOfRelease(initiative) || isInitiativeTeaserVisible(initiative);
+  }
+  return false;
 }
 
 // Map Supabase initiative row + relations to Initiative frontend object
@@ -824,6 +983,9 @@ export function mapSupabaseToInitiative(row: any): Initiative {
 
   return normalizeInitiative({
     ...row,
+    scheduled_publish_at: row.scheduled_publish_at || undefined,
+    is_teaser_enabled: row.is_teaser_enabled !== false,
+    muhurtham_name: row.muhurtham_name || undefined,
     target_amount: Number(row.target_amount || 0),
     current_raised: Number(row.current_raised || 0),
     donor_count: Number(row.donor_count || 0),
@@ -859,6 +1021,9 @@ export async function getInitiatives(filters?: { status?: string; type?: string;
 
     if (!error && data && data.length > 0) {
       let mapped = data.map(mapSupabaseToInitiative);
+      if (filters?.status === 'PUBLISHED') {
+        mapped = mapped.filter(isInitiativeVisibleToUsers);
+      }
       if (filters?.search) {
         const q = filters.search.toLowerCase();
         mapped = mapped.filter(
@@ -880,7 +1045,7 @@ export async function getInitiatives(filters?: { status?: string; type?: string;
   let list = getStoredInitiatives();
   if (filters?.status && filters.status !== 'ALL') {
     if (filters.status === 'PUBLISHED') {
-      list = list.filter((i) => i.status === 'PUBLISHED' || isInitiativeTeaserVisible(i));
+      list = list.filter(isInitiativeVisibleToUsers);
     } else {
       list = list.filter((i) => i.status === filters.status);
     }
@@ -1133,17 +1298,54 @@ export async function updateInitiative(
   code: string,
   updates: Partial<Initiative>
 ): Promise<Initiative | null> {
+  // Normalize date inputs to ISO strings if needed
+  let normalizedScheduled = updates.scheduled_publish_at;
+  if (normalizedScheduled) {
+    const d = new Date(normalizedScheduled);
+    if (!isNaN(d.getTime())) normalizedScheduled = d.toISOString();
+  }
+
+  let normalizedTeaser = updates.teaser_start_at;
+  if (normalizedTeaser) {
+    const d = new Date(normalizedTeaser);
+    if (!isNaN(d.getTime())) normalizedTeaser = d.toISOString();
+  }
+
+  const cleanUpdates: Partial<Initiative> = {
+    ...updates,
+    scheduled_publish_at: normalizedScheduled,
+    teaser_start_at: normalizedTeaser,
+  };
+
   try {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
-    let q = supabase.from('initiatives').update({
-      title: updates.title,
-      short_title: updates.short_title,
-      description: updates.description,
-      priority: updates.priority,
-      is_urgent: updates.is_urgent,
-      target_amount: updates.target_amount,
+    const dbPayload: any = {
       updated_at: new Date().toISOString(),
-    });
+    };
+    if (cleanUpdates.title !== undefined) dbPayload.title = cleanUpdates.title;
+    if (cleanUpdates.short_title !== undefined) dbPayload.short_title = cleanUpdates.short_title;
+    if (cleanUpdates.description !== undefined) dbPayload.description = cleanUpdates.description;
+    if (cleanUpdates.objective !== undefined) dbPayload.objective = cleanUpdates.objective;
+    if (cleanUpdates.priority !== undefined) dbPayload.priority = cleanUpdates.priority;
+    if (cleanUpdates.is_urgent !== undefined) dbPayload.is_urgent = cleanUpdates.is_urgent;
+    if (cleanUpdates.status !== undefined) dbPayload.status = cleanUpdates.status;
+    if (cleanUpdates.scheduled_publish_at !== undefined) dbPayload.scheduled_publish_at = cleanUpdates.scheduled_publish_at;
+    if (cleanUpdates.muhurtham_name !== undefined) dbPayload.muhurtham_name = cleanUpdates.muhurtham_name;
+    if (cleanUpdates.is_teaser_enabled !== undefined) dbPayload.is_teaser_enabled = cleanUpdates.is_teaser_enabled;
+    if (cleanUpdates.teaser_start_at !== undefined) dbPayload.teaser_start_at = cleanUpdates.teaser_start_at;
+    if (cleanUpdates.broadcast_on_publish !== undefined) dbPayload.broadcast_on_publish = cleanUpdates.broadcast_on_publish;
+    if (cleanUpdates.target_amount !== undefined) dbPayload.target_amount = cleanUpdates.target_amount;
+    if (cleanUpdates.min_donation !== undefined) dbPayload.min_donation = cleanUpdates.min_donation;
+    if (cleanUpdates.city !== undefined) dbPayload.city = cleanUpdates.city;
+    if (cleanUpdates.district !== undefined) dbPayload.district = cleanUpdates.district;
+    if (cleanUpdates.state !== undefined) dbPayload.state = cleanUpdates.state;
+    if (cleanUpdates.address !== undefined) dbPayload.address = cleanUpdates.address;
+    if (cleanUpdates.pin_code !== undefined) dbPayload.pin_code = cleanUpdates.pin_code;
+    if (cleanUpdates.cover_image !== undefined) dbPayload.cover_image = cleanUpdates.cover_image;
+    if (cleanUpdates.gallery_images !== undefined) dbPayload.gallery_images = cleanUpdates.gallery_images;
+    if (cleanUpdates.excess_funds_policy !== undefined) dbPayload.excess_funds_policy = cleanUpdates.excess_funds_policy;
+
+    let q = supabase.from('initiatives').update(dbPayload);
     if (isUuid) q = q.eq('id', code);
     else q = q.eq('code', code);
     await q;
@@ -1157,28 +1359,80 @@ export async function updateInitiative(
     const prev = { ...list[index] };
     const updated: Initiative = {
       ...list[index],
-      ...updates,
+      ...cleanUpdates,
       updated_at: new Date().toISOString(),
     };
 
-    if (updates.is_urgent !== undefined && updates.is_urgent !== prev.is_urgent) {
+    if (cleanUpdates.is_urgent !== undefined && cleanUpdates.is_urgent !== prev.is_urgent) {
       updated.audit_logs = updated.audit_logs || [];
       updated.audit_logs.unshift({
-        id: `aud-${Date.now()}`,
+        id: `aud-${Date.now()}-urg`,
         action: 'URGENT_STATUS_CHANGED',
         user_name: 'Super Admin',
         previous_value: prev.is_urgent ? 'URGENT APPEAL (Active)' : 'STANDARD PRIORITY',
-        new_value: updates.is_urgent ? 'ELEVATED TO URGENT EMERGENCY APPEAL' : 'REVERTED TO STANDARD PRIORITY',
+        new_value: cleanUpdates.is_urgent ? 'ELEVATED TO URGENT EMERGENCY APPEAL' : 'REVERTED TO STANDARD PRIORITY',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    if (cleanUpdates.scheduled_publish_at !== undefined && cleanUpdates.scheduled_publish_at !== prev.scheduled_publish_at) {
+      updated.audit_logs = updated.audit_logs || [];
+      const oldTime = prev.scheduled_publish_at ? new Date(prev.scheduled_publish_at).toLocaleString('en-IN') : 'Unscheduled';
+      const newTime = cleanUpdates.scheduled_publish_at ? new Date(cleanUpdates.scheduled_publish_at).toLocaleString('en-IN') : 'Removed';
+      updated.audit_logs.unshift({
+        id: `aud-${Date.now()}-resched`,
+        action: 'RESCHEDULED_RELEASE',
+        user_name: 'Super Admin',
+        previous_value: `Launch: ${oldTime} (${prev.muhurtham_name || 'Standard'})`,
+        new_value: `Rescheduled to: ${newTime} (${cleanUpdates.muhurtham_name || prev.muhurtham_name || 'Standard'})`,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    if (cleanUpdates.status !== undefined && cleanUpdates.status !== prev.status) {
+      updated.audit_logs = updated.audit_logs || [];
+      updated.audit_logs.unshift({
+        id: `aud-${Date.now()}-status`,
+        action: 'STATUS_CHANGED',
+        user_name: 'Super Admin',
+        previous_value: prev.status,
+        new_value: cleanUpdates.status,
         timestamp: new Date().toISOString(),
       });
     }
 
     list[index] = updated;
     setStoredInitiatives(list);
+
+    if (updated.status === 'PUBLISHED' && prev.status !== 'PUBLISHED' && updated.broadcast_on_publish) {
+      dispatchInitiativeBroadcastNotification(updated);
+    }
+
     return updated;
   }
   return null;
 }
+
+// 1-Tap quick rescheduling for Super Admin
+export async function updateInitiativeSchedule(
+  code: string,
+  params: {
+    scheduled_publish_at: string;
+    muhurtham_name?: string;
+    is_teaser_enabled?: boolean;
+    teaser_start_at?: string;
+    status?: InitiativeStatus;
+  }
+): Promise<Initiative | null> {
+  return updateInitiative(code, {
+    status: params.status || 'SCHEDULED',
+    scheduled_publish_at: params.scheduled_publish_at,
+    muhurtham_name: params.muhurtham_name || 'Brahma Muhurtham Sacred Launch',
+    is_teaser_enabled: params.is_teaser_enabled !== false,
+    teaser_start_at: params.teaser_start_at || undefined,
+  });
+}
+
 
 // 1-Click quick toggle for Urgent Emergency Appeal status
 export async function toggleInitiativeUrgent(code: string, isUrgent?: boolean): Promise<boolean> {

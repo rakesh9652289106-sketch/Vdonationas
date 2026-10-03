@@ -21,6 +21,32 @@ router.get('/', async (_req: Request, res: Response) => {
   return res.json(memoryStore.recurring);
 });
 
+function calculateNextDeductionDate(
+  startDate: Date = new Date(),
+  interval: string = 'MONTHLY',
+  preferredDay?: number
+): string {
+  const d = new Date(startDate.getTime());
+  const anchorDay = preferredDay || d.getDate();
+  const upper = interval.toUpperCase();
+  const monthsToAdd = upper === 'YEARLY' ? 12 : upper === 'QUARTERLY' ? 3 : 1;
+
+  const currentYear = d.getFullYear();
+  const currentMonth = d.getMonth();
+  const totalMonths = currentMonth + monthsToAdd;
+  const targetYear = currentYear + Math.floor(totalMonths / 12);
+  const targetMonth = totalMonths % 12;
+
+  const maxDays = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const finalDay = Math.min(anchorDay, maxDays);
+
+  const yyyy = targetYear;
+  const mm = String(targetMonth + 1).padStart(2, '0');
+  const dd = String(finalDay).padStart(2, '0');
+
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // POST /api/v1/recurring/
 router.post('/', async (req: Request, res: Response) => {
   const {
@@ -40,9 +66,7 @@ router.post('/', async (req: Request, res: Response) => {
   const resolvedMethod = paymentMethod || payment_method;
 
   const subId = `SUB-AUTOPAY-${Math.floor(10000 + Math.random() * 90000)}`;
-  const nextDate = new Date();
-  nextDate.setDate(nextDate.getDate() + 30);
-  const nextDateStr = nextDate.toISOString().split('T')[0];
+  const nextDateStr = calculateNextDeductionDate(new Date(), interval);
 
   try {
     const result = await pool.query(

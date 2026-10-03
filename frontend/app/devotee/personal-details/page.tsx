@@ -205,7 +205,7 @@ function PersonalDetailsContent() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto font-sans px-3.5 sm:px-0 py-3 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="max-w-3xl mx-auto font-sans px-6 sm:px-0 py-3 sm:py-6 space-y-4 sm:space-y-6">
       {/* Header Banner */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#4A101D] via-[#380B15] to-[#20050C] text-white p-5 sm:p-7 shadow-lg border border-amber-500/30 flex items-center justify-between gap-4">
         <div className="space-y-1">

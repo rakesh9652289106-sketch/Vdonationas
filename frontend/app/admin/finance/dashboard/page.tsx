@@ -518,11 +518,11 @@ export default function FinanceAdminDashboardPage() {
   };
 
   return (
-    <div className="space-y-8 font-sans max-w-7xl mx-auto">
+    <div className="space-y-4 sm:space-y-8 font-sans max-w-7xl mx-auto px-1 sm:px-0">
       {/* 1. DEVOTIONAL FINANCIAL HEADER BANNER */}
-      <div className="bg-gradient-to-r from-emerald-950 via-stone-900 to-emerald-950 text-white p-6 sm:p-8 rounded-3xl shadow-2xl border-2 border-emerald-500/60 relative overflow-hidden diya-glow-pulse">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
-          <div className="space-y-2">
+      <div className="bg-gradient-to-r from-emerald-950 via-stone-900 to-emerald-950 text-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-2xl border-2 border-emerald-500/60 relative overflow-hidden diya-glow-pulse">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-6 relative z-10">
+          <div className="space-y-1.5 sm:space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 text-xs font-bold uppercase border border-emerald-400/40">
                 <DollarSign className="w-3.5 h-3.5 text-amber-400" /> {templeInfo.code} FINANCIAL DESK
@@ -535,7 +535,7 @@ export default function FinanceAdminDashboardPage() {
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-amber-300">
+            <h1 className="text-xl sm:text-3xl font-serif font-bold text-amber-300">
               {templeInfo.name}
             </h1>
 
@@ -543,54 +543,54 @@ export default function FinanceAdminDashboardPage() {
               Supervisory desk for <strong className="text-white">{templeInfo.trustName}</strong>. Real-time audit of daily devotee offerings, seva categories, sacred amount presets, and direct nodal bank reconciliation.
             </p>
 
-            <div className="flex items-center gap-3 pt-1 text-xs text-emerald-300/90 font-medium">
+            <div className="flex items-center gap-2 sm:gap-3 pt-1 text-xs text-emerald-300/90 font-medium flex-wrap">
               <span>
                 Designated Officer: <strong className="text-white">{templeInfo.officerName}</strong>
               </span>
-              <span>•</span>
+              <span className="hidden sm:inline">•</span>
               <span>
                 Trust Reg: <strong className="text-amber-200 font-mono">{templeInfo.registrationNo}</strong>
               </span>
             </div>
           </div>
 
-          {/* Quick Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          {/* Quick Action Buttons - 2x2 grid on mobile */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto shrink-0 pt-2 lg:pt-0">
             <button
               onClick={() => setShowRequisitionModal(true)}
-              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1.5 shadow-lg transition-transform hover:scale-105"
+              className="col-span-2 sm:col-span-1 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg transition-transform hover:scale-105 cursor-pointer"
             >
-              <Send className="w-3.5 h-3.5" /> Submit Request to Super Admin
+              <Send className="w-3.5 h-3.5" /> Submit Request
             </button>
             <Link
               href="/admin/finance/coordination"
-              className="px-3.5 py-2.5 rounded-2xl bg-emerald-900/80 hover:bg-emerald-800 text-emerald-100 font-bold text-xs flex items-center gap-1.5 border border-emerald-500/40 transition-colors"
+              className="px-3 py-2.5 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 text-emerald-100 font-bold text-xs flex items-center justify-center gap-1.5 border border-emerald-500/40 transition-colors"
             >
-              <BarChart3 className="w-3.5 h-3.5 text-amber-400" /> Manager Coordination
+              <BarChart3 className="w-3.5 h-3.5 text-amber-400" /> Coordination
             </Link>
             <button
               onClick={handleExportCSV}
-              className="px-3.5 py-2.5 rounded-2xl bg-stone-800/80 hover:bg-stone-700 text-stone-200 font-bold text-xs flex items-center gap-1.5 border border-stone-700 transition-colors"
+              className="px-3 py-2.5 rounded-xl bg-stone-800/80 hover:bg-stone-700 text-stone-200 font-bold text-xs flex items-center justify-center gap-1.5 border border-stone-700 transition-colors cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5 text-emerald-400" /> Export Statement
+              <Download className="w-3.5 h-3.5 text-emerald-400" /> Export CSV
             </button>
             <button
               onClick={loadFinanceData}
               title="Refresh Live Metrics"
-              className="p-2.5 rounded-2xl bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700 transition-colors"
+              className="col-span-2 sm:col-span-1 py-2 sm:p-2.5 rounded-xl bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700 transition-colors flex items-center justify-center gap-1.5 text-xs font-bold cursor-pointer"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
+              <RefreshCw className="w-3.5 h-3.5" /> <span className="sm:hidden">Refresh Metrics</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* 2. READ-ONLY AUDIT & DISCIPLINE NOTIFICATION */}
-      <div className="p-4 rounded-2xl bg-emerald-950/70 border border-emerald-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-emerald-200 shadow-md">
+      <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-emerald-950/70 border border-emerald-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-emerald-200 shadow-md">
         <div className="flex items-center gap-2.5">
           <Lock className="w-4 h-4 text-amber-400 shrink-0" />
           <span>
-            <strong className="text-white">🔒 Supervisory Financial Clearance:</strong> You have verified read-only inspection access over this shrine's ledger. To request payouts, settle account discrepancies, or request new amount presets, use the <em>Submit Request to Super Admin</em> desk.
+            <strong className="text-white">🔒 Supervisory Clearance:</strong> Read-only inspection access over this shrine's ledger. To request payouts or account changes, use the <em>Submit Request</em> desk.
           </span>
         </div>
         <span className="font-mono text-[10px] bg-emerald-900 px-3 py-1 rounded-full text-emerald-300 border border-emerald-600 shrink-0 font-bold flex items-center gap-1">
@@ -602,36 +602,36 @@ export default function FinanceAdminDashboardPage() {
       <AdminFinancialFlow3D />
 
       {/* 4. PRIMARY FINANCIAL KPI METRIC CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 text-xs">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-5 text-xs">
         {/* Today's Collection */}
-        <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl border-2 border-emerald-500/40 shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all space-y-1.5">
+        <div className="bg-white dark:bg-stone-900 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2 border-emerald-500/40 shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all space-y-1 sm:space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-stone-500 text-[10px] uppercase font-bold flex items-center gap-1">
-              <DollarSign className="w-3.5 h-3.5 text-emerald-600" /> TODAY'S COLLECTION
+            <span className="text-stone-500 text-[10px] uppercase font-bold flex items-center gap-1 truncate">
+              <DollarSign className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> TODAY'S
             </span>
             <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[9px] font-bold">
               LIVE
             </span>
           </div>
-          <div className="font-serif font-bold text-2xl sm:text-3xl text-emerald-950 dark:text-amber-400">
+          <div className="font-serif font-bold text-lg sm:text-2xl lg:text-3xl text-emerald-950 dark:text-amber-400 truncate">
             ₹{stats.todayCollection.toLocaleString('en-IN')}
           </div>
-          <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" /> {stats.todayCount} Offerings Recorded Today
+          <p className="text-[10px] sm:text-[11px] text-emerald-600 font-semibold flex items-center gap-1 truncate">
+            <CheckCircle2 className="w-3 h-3 shrink-0" /> {stats.todayCount} Offerings Today
           </p>
         </div>
 
         {/* Monthly Collection */}
-        <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl border-2 border-emerald-500/40 shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all space-y-1.5">
+        <div className="bg-white dark:bg-stone-900 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2 border-emerald-500/40 shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all space-y-1 sm:space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-stone-500 text-[10px] uppercase font-bold flex items-center gap-1">
-              <TrendingUp className="w-3.5 h-3.5 text-amber-500" /> THIS MONTH'S TOTAL
+            <span className="text-stone-500 text-[10px] uppercase font-bold flex items-center gap-1 truncate">
+              <TrendingUp className="w-3.5 h-3.5 text-amber-500 shrink-0" /> THIS MONTH
             </span>
             <span className="font-mono text-[9px] text-stone-500 font-semibold">
               Goal: ₹{(stats.monthlyTarget / 100000).toFixed(1)}L
             </span>
           </div>
-          <div className="font-serif font-bold text-2xl sm:text-3xl text-emerald-950 dark:text-amber-400">
+          <div className="font-serif font-bold text-lg sm:text-2xl lg:text-3xl text-emerald-950 dark:text-amber-400 truncate">
             ₹{stats.monthlyCollection.toLocaleString('en-IN')}
           </div>
           <div className="space-y-1">
@@ -641,57 +641,57 @@ export default function FinanceAdminDashboardPage() {
                 style={{ width: `${Math.min(100, Math.round((stats.monthlyCollection / stats.monthlyTarget) * 100))}%` }}
               />
             </div>
-            <p className="text-[10px] text-stone-500">
-              {Math.round((stats.monthlyCollection / stats.monthlyTarget) * 100)}% of monthly target achieved
+            <p className="text-[10px] text-stone-500 truncate">
+              {Math.round((stats.monthlyCollection / stats.monthlyTarget) * 100)}% achieved
             </p>
           </div>
         </div>
 
         {/* All-Time Collection */}
-        <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl border-2 border-emerald-500/40 shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all space-y-1.5">
+        <div className="bg-white dark:bg-stone-900 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2 border-emerald-500/40 shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all space-y-1 sm:space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-stone-500 text-[10px] uppercase font-bold flex items-center gap-1">
-              <Layers className="w-3.5 h-3.5 text-blue-600" /> ALL-TIME SHRINE CORPUS
+            <span className="text-stone-500 text-[10px] uppercase font-bold flex items-center gap-1 truncate">
+              <Layers className="w-3.5 h-3.5 text-blue-600 shrink-0" /> ALL-TIME CORPUS
             </span>
             <span className="font-mono text-[9px] text-stone-500 font-semibold">CUMULATIVE</span>
           </div>
-          <div className="font-serif font-bold text-2xl sm:text-3xl text-emerald-950 dark:text-amber-400">
+          <div className="font-serif font-bold text-lg sm:text-2xl lg:text-3xl text-emerald-950 dark:text-amber-400 truncate">
             ₹{stats.allTimeCollection.toLocaleString('en-IN')}
           </div>
-          <p className="text-[11px] text-stone-600 dark:text-stone-300 font-medium">
-            {stats.totalOfferingsCount.toLocaleString('en-IN')} Offerings • Avg ₹{stats.averageOffering.toLocaleString('en-IN')}
+          <p className="text-[10px] sm:text-[11px] text-stone-600 dark:text-stone-300 font-medium truncate">
+            {stats.totalOfferingsCount.toLocaleString('en-IN')} Offerings
           </p>
         </div>
 
         {/* Bank Settlement Integrity */}
-        <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl border-2 border-emerald-500/40 shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all space-y-1.5">
+        <div className="bg-white dark:bg-stone-900 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2 border-emerald-500/40 shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all space-y-1 sm:space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-stone-500 text-[10px] uppercase font-bold flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> BANK RECONCILIATION
+            <span className="text-stone-500 text-[10px] uppercase font-bold flex items-center gap-1 truncate">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> RECONCILIATION
             </span>
             <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[9px] font-bold">
               AUTO T+1
             </span>
           </div>
-          <div className="font-serif font-bold text-2xl sm:text-3xl text-emerald-700 dark:text-emerald-400">
+          <div className="font-serif font-bold text-lg sm:text-2xl lg:text-3xl text-emerald-700 dark:text-emerald-400">
             {stats.reconciliationMatch}%
           </div>
-          <p className="text-[11px] text-stone-500">
-            ₹0 Discrepancy • Verified Gateway Batch
+          <p className="text-[10px] sm:text-[11px] text-stone-500 truncate">
+            ₹0 Discrepancy • Verified
           </p>
         </div>
       </div>
 
       {/* 5. TWO-COLUMN LAYOUT: TEMPLE FUNDS ALLOCATION & SACRED AMOUNT PRESETS */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-8">
         {/* LEFT (7 cols): TEMPLE DEVOTIONAL FUNDS & PURPOSE ALLOCATION (FINANCE OPTIONS) */}
-        <div className="lg:col-span-7 bg-white dark:bg-stone-900 p-6 rounded-3xl border-2 border-stone-200 dark:border-stone-800 shadow-xl space-y-6">
-          <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-4">
+        <div className="lg:col-span-7 bg-white dark:bg-stone-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-2 border-stone-200 dark:border-stone-800 shadow-xl space-y-4 sm:space-y-6">
+          <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3 sm:pb-4">
             <div>
-              <div className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold uppercase tracking-wider">
-                <PieChart className="w-4 h-4" /> TEMPLE FINANCE OPTIONS
+              <div className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
+                <PieChart className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> TEMPLE FINANCE OPTIONS
               </div>
-              <h2 className="text-lg font-serif font-bold text-stone-900 dark:text-stone-100">
+              <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 dark:text-stone-100">
                 Seva & Dedicated Devotional Funds Allocation
               </h2>
             </div>
@@ -701,7 +701,7 @@ export default function FinanceAdminDashboardPage() {
                 setReqTitle(`New Seva Fund Allocation Request for ${templeInfo.name}`);
                 setShowRequisitionModal(true);
               }}
-              className="text-xs font-bold text-amber-600 hover:text-amber-500 dark:text-amber-400 flex items-center gap-1"
+              className="text-xs font-bold text-amber-600 hover:text-amber-500 dark:text-amber-400 flex items-center gap-1 shrink-0"
             >
               Request Fund <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
@@ -759,13 +759,13 @@ export default function FinanceAdminDashboardPage() {
         </div>
 
         {/* RIGHT (5 cols): TEMPLE CONFIGURED SACRED AMOUNT PRESETS (AMOUNT OPTIONS) */}
-        <div className="lg:col-span-5 bg-white dark:bg-stone-900 p-6 rounded-3xl border-2 border-stone-200 dark:border-stone-800 shadow-xl space-y-6">
-          <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-4">
+        <div className="lg:col-span-5 bg-white dark:bg-stone-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-2 border-stone-200 dark:border-stone-800 shadow-xl space-y-4 sm:space-y-6">
+          <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3 sm:pb-4">
             <div>
-              <div className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400 text-[11px] font-bold uppercase tracking-wider">
-                <Sparkles className="w-4 h-4" /> CONFIGURED AMOUNT OPTIONS
+              <div className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> CONFIGURED AMOUNT OPTIONS
               </div>
-              <h2 className="text-lg font-serif font-bold text-stone-900 dark:text-stone-100">
+              <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 dark:text-stone-100">
                 Sacred Offering Tiers
               </h2>
             </div>
@@ -775,7 +775,7 @@ export default function FinanceAdminDashboardPage() {
                 setReqTitle(`Request to Configure New Amount Tier for ${templeInfo.name}`);
                 setShowRequisitionModal(true);
               }}
-              className="text-xs font-bold text-emerald-700 hover:text-emerald-600 dark:text-emerald-400 flex items-center gap-1"
+              className="text-xs font-bold text-emerald-700 hover:text-emerald-600 dark:text-emerald-400 flex items-center gap-1 shrink-0"
             >
               Add Preset <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
@@ -847,13 +847,13 @@ export default function FinanceAdminDashboardPage() {
       </div>
 
       {/* 6. TEMPLE NODAL BANK ACCOUNT & SETTLEMENT PROFILE */}
-      <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border-2 border-emerald-500/40 shadow-xl space-y-5">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-stone-200 dark:border-stone-800 pb-4">
+      <div className="bg-white dark:bg-stone-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-2 border-emerald-500/40 shadow-xl space-y-4 sm:space-y-5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-stone-200 dark:border-stone-800 pb-3 sm:pb-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold uppercase tracking-wider">
-              <CreditCard className="w-4 h-4" /> OFFICIAL NODAL BANK SETTLEMENT PROFILE
+            <div className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
+              <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> OFFICIAL NODAL BANK SETTLEMENT PROFILE
             </div>
-            <h3 className="text-lg font-serif font-bold text-stone-900 dark:text-stone-100">
+            <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900 dark:text-stone-100">
               Direct Gateway-to-Temple Bank Account
             </h3>
           </div>
@@ -863,13 +863,13 @@ export default function FinanceAdminDashboardPage() {
               setReqTitle(`Bank / Settlement Details Update Request for ${templeInfo.name}`);
               setShowRequisitionModal(true);
             }}
-            className="px-3 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-800 dark:text-stone-200 text-xs font-bold border border-stone-300 dark:border-stone-700 flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-800 dark:text-stone-200 text-xs font-bold border border-stone-300 dark:border-stone-700 flex items-center gap-1.5 shrink-0"
           >
             <Lock className="w-3 h-3 text-amber-500" /> Request Modification
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 text-xs">
           <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 space-y-1">
             <span className="text-[10px] text-stone-500 uppercase font-bold">Designated Nodal Bank</span>
             <p className="font-bold text-stone-900 dark:text-stone-100 text-sm">{templeInfo.bankName}</p>
@@ -899,13 +899,13 @@ export default function FinanceAdminDashboardPage() {
       </div>
 
       {/* 7. LIVE TEMPLE DEVOTEE OFFERINGS AUDIT LEDGER */}
-      <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border-2 border-stone-200 dark:border-stone-800 shadow-xl space-y-5">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-stone-200 dark:border-stone-800 pb-4">
+      <div className="bg-white dark:bg-stone-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-2 border-stone-200 dark:border-stone-800 shadow-xl space-y-4 sm:space-y-5">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4 border-b border-stone-200 dark:border-stone-800 pb-3 sm:pb-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold uppercase tracking-wider">
-              <ShieldCheck className="w-4 h-4" /> LIVE DEVOTEE OFFERINGS AUDIT LEDGER
+            <div className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
+              <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> LIVE DEVOTEE OFFERINGS AUDIT LEDGER
             </div>
-            <h3 className="text-lg font-serif font-bold text-stone-900 dark:text-stone-100">
+            <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900 dark:text-stone-100">
               Verified Transactions Scoped to {templeInfo.name}
             </h3>
           </div>
@@ -1004,12 +1004,12 @@ export default function FinanceAdminDashboardPage() {
 
       {/* 8. QUICK REQUISITION TO SUPER ADMIN MODAL */}
       {showRequisitionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-stone-900 border-2 border-emerald-500/60 w-full max-w-xl rounded-3xl p-6 sm:p-8 space-y-5 shadow-2xl animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4">
+          <div className="bg-white dark:bg-stone-900 border-2 border-emerald-500/60 w-full max-w-xl rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4 sm:space-y-5 shadow-2xl animate-in fade-in duration-200 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
               <div className="flex items-center gap-2">
-                <Send className="w-5 h-5 text-amber-500" />
-                <h3 className="font-serif font-bold text-xl text-stone-900 dark:text-stone-100">
+                <Send className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
+                <h3 className="font-serif font-bold text-lg sm:text-xl text-stone-900 dark:text-stone-100">
                   Submit Requisition to Super Admin
                 </h3>
               </div>

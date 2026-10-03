@@ -9,13 +9,14 @@ import {
   INITIATIVE_TYPE_LABELS,
   registerDevoteeMuhurthamReminder,
   isInitiativeReminderSet,
-  isInitiativeTeaserVisible,
+  isInitiativeVisibleToUsers,
 } from '@/lib/initiatives-data';
 import InitiativeTimeline3D from '@/components/3d/InitiativeTimeline3D';
 import InitiativeFundsBreakdown3D from '@/components/3d/InitiativeFundsBreakdown3D';
 import InitiativeElevation3D from '@/components/3d/InitiativeElevation3D';
 import ShareInitiativeModal from '@/components/initiatives/ShareInitiativeModal';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
+import { useAuth } from '@/lib/auth-context';
 import {
   ArrowLeft,
   MapPin,
@@ -132,6 +133,35 @@ export default function InitiativeDetailPage() {
     );
   }
 
+  const { activeRole } = useAuth();
+  const isAdmin = activeRole === 'SUPER_ADMIN' || activeRole === 'TEMPLE_ADMIN' || activeRole === 'FINANCE_ADMIN';
+
+  // User Rule: When countdown starts OR within 24 hours of release, then only should a scheduled initiative be visible to users
+  if (initiative.status === 'SCHEDULED' && !isInitiativeVisibleToUsers(initiative) && !isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-stone-50 dark:bg-stone-950 font-sans">
+        <div className="max-w-md w-full bg-white dark:bg-stone-900 rounded-3xl p-8 border border-devotional-gold/40 shadow-xl text-center space-y-4">
+          <div className="text-4xl">⏳</div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 text-xs font-bold uppercase tracking-wider border border-amber-400/30">
+            Auspicious Release Pending
+          </div>
+          <h2 className="text-xl font-serif font-bold text-devotional-maroon dark:text-amber-400">
+            Countdown Commencing Soon
+          </h2>
+          <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+            The sacred countdown for <strong>{initiative.title}</strong> will become visible to devotees once the auspicious announcement period begins.
+          </p>
+          <Link
+            href="/initiatives"
+            className="inline-block px-5 py-2.5 rounded-2xl bg-devotional-maroon text-white font-bold text-xs shadow-md hover:brightness-110 transition-all"
+          >
+            Explore Active Causes
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const typeConfig = INITIATIVE_TYPE_LABELS[initiative.initiative_type] || INITIATIVE_TYPE_LABELS.OTHER;
   const percent = initiative.target_amount > 0
     ? Math.min(Math.round((initiative.current_raised / initiative.target_amount) * 100), 100)
@@ -140,7 +170,7 @@ export default function InitiativeDetailPage() {
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 font-sans pb-28">
       {/* Top Back Navigation Bar */}
-      <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 sticky top-16 z-30 px-4 sm:px-8 py-3">
+      <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 relative md:sticky md:top-16 z-30 px-4 sm:px-8 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <button
             type="button"
@@ -166,7 +196,7 @@ export default function InitiativeDetailPage() {
       </div>
 
       {/* Main Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-8">
         {/* 3D Immersive Hero Cover Banner */}
         <div className="relative rounded-3xl overflow-hidden shadow-2xl border-2 border-devotional-gold/40 bg-stone-950">
           <div className="relative h-64 sm:h-96 w-full">
@@ -208,8 +238,8 @@ export default function InitiativeDetailPage() {
           </div>
         </div>
 
-        {/* Sacred Auspicious Launch Countdown Banner (When SCHEDULED and Teaser Visible) */}
-        {initiative.status === 'SCHEDULED' && isInitiativeTeaserVisible(initiative) && (
+        {/* Sacred Auspicious Launch Countdown Banner (When SCHEDULED) */}
+        {initiative.status === 'SCHEDULED' && (
           <div className="relative rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-amber-950 via-stone-900 to-red-950 text-white border-2 border-devotional-gold/60 shadow-2xl overflow-hidden">
             {/* Ambient Background Vedic Glow */}
             <div className="absolute -right-16 -top-16 w-64 h-64 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />

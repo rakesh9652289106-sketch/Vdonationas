@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { calculateNextDeductionDate } from '@/lib/supabase-service';
 
 export async function GET() {
+  const nextDate = calculateNextDeductionDate(new Date(), 'MONTHLY');
   return NextResponse.json([
     {
       id: 'sub-1',
@@ -8,7 +10,7 @@ export async function GET() {
       devotee_name: 'Radha Krishna',
       amount: 501.0,
       interval: 'MONTHLY',
-      next_deduction_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      next_deduction_date: nextDate,
       status: 'ACTIVE',
       temple_name: 'Sri Vasavi Kanyaka Parameswari Matha Temple',
       category_name: 'Nitya Annadanam Seva',
@@ -20,7 +22,8 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const subId = `SUB-AUTOPAY-${Math.floor(10000 + Math.random() * 90000)}`;
-    const nextDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const interval = body.interval || 'MONTHLY';
+    const nextDate = calculateNextDeductionDate(new Date(), interval);
 
     const newSub = {
       id: `sub-${Date.now()}`,

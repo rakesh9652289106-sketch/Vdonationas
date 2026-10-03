@@ -15,6 +15,8 @@ import {
   Lock,
   Building2,
   ChevronDown,
+  Menu,
+  X,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
 import { templeService } from '@/lib/supabase-service';
@@ -26,6 +28,7 @@ export default function FinanceAdminLayout({ children }: { children: React.React
   const router = useRouter();
   const { t } = useLanguage();
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [temples, setTemples] = useState<Temple[]>([]);
   const [templeInfo, setTempleInfo] = useState<{ id?: string; name: string; code: string; officerName?: string }>({
     name: 'Sri Vasavi Kanyaka Parameswari Matha',
@@ -152,8 +155,123 @@ export default function FinanceAdminLayout({ children }: { children: React.React
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-900 flex flex-col md:flex-row font-sans">
-      {/* Finance Admin 3D Dedicated Sidebar (Sleek 72-unit width, not full-screen) */}
-      <aside className="w-full md:w-72 shrink-0 md:min-h-screen bg-emerald-950 text-emerald-100 p-5 sm:p-6 space-y-6 border-r border-emerald-900 shadow-2xl">
+      {/* Mobile Top App Bar */}
+      <header className="md:hidden sticky top-0 z-40 bg-emerald-950/95 backdrop-blur-md border-b border-emerald-900 px-4 py-3 flex items-center justify-between shadow-lg text-emerald-100">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-800 to-amber-500 flex items-center justify-center text-stone-950 shadow shrink-0 font-bold">
+            <DollarSign className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-mono font-bold bg-emerald-900 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-700">
+                {templeInfo.code}
+              </span>
+              <span className="text-[10px] uppercase font-bold text-amber-300">
+                FINANCE DESK
+              </span>
+            </div>
+            <h1 className="text-sm font-serif font-bold text-white truncate">
+              {templeInfo.name}
+            </h1>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 rounded-xl bg-emerald-900 border border-emerald-700 text-amber-300 hover:text-white transition-colors cursor-pointer shrink-0 ml-2"
+          aria-label="Toggle navigation menu"
+        >
+          {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </header>
+
+      {/* Mobile Drawer Navigation Modal */}
+      {mobileMenuOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex flex-col justify-end"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <div
+            className="bg-emerald-950 border-t border-emerald-800 rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto space-y-4 shadow-2xl text-emerald-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-emerald-900">
+              <div className="min-w-0 pr-2">
+                <span className="text-[10px] font-mono font-bold bg-emerald-900 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-700">
+                  {templeInfo.code}
+                </span>
+                <p className="font-serif font-bold text-amber-300 text-sm truncate max-w-[240px]">
+                  {templeInfo.name}
+                </p>
+              </div>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-1.5 rounded-xl bg-emerald-900 text-emerald-300 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Mobile Temple Switcher */}
+            {temples.length > 1 && (
+              <div className="p-3 rounded-2xl bg-emerald-900/60 border border-emerald-700/60 space-y-1">
+                <label className="text-[10px] uppercase font-bold text-emerald-400 block">
+                  Switch Active Shrine:
+                </label>
+                <select
+                  value={templeInfo.id || ''}
+                  onChange={(e) => {
+                    const found = temples.find((t) => t.id === e.target.value);
+                    if (found) handleSelectTemple(found);
+                  }}
+                  className="w-full text-xs font-semibold bg-emerald-950 text-amber-300 border border-emerald-700 rounded-xl px-2.5 py-2 cursor-pointer"
+                >
+                  {temples.map((t) => (
+                    <option key={t.id} value={t.id} className="bg-stone-900 text-white">
+                      {t.name} ({t.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {isSuperAdmin && (
+              <Link
+                href="/admin/super/temples"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-400/20 text-amber-300 text-xs font-bold border border-amber-400/40"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Back to Super Admin
+              </Link>
+            )}
+
+            <nav className="space-y-1.5 text-xs font-semibold">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl transition-all ${
+                      isActive
+                        ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-bold shadow-md border-l-4 border-emerald-950 ring-1 ring-amber-300/40'
+                        : 'text-emerald-200 hover:text-white hover:bg-emerald-900/80'
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-stone-950' : 'text-amber-300'}`} />
+                    <span className="truncate">{item.name}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {/* Finance Admin Desktop Sidebar */}
+      <aside className="hidden md:block w-72 shrink-0 min-h-screen bg-emerald-950 text-emerald-100 p-5 sm:p-6 space-y-6 border-r border-emerald-900 shadow-2xl">
         {isSuperAdmin && (
           <Link
             href="/admin/super/temples"
@@ -240,8 +358,8 @@ export default function FinanceAdminLayout({ children }: { children: React.React
         </nav>
       </aside>
 
-      {/* Main Content Area: Responsive flex-1 with min-w-0 */}
-      <main className="flex-1 p-4 sm:p-8 lg:p-10 overflow-y-auto min-w-0 bg-stone-50 dark:bg-stone-950">
+      {/* Main Content Area */}
+      <main className="flex-1 p-3 sm:p-6 lg:p-10 overflow-y-auto min-w-0 bg-stone-50 dark:bg-stone-950">
         {children}
       </main>
     </div>

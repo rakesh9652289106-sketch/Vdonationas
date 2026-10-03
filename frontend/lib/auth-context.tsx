@@ -382,6 +382,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.dispatchEvent(new CustomEvent('vdonations_role_changed', { detail: normalizedRole }));
         window.dispatchEvent(new CustomEvent('vdonations_profile_updated', { detail: fullUser }));
       }
+
+      // Sync with Supabase profiles in the background
+      (async () => {
+        try {
+          if (fullUser.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fullUser.id)) {
+            await supabase.from('profiles').upsert({
+              id: fullUser.id,
+              email: fullUser.email,
+              full_name: fullUser.fullName,
+              mobile: fullUser.mobile,
+              gotram: fullUser.gotram,
+              sankethanamam: fullUser.sankethanamam,
+              role: normalizedRole,
+              updated_at: new Date().toISOString(),
+            });
+          }
+        } catch (syncErr) {
+          console.warn('[VDonations Auth] Background Supabase profile sync:', syncErr);
+        }
+      })();
     } catch (e) {
       console.warn('[VDonations Auth] Error saving session to localStorage:', e);
     }
@@ -412,6 +432,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('vdonations_profile_updated', { detail: merged }));
         }
+
+        // Sync updates to Supabase profiles
+        (async () => {
+          try {
+            if (merged.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(merged.id)) {
+              await supabase.from('profiles').update({
+                full_name: merged.fullName,
+                email: merged.email,
+                mobile: merged.mobile,
+                gotram: merged.gotram,
+                sankethanamam: merged.sankethanamam,
+                updated_at: new Date().toISOString(),
+              }).eq('id', merged.id);
+            } else if (merged.email) {
+              await supabase.from('profiles').update({
+                full_name: merged.fullName,
+                mobile: merged.mobile,
+                gotram: merged.gotram,
+                sankethanamam: merged.sankethanamam,
+                updated_at: new Date().toISOString(),
+              }).eq('email', merged.email);
+            }
+          } catch (syncErr) {
+            console.warn('[VDonations Auth] Background profile update sync:', syncErr);
+          }
+        })();
       } catch (e) {
         console.warn('[VDonations Auth] Error updating devotee profile in localStorage:', e);
       }

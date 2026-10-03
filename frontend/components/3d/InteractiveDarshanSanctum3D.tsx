@@ -16,39 +16,53 @@ export type DarshanTimeOfDay = 'suprabhatam' | 'madhyahna' | 'sandhya' | 'maha_a
 
 function createRosePetalTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
+  canvas.width = 256;
+  canvas.height = 256;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.clearRect(0, 0, 128, 128);
+    ctx.clearRect(0, 0, 256, 256);
     ctx.save();
-    ctx.translate(64, 64);
+    ctx.translate(128, 128);
+
+    // Realistic curved cupped rose petal with scalloped apex
     ctx.beginPath();
-    ctx.moveTo(0, 50);
-    ctx.bezierCurveTo(-44, 36, -50, -16, -24, -40);
-    ctx.bezierCurveTo(-12, -52, -4, -36, 0, -32);
-    ctx.bezierCurveTo(4, -36, 12, -52, 24, -40);
-    ctx.bezierCurveTo(50, -16, 44, 36, 0, 50);
+    ctx.moveTo(0, 102);
+    ctx.bezierCurveTo(-90, 72, -108, -32, -54, -82);
+    ctx.bezierCurveTo(-26, -106, -8, -74, 0, -68);
+    ctx.bezierCurveTo(8, -74, 26, -106, 54, -82);
+    ctx.bezierCurveTo(108, -32, 90, 72, 0, 102);
     ctx.closePath();
 
-    const grad = ctx.createRadialGradient(-8, -10, 4, 0, 5, 52);
+    // Velvety rich rose gradient (temple crimson to deep ruby velvet)
+    const grad = ctx.createRadialGradient(-16, -20, 10, 0, 10, 110);
     grad.addColorStop(0, '#ff1744');
     grad.addColorStop(0.35, '#d50000');
-    grad.addColorStop(0.75, '#880e4f');
-    grad.addColorStop(1, '#4a0018');
+    grad.addColorStop(0.7, '#b71c1c');
+    grad.addColorStop(0.9, '#880e4f');
+    grad.addColorStop(1, '#4a001a');
     ctx.fillStyle = grad;
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255, 170, 190, 0.45)';
-    ctx.lineWidth = 1.5;
+    // Soft satin specular sheen
+    const sheenGrad = ctx.createLinearGradient(-40, -60, 40, 60);
+    sheenGrad.addColorStop(0, 'rgba(255, 205, 215, 0.45)');
+    sheenGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.15)');
+    sheenGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = sheenGrad;
+    ctx.fill();
+
+    // Silky curled petal edge highlight
+    ctx.strokeStyle = 'rgba(255, 200, 220, 0.65)';
+    ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(90, 0, 20, 0.3)';
-    ctx.lineWidth = 1;
-    for (let i = -2; i <= 2; i++) {
+    // Delicate botanical vein lines
+    ctx.strokeStyle = 'rgba(120, 0, 30, 0.35)';
+    ctx.lineWidth = 1.2;
+    for (let i = -3; i <= 3; i++) {
       ctx.beginPath();
-      ctx.moveTo(0, 48);
-      ctx.quadraticCurveTo(i * 12, 10, i * 18, -20);
+      ctx.moveTo(0, 96);
+      ctx.quadraticCurveTo(i * 24, 15, i * 36, -45);
       ctx.stroke();
     }
     ctx.restore();
@@ -60,36 +74,70 @@ function createRosePetalTexture(): THREE.CanvasTexture {
 
 function createYellowMarigoldTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
+  canvas.width = 256;
+  canvas.height = 256;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.clearRect(0, 0, 128, 128);
-    const cx = 64, cy = 64;
-    const drawRuffledLayer = (radius: number, count: number, petalLen: number, color: string) => {
-      ctx.fillStyle = color;
+    ctx.clearRect(0, 0, 256, 256);
+    const cx = 128, cy = 128;
+
+    // Multi-layered lush temple Banti Puvvu (Marigold) with ruffled floret whorls
+    const drawRuffledLayer = (radius: number, count: number, len: number, width: number, color1: string, color2: string) => {
       for (let i = 0; i < count; i++) {
         const angle = (Math.PI * 2 * i) / count;
         const px = cx + Math.cos(angle) * radius;
         const py = cy + Math.sin(angle) * radius;
+        const pGrad = ctx.createRadialGradient(px, py, 2, px, py, len);
+        pGrad.addColorStop(0, color1);
+        pGrad.addColorStop(1, color2);
+        ctx.fillStyle = pGrad;
+
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(angle);
         ctx.beginPath();
-        ctx.ellipse(px, py, petalLen, petalLen * 0.65, angle, 0, Math.PI * 2);
+        // Ruffled scalloped floret tip
+        ctx.moveTo(-width / 2, 0);
+        ctx.quadraticCurveTo(-width * 0.6, len * 0.7, 0, len);
+        ctx.quadraticCurveTo(width * 0.6, len * 0.7, width / 2, 0);
+        ctx.closePath();
         ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 235, 120, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
       }
     };
-    drawRuffledLayer(36, 18, 15, '#f57f17');
-    drawRuffledLayer(26, 16, 13, '#fbc02d');
-    drawRuffledLayer(16, 14, 11, '#ffeb3b');
-    drawRuffledLayer(7, 10, 8, '#ff9800');
 
-    const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 12);
-    grad.addColorStop(0, '#bf360c');
-    grad.addColorStop(0.65, '#e65100');
-    grad.addColorStop(1, '#f57f17');
-    ctx.fillStyle = grad;
+    // Layer 1: Outermost golden amber petals
+    drawRuffledLayer(68, 24, 34, 18, '#ffd54f', '#f57f17');
+    // Layer 2: Middle-outer vibrant turmeric petals
+    drawRuffledLayer(48, 20, 28, 16, '#fff176', '#fbc02d');
+    // Layer 3: Middle bright yellow petals
+    drawRuffledLayer(32, 16, 22, 13, '#ffff8d', '#fdd835');
+    // Layer 4: Inner tight florets
+    drawRuffledLayer(16, 12, 16, 10, '#ffe082', '#ff9800');
+
+    // Central saffron disc core
+    const coreGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 18);
+    coreGrad.addColorStop(0, '#bf360c');
+    coreGrad.addColorStop(0.5, '#e65100');
+    coreGrad.addColorStop(0.85, '#ff8f00');
+    coreGrad.addColorStop(1, '#ffc107');
+    ctx.fillStyle = coreGrad;
     ctx.beginPath();
-    ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 18, 0, Math.PI * 2);
     ctx.fill();
+
+    // Center pollen grains
+    ctx.fillStyle = 'rgba(255, 245, 157, 0.8)';
+    for (let p = 0; p < 18; p++) {
+      const pAng = Math.random() * Math.PI * 2;
+      const pDist = Math.random() * 12;
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(pAng) * pDist, cy + Math.sin(pAng) * pDist, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -98,34 +146,52 @@ function createYellowMarigoldTexture(): THREE.CanvasTexture {
 
 function createOrangeMarigoldTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
+  canvas.width = 256;
+  canvas.height = 256;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.clearRect(0, 0, 128, 128);
-    const cx = 64, cy = 64;
-    const drawRuffledLayer = (radius: number, count: number, petalLen: number, color: string) => {
-      ctx.fillStyle = color;
+    ctx.clearRect(0, 0, 256, 256);
+    const cx = 128, cy = 128;
+
+    const drawRuffledLayer = (radius: number, count: number, len: number, width: number, color1: string, color2: string) => {
       for (let i = 0; i < count; i++) {
         const angle = (Math.PI * 2 * i) / count;
         const px = cx + Math.cos(angle) * radius;
         const py = cy + Math.sin(angle) * radius;
+        const pGrad = ctx.createRadialGradient(px, py, 2, px, py, len);
+        pGrad.addColorStop(0, color1);
+        pGrad.addColorStop(1, color2);
+        ctx.fillStyle = pGrad;
+
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(angle);
         ctx.beginPath();
-        ctx.ellipse(px, py, petalLen, petalLen * 0.65, angle, 0, Math.PI * 2);
+        ctx.moveTo(-width / 2, 0);
+        ctx.quadraticCurveTo(-width * 0.6, len * 0.7, 0, len);
+        ctx.quadraticCurveTo(width * 0.6, len * 0.7, width / 2, 0);
+        ctx.closePath();
         ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 204, 128, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
       }
     };
-    drawRuffledLayer(36, 18, 15, '#d84315');
-    drawRuffledLayer(26, 16, 13, '#ff5722');
-    drawRuffledLayer(16, 14, 11, '#ff9100');
-    drawRuffledLayer(7, 10, 8, '#ffab40');
 
-    const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 10);
-    grad.addColorStop(0, '#7f0000');
-    grad.addColorStop(1, '#d84315');
-    ctx.fillStyle = grad;
+    drawRuffledLayer(68, 24, 34, 18, '#ff9800', '#d84315');
+    drawRuffledLayer(48, 20, 28, 16, '#ffa726', '#e65100');
+    drawRuffledLayer(32, 16, 22, 13, '#ffb74d', '#f57c00');
+    drawRuffledLayer(16, 12, 16, 10, '#ffd180', '#ef6c00');
+
+    const coreGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 18);
+    coreGrad.addColorStop(0, '#7f0000');
+    coreGrad.addColorStop(0.5, '#bf360c');
+    coreGrad.addColorStop(0.85, '#d84315');
+    coreGrad.addColorStop(1, '#ff6d00');
+    ctx.fillStyle = coreGrad;
     ctx.beginPath();
-    ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 18, 0, Math.PI * 2);
     ctx.fill();
   }
   const tex = new THREE.CanvasTexture(canvas);
@@ -135,40 +201,75 @@ function createOrangeMarigoldTexture(): THREE.CanvasTexture {
 
 function createWhiteJasmineTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
+  canvas.width = 256;
+  canvas.height = 256;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.clearRect(0, 0, 128, 128);
-    const cx = 64, cy = 64;
-    for (let i = 0; i < 5; i++) {
-      const angle = (Math.PI * 2 * i) / 5;
+    ctx.clearRect(0, 0, 256, 256);
+    const cx = 128, cy = 128;
+
+    // Green calyx sepals peeking from behind
+    ctx.save();
+    ctx.translate(cx, cy);
+    for (let c = 0; c < 6; c++) {
+      const cAngle = (Math.PI * 2 * c) / 6 + Math.PI / 6;
+      ctx.save();
+      ctx.rotate(cAngle);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(-6, -18, 0, -32);
+      ctx.quadraticCurveTo(6, -18, 0, 0);
+      ctx.fillStyle = '#43a047';
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+
+    // 6 Graceful pure white ivory petals with delicate curl
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI * 2 * i) / 6;
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(angle);
       ctx.beginPath();
       ctx.moveTo(0, 0);
-      ctx.bezierCurveTo(-14, -20, -18, -46, 0, -52);
-      ctx.bezierCurveTo(18, -46, 14, -20, 0, 0);
-      const pGrad = ctx.createLinearGradient(0, 0, 0, -52);
-      pGrad.addColorStop(0, '#fffde7');
-      pGrad.addColorStop(0.3, '#ffffff');
-      pGrad.addColorStop(0.85, '#f5f5f5');
-      pGrad.addColorStop(1, '#e8eaf6');
+      ctx.bezierCurveTo(-26, -38, -32, -88, 0, -102);
+      ctx.bezierCurveTo(32, -88, 26, -38, 0, 0);
+      ctx.closePath();
+
+      const pGrad = ctx.createLinearGradient(0, 0, 0, -102);
+      pGrad.addColorStop(0, '#f9fbe7');
+      pGrad.addColorStop(0.2, '#ffffff');
+      pGrad.addColorStop(0.7, '#ffffff');
+      pGrad.addColorStop(0.9, '#f1f8e9');
+      pGrad.addColorStop(1, '#e0f2f1');
       ctx.fillStyle = pGrad;
       ctx.fill();
-      ctx.strokeStyle = 'rgba(210, 215, 230, 0.4)';
-      ctx.lineWidth = 1;
+
+      // Delicate satin center crease
+      ctx.strokeStyle = 'rgba(200, 220, 200, 0.35)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(0, -10);
+      ctx.lineTo(0, -90);
+      ctx.stroke();
+
+      // Soft petal edge highlight
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.restore();
     }
-    const cGrad = ctx.createRadialGradient(cx, cy, 1, cx, cy, 8);
-    cGrad.addColorStop(0, '#ffca28');
-    cGrad.addColorStop(0.65, '#ffa000');
-    cGrad.addColorStop(1, 'rgba(255, 160, 0, 0)');
+
+    // Golden honeyed central pistil & nectar disc
+    const cGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 16);
+    cGrad.addColorStop(0, '#ffe082');
+    cGrad.addColorStop(0.4, '#ffb300');
+    cGrad.addColorStop(0.8, '#ff8f00');
+    cGrad.addColorStop(1, 'rgba(255, 143, 0, 0)');
     ctx.fillStyle = cGrad;
     ctx.beginPath();
-    ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 16, 0, Math.PI * 2);
     ctx.fill();
   }
   const tex = new THREE.CanvasTexture(canvas);
@@ -178,37 +279,43 @@ function createWhiteJasmineTexture(): THREE.CanvasTexture {
 
 function createPinkLotusPetalTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
+  canvas.width = 256;
+  canvas.height = 256;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.clearRect(0, 0, 128, 128);
+    ctx.clearRect(0, 0, 256, 256);
     ctx.save();
-    ctx.translate(64, 64);
+    ctx.translate(128, 128);
+
+    // Sacred lotus petal (Kamala Dalam) silhouette
     ctx.beginPath();
-    ctx.moveTo(0, 52);
-    ctx.bezierCurveTo(-38, 30, -32, -22, 0, -54);
-    ctx.bezierCurveTo(32, -22, 38, 30, 0, 52);
+    ctx.moveTo(0, 105);
+    ctx.bezierCurveTo(-78, 60, -68, -45, 0, -108);
+    ctx.bezierCurveTo(68, -45, 78, 60, 0, 105);
     ctx.closePath();
 
-    const grad = ctx.createLinearGradient(0, 52, 0, -54);
-    grad.addColorStop(0, '#fff8e1');
-    grad.addColorStop(0.3, '#f48fb1');
-    grad.addColorStop(0.7, '#ec407a');
-    grad.addColorStop(1, '#c2185b');
+    // Sacred white-to-lotus pink gradient
+    const grad = ctx.createLinearGradient(0, 105, 0, -108);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.25, '#fff0f5');
+    grad.addColorStop(0.55, '#f48fb1');
+    grad.addColorStop(0.85, '#e91e63');
+    grad.addColorStop(1, '#ad1457');
     ctx.fillStyle = grad;
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
-    ctx.lineWidth = 1.2;
+    // Translucent specular edge
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+    ctx.lineWidth = 2.0;
     ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(194, 24, 91, 0.22)';
-    ctx.lineWidth = 0.8;
-    for (const offset of [-16, -8, 8, 16]) {
+    // Longitudinal venation
+    ctx.strokeStyle = 'rgba(173, 20, 87, 0.25)';
+    ctx.lineWidth = 1.2;
+    for (const offset of [-32, -16, 16, 32]) {
       ctx.beginPath();
-      ctx.moveTo(0, 50);
-      ctx.quadraticCurveTo(offset * 0.9, 0, 0, -52);
+      ctx.moveTo(0, 95);
+      ctx.quadraticCurveTo(offset * 0.9, 0, 0, -100);
       ctx.stroke();
     }
     ctx.restore();
@@ -217,6 +324,46 @@ function createPinkLotusPetalTexture(): THREE.CanvasTexture {
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
+
+function createGoldenAuraSparkleTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.clearRect(0, 0, 128, 128);
+    const cx = 64, cy = 64;
+
+    // Radial gold aura halo
+    const halo = ctx.createRadialGradient(cx, cy, 2, cx, cy, 58);
+    halo.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+    halo.addColorStop(0.2, 'rgba(255, 235, 59, 0.75)');
+    halo.addColorStop(0.55, 'rgba(255, 179, 0, 0.35)');
+    halo.addColorStop(1, 'rgba(255, 143, 0, 0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 58, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4-Point radiant star flare
+    ctx.save();
+    ctx.translate(cx, cy);
+    for (let r = 0; r < 2; r++) {
+      ctx.rotate((Math.PI / 2) * r);
+      ctx.beginPath();
+      ctx.moveTo(-42, 0);
+      ctx.quadraticCurveTo(0, -6, 42, 0);
+      ctx.quadraticCurveTo(0, 6, -42, 0);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 
 function createGoldenHaloTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
@@ -599,11 +746,19 @@ interface FlowerParticleData {
   y: number;
   z: number;
   vy: number;
+  baseScale: number;
+  tumbleSpeed: number;
+  tumblePhase: number;
   swaySpeed: number;
-  swayAmp: number;
+  swayAmpX: number;
+  swayAmpZ: number;
   swayOffset: number;
   rotSpeed: number;
+  opacity: number;
+  targetOpacity: number;
+  isSparkle: boolean;
 }
+
 
 function getTimePresetForNow(): DarshanTimeOfDay {
   const hour = new Date().getHours();
@@ -1745,40 +1900,58 @@ export default function InteractiveDarshanSanctum3D({
     const smokeSystem = new THREE.Points(smokeGeo, smokeMat);
     scene.add(smokeSystem);
 
-    // 11. Photorealistic Multi-Flower Pushparchana System (30 Seconds Continuous Flow)
+    // 11. Photorealistic Multi-Flower Pushparchana System (30 Seconds Continuous Graceful Cascade)
     const flowerTextures = [
-      createRosePetalTexture(),
-      createYellowMarigoldTexture(),
-      createOrangeMarigoldTexture(),
-      createWhiteJasmineTexture(),
-      createPinkLotusPetalTexture(),
+      createRosePetalTexture(),        // 0: Crimson Velvet Rose Petal
+      createYellowMarigoldTexture(),   // 1: Golden Yellow Marigold
+      createOrangeMarigoldTexture(),   // 2: Saffron Orange Marigold
+      createWhiteJasmineTexture(),     // 3: Pearl White Jasmine
+      createPinkLotusPetalTexture(),   // 4: Sacred Pink Lotus Petal
+      createGoldenAuraSparkleTexture(),// 5: Celestial Golden Sparkle
     ];
 
-    const flowerCount = 220;
+    const flowerCount = 200;
     const flowerGroup = new THREE.Group();
     const flowerParticles: FlowerParticleData[] = [];
 
     for (let i = 0; i < flowerCount; i++) {
-      // Pick random flower texture: 30% roses, 25% yellow marigolds, 25% orange marigolds, 10% jasmines, 10% lotus
+      // Composition: 30% Roses, 25% Yellow Marigolds, 20% Orange Marigolds, 15% Jasmines, 5% Lotus, 5% Golden Sparkles
       const r = Math.random();
       let texIndex = 0;
-      if (r < 0.3) texIndex = 0; // Rose
-      else if (r < 0.55) texIndex = 1; // Yellow Marigold
-      else if (r < 0.8) texIndex = 2; // Orange Marigold
-      else if (r < 0.9) texIndex = 3; // Jasmine
-      else texIndex = 4; // Lotus Petal
+      let baseScale = 0.14;
+      const isSparkle = r >= 0.95;
+
+      if (r < 0.30) {
+        texIndex = 0; // Rose Petal
+        baseScale = 0.12 + Math.random() * 0.07;
+      } else if (r < 0.55) {
+        texIndex = 1; // Yellow Marigold
+        baseScale = 0.15 + Math.random() * 0.06;
+      } else if (r < 0.75) {
+        texIndex = 2; // Orange Marigold
+        baseScale = 0.15 + Math.random() * 0.06;
+      } else if (r < 0.90) {
+        texIndex = 3; // White Jasmine
+        baseScale = 0.10 + Math.random() * 0.05;
+      } else if (r < 0.95) {
+        texIndex = 4; // Pink Lotus Petal
+        baseScale = 0.14 + Math.random() * 0.07;
+      } else {
+        texIndex = 5; // Golden Sparkle
+        baseScale = 0.07 + Math.random() * 0.05;
+      }
 
       const material = new THREE.SpriteMaterial({
         map: flowerTextures[texIndex],
         transparent: true,
-        opacity: 0.98,
+        opacity: 0,
         rotation: Math.random() * Math.PI * 2,
         depthWrite: false,
+        blending: isSparkle ? THREE.AdditiveBlending : THREE.NormalBlending,
       });
 
       const sprite = new THREE.Sprite(material);
-      const scale = 0.38 + Math.random() * 0.22;
-      sprite.scale.set(scale, scale, 1);
+      sprite.scale.set(baseScale, baseScale, 1);
       sprite.visible = false;
       flowerGroup.add(sprite);
 
@@ -1786,31 +1959,43 @@ export default function InteractiveDarshanSanctum3D({
         sprite,
         material,
         active: false,
-        x: (Math.random() - 0.5) * 4.6,
-        y: 4.8 + Math.random() * 3.0,
-        z: -0.4 + Math.random() * 2.8,
-        vy: 0.022 + Math.random() * 0.026,
-        swaySpeed: 1.8 + Math.random() * 2.4,
-        swayAmp: 0.008 + Math.random() * 0.014,
+        x: (Math.random() - 0.5) * 2.5,
+        y: 4.2 + Math.random() * 3.0,
+        z: -0.4 + Math.random() * 1.6,
+        vy: isSparkle ? 0.008 + Math.random() * 0.010 : 0.013 + Math.random() * 0.016,
+        baseScale,
+        tumbleSpeed: 1.8 + Math.random() * 2.4,
+        tumblePhase: Math.random() * Math.PI * 2,
+        swaySpeed: 1.4 + Math.random() * 1.8,
+        swayAmpX: 0.007 + Math.random() * 0.010,
+        swayAmpZ: 0.004 + Math.random() * 0.007,
         swayOffset: Math.random() * Math.PI * 2,
-        rotSpeed: (Math.random() - 0.5) * 0.045,
+        rotSpeed: (Math.random() - 0.5) * 0.035,
+        opacity: 0,
+        targetOpacity: isSparkle ? 0.9 : 0.98,
+        isSparkle,
       });
     }
     scene.add(flowerGroup);
 
-    // Flower Shower Trigger Hook: Instantly fills sanctum with falling flowers
+    // Flower Shower Trigger Hook: Gracefully cascades falling flowers over Sri Vasavi Matha's altar
     triggerFlowerShowerRef.current = () => {
       flowerParticles.forEach((f, idx) => {
         f.active = true;
         f.sprite.visible = true;
-        f.x = (Math.random() - 0.5) * 4.6;
-        f.z = -0.4 + Math.random() * 2.8;
-        // Instantly visible cascade: first 90 flowers are distributed immediately within camera view
-        if (idx < 90) {
-          f.y = 1.0 + Math.random() * 3.8;
+        // Targeted celestial altar canopy above the Goddess
+        f.x = (Math.random() - 0.5) * 2.4;
+        f.z = -0.4 + Math.random() * 1.6;
+
+        // Smooth vertical staggered stream
+        if (idx < 60) {
+          f.y = 1.6 + (idx / 60) * 2.6; // Softly distributed in upper sanctum
+          f.opacity = 0.2;
+          f.material.opacity = 0.2;
         } else {
-          // The remaining 130 flowers stream continuously from above
-          f.y = 4.8 + ((idx - 90) / (flowerCount - 90)) * 4.0;
+          f.y = 4.2 + ((idx - 60) / (flowerCount - 60)) * 3.6; // Continuous rain from ceiling
+          f.opacity = 0;
+          f.material.opacity = 0;
         }
         f.sprite.position.set(f.x, f.y, f.z);
       });
@@ -2061,22 +2246,41 @@ export default function InteractiveDarshanSanctum3D({
       flowerParticles.forEach((f) => {
         if (!f.active) return;
         f.y -= f.vy;
-        f.x += Math.sin(clock * f.swaySpeed + f.swayOffset) * f.swayAmp;
-        f.z += Math.cos(clock * f.swaySpeed + f.swayOffset) * (f.swayAmp * 0.65);
+        f.x += Math.sin(clock * f.swaySpeed + f.swayOffset) * f.swayAmpX;
+        f.z += Math.cos(clock * (f.swaySpeed * 0.8) + f.swayOffset) * f.swayAmpZ;
         f.material.rotation += f.rotSpeed;
+
+        // Realistic 3D petal tumbling perspective
+        const tumble = 0.65 + 0.35 * Math.sin(clock * f.tumbleSpeed + f.tumblePhase);
+        f.sprite.scale.set(f.baseScale * tumble, f.baseScale, 1);
+
+        // Smooth fade-in near top
+        if (f.opacity < f.targetOpacity) {
+          f.opacity = Math.min(f.targetOpacity, f.opacity + 0.04);
+          f.material.opacity = f.opacity;
+        }
+
         f.sprite.position.set(f.x, f.y, f.z);
 
-        // Floor / Pedestal collision
-        if (f.y < 0.45) {
-          if (isFlowerShowerActiveRef.current) {
-            // Continually respawn at celestial top during the 30-second Seva!
-            f.y = 4.8 + Math.random() * 2.6;
-            f.x = (Math.random() - 0.5) * 4.6;
-            f.z = -0.4 + Math.random() * 2.8;
-          } else {
-            // Seva completed: let existing flowers rest and fade out
-            f.active = false;
-            f.sprite.visible = false;
+        // Near altar base / lotus feet (y < 0.40):
+        if (f.y < 0.40) {
+          // Softly fade out as petals reach the lotus feet
+          f.opacity -= 0.04;
+          f.material.opacity = Math.max(0, f.opacity);
+
+          if (f.opacity <= 0) {
+            if (isFlowerShowerActiveRef.current) {
+              // Continually respawn at celestial top during the active Seva!
+              f.y = 4.2 + Math.random() * 2.4;
+              f.x = (Math.random() - 0.5) * 2.4;
+              f.z = -0.4 + Math.random() * 1.6;
+              f.opacity = 0;
+              f.material.opacity = 0;
+            } else {
+              // Seva completed: let existing flowers rest and fade out
+              f.active = false;
+              f.sprite.visible = false;
+            }
           }
         }
       });
@@ -2142,8 +2346,13 @@ export default function InteractiveDarshanSanctum3D({
         </div>
       </div>
 
-
-
+      {/* Active Seva Status Banner */}
+      {isFlowerShowerActive && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 rounded-full bg-stone-950/85 border border-amber-400/80 text-amber-200 text-xs font-serif font-bold shadow-[0_0_20px_rgba(212,175,55,0.4)] flex items-center gap-2 animate-fade-in backdrop-blur-md whitespace-nowrap">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          <span>🌸 పుష్పార్పణ సేవ (Sacred Pushparchana Flowing...)</span>
+        </div>
+      )}
       {/* Top Right: Audio Toggle */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
         <button

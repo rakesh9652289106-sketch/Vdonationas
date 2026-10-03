@@ -8,6 +8,7 @@ import {
   INITIATIVE_TYPE_LABELS,
   registerDevoteeMuhurthamReminder,
   isInitiativeReminderSet,
+  isWithin24HoursOfRelease,
 } from '@/lib/initiatives-data';
 import {
   MapPin,
@@ -131,9 +132,15 @@ export default function InitiativeCard3D({ initiative }: InitiativeCard3DProps) 
 
           {/* Urgent / Priority / Scheduled Chip */}
           {initiative.status === 'SCHEDULED' ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-amber-950 text-amber-300 border border-amber-400 shadow-lg animate-pulse">
-              <Clock className="w-3 h-3 text-amber-400" /> Sacred Launch
-            </span>
+            isWithin24HoursOfRelease(initiative) ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-gradient-to-r from-amber-600 via-amber-500 to-red-600 text-white border border-amber-300 shadow-lg shadow-amber-950/40 animate-pulse">
+                <Flame className="w-3 h-3 text-amber-200 fill-current" /> ⚡ Final 24h Launch
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-amber-950 text-amber-300 border border-amber-400 shadow-lg animate-pulse">
+                <Clock className="w-3 h-3 text-amber-400" /> Sacred Launch
+              </span>
+            )
           ) : initiative.is_urgent ? (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-red-600 text-white shadow-lg animate-pulse">
               <Flame className="w-3 h-3 fill-current" /> Urgent
@@ -180,12 +187,28 @@ export default function InitiativeCard3D({ initiative }: InitiativeCard3DProps) 
 
         {/* 3D Progress or Scheduled Countdown Section */}
         {initiative.status === 'SCHEDULED' ? (
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/40 via-stone-900 to-amber-950/40 border border-amber-400/40 text-xs space-y-1.5">
+          <div
+            className={`p-3.5 rounded-2xl text-xs space-y-1.5 transition-all ${
+              isWithin24HoursOfRelease(initiative)
+                ? 'bg-gradient-to-r from-amber-950/80 via-stone-900 to-red-950/80 border-2 border-amber-400 shadow-md shadow-amber-950/30'
+                : 'bg-gradient-to-r from-amber-950/40 via-stone-900 to-amber-950/40 border border-amber-400/40'
+            }`}
+          >
             <div className="flex items-center justify-between text-[11px] font-bold text-amber-400">
               <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-devotional-saffron" /> Auspicious Release
+                {isWithin24HoursOfRelease(initiative) ? (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
+                    <span className="text-amber-200 font-extrabold uppercase tracking-wide">Imminent Release</span>
+                  </>
+                ) : (
+                  <>
+                    <Clock className="w-3.5 h-3.5 text-devotional-saffron" />
+                    <span>Auspicious Release</span>
+                  </>
+                )}
               </span>
-              <span className="font-mono text-[10px] text-stone-300">
+              <span className="font-mono text-[10px] text-stone-300 bg-black/40 px-2 py-0.5 rounded border border-amber-400/30">
                 {initiative.scheduled_publish_at
                   ? new Date(initiative.scheduled_publish_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
                   : 'Dawn'}
@@ -195,8 +218,11 @@ export default function InitiativeCard3D({ initiative }: InitiativeCard3DProps) 
               {initiative.muhurtham_name || 'Brahma Muhurtham Sacred Launch'}
             </p>
             {initiative.scheduled_publish_at && (
-              <p className="text-[10px] text-stone-400 font-mono">
-                📅 {new Date(initiative.scheduled_publish_at).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
+              <p className="text-[10px] text-stone-300 font-mono flex items-center justify-between">
+                <span>📅 {new Date(initiative.scheduled_publish_at).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                {isWithin24HoursOfRelease(initiative) && (
+                  <span className="text-[9px] font-bold uppercase text-amber-400 font-sans animate-pulse">Under 24h</span>
+                )}
               </p>
             )}
           </div>

@@ -85,7 +85,7 @@ export default function DevoteeReceiptsCenterPage() {
           <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold uppercase border border-amber-400/30">
             <Flame className="w-3.5 h-3.5 text-devotional-saffron animate-pulse" /> {t('sidebarMyReceipts')}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-amber-300">
+          <h1 className="text-lg sm:text-2xl md:text-3xl font-serif font-bold text-amber-300 leading-snug">
             {t('sidebarMyReceipts')}
           </h1>
           <p className="text-amber-100/80 text-xs">

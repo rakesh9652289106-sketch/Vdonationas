@@ -9,6 +9,10 @@ import {
   getInitiatives,
   updateInitiativeStatus,
   toggleInitiativeUrgent,
+  updateInitiativeSchedule,
+  toLocalDatetimeInputString,
+  fromLocalDatetimeInputString,
+  validateCountdownTiming,
   INITIATIVE_TYPE_LABELS,
 } from '@/lib/initiatives-data';
 import {
@@ -28,6 +32,10 @@ import {
   RefreshCw,
   Building2,
   ArrowRight,
+  Clock,
+  Calendar,
+  X,
+  AlertTriangle,
 } from 'lucide-react';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
@@ -40,6 +48,97 @@ export default function SuperAdminInitiativesDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+
+  // Reschedule Modal State
+  const [rescheduleItem, setRescheduleItem] = useState<Initiative | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleMuhurtham, setRescheduleMuhurtham] = useState('');
+  const [rescheduleTeaser, setRescheduleTeaser] = useState(true);
+  const [rescheduleTeaserStart, setRescheduleTeaserStart] = useState('');
+
+  const handleOpenReschedule = (item: Initiative) => {
+    setRescheduleItem(item);
+    setRescheduleDate(toLocalDatetimeInputString(item.scheduled_publish_at));
+    setRescheduleMuhurtham(item.muhurtham_name || 'Brahma Muhurtham Sacred Launch');
+    setRescheduleTeaser(item.is_teaser_enabled !== false);
+    setRescheduleTeaserStart(toLocalDatetimeInputString(item.teaser_start_at));
+  };
+
+  const applyReschedulePreset = (presetName: string, hour: number, minute: number, dayOffset = 1) => {
+    const d = new Date();
+    d.setDate(d.getDate() + dayOffset);
+    d.setHours(hour, minute, 0, 0);
+    setRescheduleDate(toLocalDatetimeInputString(d));
+    setRescheduleMuhurtham(presetName);
+  };
+
+  const applyRescheduleCountdownPreset = (hoursBefore: number) => {
+    if (!rescheduleDate) {
+      showAlert({
+        type: 'info',
+        title: 'Release Date Required',
+        message: 'Please select a scheduled launch date & time before configuring the countdown timing.',
+      });
+      return;
+    }
+    const rel = new Date(rescheduleDate);
+    if (isNaN(rel.getTime())) return;
+    // Bound between 24.5 hours and 239 hours (24h to 10 days)
+    const clampedHours = Math.min(Math.max(hoursBefore, 24.5), 239);
+    const start = new Date(rel.getTime() - clampedHours * 60 * 60 * 1000);
+    setRescheduleTeaser(true);
+    setRescheduleTeaserStart(toLocalDatetimeInputString(start));
+  };
+
+  const handleSaveReschedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rescheduleItem || !rescheduleDate) return;
+
+    const scheduledIso = fromLocalDatetimeInputString(rescheduleDate);
+    if (!scheduledIso) return;
+
+    // User Rule: Countdown time must be greater than 24 hours and less than 10 days before releasing date & time
+    if (rescheduleTeaser && rescheduleTeaserStart.trim()) {
+      const teaserStartIso = fromLocalDatetimeInputString(rescheduleTeaserStart);
+      const val = validateCountdownTiming(scheduledIso, teaserStartIso);
+      if (!val.isValid) {
+        showAlert({
+          type: 'warning',
+          title: 'Invalid Countdown Timing',
+          message: val.error || 'Countdown time must be greater than 24 hours and less than 10 days before the release date and time.',
+        });
+        return;
+      }
+    }
+
+    const teaserIso = rescheduleTeaserStart.trim()
+      ? fromLocalDatetimeInputString(rescheduleTeaserStart)
+      : undefined;
+
+    setActionInProgress(rescheduleItem.code);
+    try {
+      await updateInitiativeSchedule(rescheduleItem.code, {
+        status: 'SCHEDULED',
+        scheduled_publish_at: scheduledIso,
+        muhurtham_name: rescheduleMuhurtham.trim() || undefined,
+        is_teaser_enabled: rescheduleTeaser,
+        teaser_start_at: teaserIso,
+      });
+
+      showAlert({
+        type: 'change',
+        title: 'Launch Timing Rescheduled',
+        message: `Sacred release for "${rescheduleItem.title}" has been successfully rescheduled to ${new Date(scheduledIso).toLocaleString('en-IN')}.`,
+      });
+
+      setRescheduleItem(null);
+      await loadData();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionInProgress(null);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -343,40 +442,57 @@ export default function SuperAdminInitiativesDashboard() {
                   return (
                     <tr key={item.code} className="hover:bg-stone-900/40 transition-colors">
                       {/* Code & Title */}
-                      <td className="py-4 px-4 space-y-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[11px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/30">
-                            {item.code}
-                          </span>
-                          {item.is_urgent ? (
-                            <button
-                              type="button"
-                              disabled={actionInProgress === item.code}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleToggleUrgent(item.code, false);
-                              }}
-                              title="Click to remove Urgent Emergency Appeal status"
-                              className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-sm flex items-center gap-1 animate-pulse transition-all cursor-pointer disabled:opacity-50"
-                            >
-                              <Flame className="w-2.5 h-2.5 fill-current" /> Urgent
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled={actionInProgress === item.code}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleToggleUrgent(item.code, true);
-                              }}
-                              title="Click to elevate to Urgent Emergency Appeal"
-                              className="text-[9px] font-semibold text-stone-500 hover:text-red-400 hover:border-red-800 px-1.5 py-0.5 rounded border border-stone-800 hover:border-red-700 bg-stone-900/60 transition-all cursor-pointer disabled:opacity-50"
-                            >
-                              + Urgent
-                            </button>
-                          )}
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-amber-500/30 shadow-sm bg-stone-900 group">
+                            {item.cover_image ? (
+                              <img
+                                src={item.cover_image}
+                                alt={item.title}
+                                className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-200"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-stone-500 font-bold text-xs">
+                                🛕
+                              </div>
+                            )}
+                          </div>
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-mono text-[11px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/30">
+                                {item.code}
+                              </span>
+                              {item.is_urgent ? (
+                                <button
+                                  type="button"
+                                  disabled={actionInProgress === item.code}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleUrgent(item.code, false);
+                                  }}
+                                  title="Click to remove Urgent Emergency Appeal status"
+                                  className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-sm flex items-center gap-1 animate-pulse transition-all cursor-pointer disabled:opacity-50"
+                                >
+                                  <Flame className="w-2.5 h-2.5 fill-current" /> Urgent
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={actionInProgress === item.code}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleUrgent(item.code, true);
+                                  }}
+                                  title="Click to elevate to Urgent Emergency Appeal"
+                                  className="text-[9px] font-semibold text-stone-500 hover:text-red-400 hover:border-red-800 px-1.5 py-0.5 rounded border border-stone-800 hover:border-red-700 bg-stone-900/60 transition-all cursor-pointer disabled:opacity-50"
+                                >
+                                  + Urgent
+                                </button>
+                              )}
+                            </div>
+                            <p className="font-bold text-stone-100 line-clamp-1 text-sm">{item.title}</p>
+                          </div>
                         </div>
-                        <p className="font-bold text-stone-100 line-clamp-1 text-sm">{item.title}</p>
                       </td>
 
                       {/* Type & Location */}
@@ -460,29 +576,40 @@ export default function SuperAdminInitiativesDashboard() {
                           );
 
                           if (item.status === 'PAUSED') {
-                            if (isScheduledInFuture) {
-                              return (
-                                <button
-                                  type="button"
-                                  disabled={isProcessing}
-                                  onClick={() => handleStatusChange(item.code, 'SCHEDULED')}
-                                  className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] transition-all disabled:opacity-50 shadow-sm"
-                                >
-                                  Unpause
-                                </button>
-                              );
-                            } else {
-                              return (
-                                <button
-                                  type="button"
-                                  disabled={isProcessing}
-                                  onClick={() => handleStatusChange(item.code, 'PUBLISHED')}
-                                  className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-[11px] transition-all disabled:opacity-50"
-                                >
-                                  Publish
-                                </button>
-                              );
-                            }
+                            return (
+                              <>
+                                {item.scheduled_publish_at && (
+                                  <button
+                                    type="button"
+                                    disabled={isProcessing}
+                                    onClick={() => handleOpenReschedule(item)}
+                                    className="px-2.5 py-1.5 rounded-xl bg-amber-950/80 hover:bg-amber-900 border border-amber-600/70 text-amber-300 font-bold text-[11px] transition-all disabled:opacity-50 inline-flex items-center gap-1 shadow-sm"
+                                    title="Reschedule launch date/time & Muhurtham"
+                                  >
+                                    <Clock className="w-3 h-3 text-amber-400" /> Reschedule
+                                  </button>
+                                )}
+                                {isScheduledInFuture ? (
+                                  <button
+                                    type="button"
+                                    disabled={isProcessing}
+                                    onClick={() => handleStatusChange(item.code, 'SCHEDULED')}
+                                    className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] transition-all disabled:opacity-50 shadow-sm"
+                                  >
+                                    Unpause
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={isProcessing}
+                                    onClick={() => handleStatusChange(item.code, 'PUBLISHED')}
+                                    className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-[11px] transition-all disabled:opacity-50"
+                                  >
+                                    Publish
+                                  </button>
+                                )}
+                              </>
+                            );
                           }
 
                           if (item.status === 'DRAFT') {
@@ -501,6 +628,15 @@ export default function SuperAdminInitiativesDashboard() {
                           if (item.status === 'SCHEDULED') {
                             return (
                               <>
+                                <button
+                                  type="button"
+                                  disabled={isProcessing}
+                                  onClick={() => handleOpenReschedule(item)}
+                                  className="px-2.5 py-1.5 rounded-xl bg-amber-950/80 hover:bg-amber-900 border border-amber-600/70 text-amber-300 font-bold text-[11px] transition-all disabled:opacity-50 inline-flex items-center gap-1 shadow-sm"
+                                  title="Reschedule launch date/time & Muhurtham"
+                                >
+                                  <Clock className="w-3 h-3 text-amber-400" /> Reschedule
+                                </button>
                                 <button
                                   type="button"
                                   disabled={isProcessing}
@@ -545,6 +681,261 @@ export default function SuperAdminInitiativesDashboard() {
           </div>
         )}
       </div>
+
+      {/* Reschedule Release Timing Modal */}
+      {rescheduleItem && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-lg bg-stone-950 p-6 rounded-3xl border-2 border-devotional-gold/60 shadow-2xl space-y-4 text-xs text-stone-200">
+            <div className="flex items-center justify-between border-b border-stone-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center border border-amber-500/30">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-serif font-bold text-base text-amber-200">
+                    Reschedule Sacred Release Timing
+                  </h3>
+                  <p className="text-[10px] text-stone-400 font-mono">
+                    {rescheduleItem.code} • {rescheduleItem.title}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRescheduleItem(null)}
+                className="p-1 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveReschedule} className="space-y-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-amber-300 uppercase flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-devotional-gold" />
+                    New Scheduled Launch Date & Time (IST)
+                  </label>
+                  <span className="text-[10px] text-amber-400/80 font-mono">
+                    Local Timezone
+                  </span>
+                </div>
+                <input
+                  type="datetime-local"
+                  required
+                  value={rescheduleDate}
+                  onChange={(e) => setRescheduleDate(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-stone-900 border border-amber-500/50 text-amber-100 text-xs focus:border-amber-400 outline-none font-mono shadow-inner"
+                />
+              </div>
+
+              {/* Quick Muhurtham Presets */}
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-stone-400 uppercase flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  Quick Auspicious Presets
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => applyReschedulePreset('Brahma Muhurtham Sacred Launch (04:30 AM)', 4, 30, 1)}
+                    className="px-2 py-1 rounded-lg bg-stone-900 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                  >
+                    🌅 Tomorrow Brahma Muhurtham (04:30 AM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyReschedulePreset('Vijaya Muhurtham Auspicious Release (02:15 PM)', 14, 15, 1)}
+                    className="px-2 py-1 rounded-lg bg-stone-900 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                  >
+                    ✨ Tomorrow Vijaya Muhurtham (02:15 PM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyReschedulePreset('Pradosham Sandhya Muhurtham (05:45 PM)', 17, 45, 1)}
+                    className="px-2 py-1 rounded-lg bg-stone-900 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                  >
+                    🕉️ Tomorrow Pradosham (05:45 PM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyReschedulePreset('Sacred Muhurtham Consecration (04:30 AM)', 4, 30, 2)}
+                    className="px-2 py-1 rounded-lg bg-stone-900 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                  >
+                    📅 In 2 Days (04:30 AM)
+                  </button>
+                </div>
+              </div>
+
+              {/* Muhurtham Sacred Title / Occasion */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-stone-400 uppercase">
+                  Muhurtham Sacred Title / Occasion
+                </label>
+                <input
+                  type="text"
+                  value={rescheduleMuhurtham}
+                  onChange={(e) => setRescheduleMuhurtham(e.target.value)}
+                  placeholder="e.g. Brahma Muhurtham Sacred Launch, Vijaya Dasami Muhurtham"
+                  className="w-full p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-stone-100 text-xs focus:border-amber-400 outline-none"
+                />
+              </div>
+
+              {/* Devotee Pre-launch Countdown Clock Controller */}
+              <div className="p-3.5 rounded-xl bg-stone-900 border border-amber-500/30 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-amber-300 flex items-center gap-1.5 cursor-pointer uppercase">
+                    <input
+                      type="checkbox"
+                      checked={rescheduleTeaser}
+                      onChange={(e) => setRescheduleTeaser(e.target.checked)}
+                      className="rounded border-stone-700 text-amber-500 focus:ring-amber-500"
+                    />
+                    Enable Devotee Pre-launch Countdown Clock
+                  </label>
+                  {rescheduleTeaserStart && (
+                    <button
+                      type="button"
+                      onClick={() => setRescheduleTeaserStart('')}
+                      className="text-[9px] text-amber-400 hover:text-red-400 font-bold underline"
+                    >
+                      Clear (Show from default 7 days before)
+                    </button>
+                  )}
+                </div>
+
+                {rescheduleTeaser && (() => {
+                  const scheduledIso = rescheduleDate.trim()
+                    ? fromLocalDatetimeInputString(rescheduleDate)
+                    : undefined;
+                  const teaserStartIso = rescheduleTeaserStart.trim()
+                    ? fromLocalDatetimeInputString(rescheduleTeaserStart)
+                    : undefined;
+                  const validation = validateCountdownTiming(scheduledIso, teaserStartIso);
+
+                  const relMs = scheduledIso ? new Date(scheduledIso).getTime() : NaN;
+                  const minAllowedLocal = !isNaN(relMs)
+                    ? toLocalDatetimeInputString(new Date(relMs - 10 * 24 * 60 * 60 * 1000))
+                    : undefined;
+                  const maxAllowedLocal = !isNaN(relMs)
+                    ? toLocalDatetimeInputString(new Date(relMs - 24 * 60 * 60 * 1000))
+                    : undefined;
+
+                  return (
+                    <div className="space-y-2.5 pt-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-amber-300 uppercase flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-devotional-saffron" />
+                          Countdown Display Start Time (Optional)
+                        </label>
+                        <span className="text-[9px] text-amber-400 font-semibold bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                          ⏱️ Must be &gt; 24h &amp; &lt; 10 days of release
+                        </span>
+                      </div>
+
+                      <input
+                        type="datetime-local"
+                        min={minAllowedLocal}
+                        max={maxAllowedLocal}
+                        value={rescheduleTeaserStart}
+                        onChange={(e) => setRescheduleTeaserStart(e.target.value)}
+                        className={`w-full p-2.5 rounded-xl bg-stone-950 border text-stone-100 text-xs focus:outline-none font-mono ${
+                          !validation.isValid
+                            ? 'border-red-500 focus:border-red-400 ring-1 ring-red-500/50'
+                            : 'border-stone-800 focus:border-amber-400'
+                        }`}
+                      />
+
+                      {/* 1-Tap Quick Countdown Presets (> 24h & < 10 days) */}
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-stone-400 uppercase flex items-center gap-1">
+                          <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                          Quick Countdown Presets (24h to 10 Days Before Release)
+                        </label>
+                        <div className="flex flex-wrap gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => applyRescheduleCountdownPreset(7 * 24)}
+                            className="px-2 py-1 rounded-lg bg-stone-950 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                          >
+                            📅 7 Days Before (Default)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyRescheduleCountdownPreset(5 * 24)}
+                            className="px-2 py-1 rounded-lg bg-stone-950 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                          >
+                            📅 5 Days Before
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyRescheduleCountdownPreset(3 * 24)}
+                            className="px-2 py-1 rounded-lg bg-stone-950 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                          >
+                            📅 3 Days Before
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyRescheduleCountdownPreset(25)}
+                            className="px-2 py-1 rounded-lg bg-stone-950 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                          >
+                            ⏳ 25h Before (&gt; 24h)
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Inline Error Alert if outside >24h & <10d */}
+                      {!validation.isValid && (
+                        <div className="p-2.5 rounded-xl bg-red-950/80 border border-red-500 text-red-200 text-[11px] flex items-center justify-between gap-2 shadow-sm animate-pulse">
+                          <span className="flex items-center gap-1.5 font-bold">
+                            <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                            {validation.error}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => applyRescheduleCountdownPreset(7 * 24)}
+                            className="px-2.5 py-1 rounded-lg bg-red-700 hover:bg-red-600 text-white font-extrabold text-[10px] shrink-0"
+                          >
+                            Auto-Fix to 7 Days
+                          </button>
+                        </div>
+                      )}
+
+                      <p className="text-[10px] text-stone-400 leading-relaxed">
+                        Devotees will only see the countdown clock in their portal starting from this timestamp.
+                        <br />
+                        <strong className="text-amber-300/90 font-mono">Note:</strong> Countdown time must be greater than 24 hours and less than 10 days before the releasing date and time. If cleared, countdown defaults to 7 days before release.
+                      </p>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-800">
+                <button
+                  type="button"
+                  onClick={() => setRescheduleItem(null)}
+                  className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-300 font-semibold text-xs transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionInProgress === rescheduleItem.code || !rescheduleDate}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-stone-950 font-bold text-xs shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {actionInProgress === rescheduleItem.code ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  Save Rescheduled Timing
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

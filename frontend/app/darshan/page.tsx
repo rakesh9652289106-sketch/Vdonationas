@@ -1,11 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import InteractiveDarshanSanctum3D from '@/components/3d/InteractiveDarshanSanctum3D';
 import NavagrahaYantra3D from '@/components/3d/NavagrahaYantra3D';
 import InteractiveAartiThali3D from '@/components/3d/InteractiveAartiThali3D';
-import TempleGopuram3D from '@/components/3d/TempleGopuram3D';
+const TempleGopuram3D = dynamic(
+  () => import('@/components/3d/TempleGopuram3D'),
+  { ssr: false }
+);
 import PanchangamCalculator from '@/components/devotional/PanchangamCalculator';
 import { templeAudio } from '@/lib/templeAudio';
 import {
@@ -249,9 +253,7 @@ export default function DarshanPage() {
         </section>
 
         {/* 5. 3D TEMPLE GOPURAM ARCHITECTURAL EXPLORER */}
-        <section className="space-y-6">
-          <TempleGopuram3D />
-        </section>
+        <TempleGopuram3D />
 
         {/* 6. DAILY PANCHANGAM & MUHURTHAM ENGINE */}
         <section className="space-y-6">

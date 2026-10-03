@@ -14,6 +14,8 @@ import {
   Sun,
   Sparkles,
   AlertTriangle,
+  Menu,
+  X,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
 import { isSuperAdminUser, isTempleAdminUser, isFinanceAdminUser } from '@/lib/rbac';
@@ -23,6 +25,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const router = useRouter();
   const { t } = useLanguage();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -86,8 +89,79 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="min-h-screen bg-stone-900 text-stone-100 flex flex-col md:flex-row font-sans">
-      {/* Super Admin 3D Dedicated Sidebar */}
-      <aside className="w-full md:w-64 bg-stone-950 border-r border-stone-800 p-6 space-y-6 shrink-0 shadow-xl">
+      {/* Mobile Top App Bar */}
+      <header className="md:hidden sticky top-0 z-40 bg-stone-950/95 backdrop-blur-md border-b border-stone-800 px-4 py-3 flex items-center justify-between shadow-lg">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-devotional-maroon to-devotional-saffron flex items-center justify-center text-amber-300 shadow shrink-0">
+            <Flame className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] uppercase font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/30">
+              SUPER ADMIN
+            </span>
+            <h1 className="text-sm font-serif font-bold text-white truncate">Platform Control</h1>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 rounded-xl bg-stone-900 border border-stone-700 text-amber-300 hover:text-white transition-colors cursor-pointer shrink-0 ml-2"
+          aria-label="Toggle navigation menu"
+        >
+          {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </header>
+
+      {/* Mobile Drawer Navigation Modal */}
+      {mobileMenuOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex flex-col justify-end"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <div
+            className="bg-stone-950 border-t border-stone-800 rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto space-y-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-stone-800">
+              <div className="flex items-center gap-2">
+                <Flame className="w-4 h-4 text-devotional-saffron animate-pulse" />
+                <span className="font-serif font-bold text-amber-300 text-sm">Super Admin Navigation</span>
+              </div>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-1.5 rounded-xl bg-stone-900 text-stone-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <nav className="space-y-1.5 text-xs font-semibold">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl transition-all ${
+                      isActive
+                        ? 'bg-gradient-to-r from-devotional-maroon via-devotional-maroon-dark to-amber-950 text-amber-300 font-bold border-l-4 border-amber-400 ring-1 ring-amber-400/40'
+                        : 'text-stone-300 hover:text-white hover:bg-stone-900'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 text-devotional-saffron shrink-0" />
+                    <span className="truncate">{item.name}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {/* Super Admin Desktop Sidebar */}
+      <aside className="hidden md:block w-64 bg-stone-950 border-r border-stone-800 p-6 space-y-6 shrink-0 shadow-xl min-h-screen">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1 text-amber-400 text-[10px] font-bold uppercase tracking-wider bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/30">
             <Flame className="w-3 h-3 text-devotional-saffron animate-pulse" /> {t('sidebarSuperDashboard')}
@@ -119,7 +193,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 p-4 sm:p-8 bg-stone-900 overflow-y-auto">{children}</div>
+      <div className="flex-1 p-3 sm:p-6 lg:p-8 bg-stone-900 overflow-y-auto min-w-0">{children}</div>
     </div>
   );
 }

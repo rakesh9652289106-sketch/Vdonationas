@@ -368,7 +368,7 @@ export default function DevoteeProfilePage() {
   ];
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-3xl mx-auto font-sans px-3.5 sm:px-0 pt-2 sm:pt-4">
+    <div className="space-y-4 sm:space-y-6 max-w-3xl mx-auto font-sans px-6 sm:px-0 pt-2 sm:pt-4">
       {/* DEVOTEE SACRED IDENTITY PASS CARD */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#4A101D] via-[#380B15] to-[#20050C] text-white p-5 sm:p-6 shadow-xl border border-amber-500/30">
         {/* Subtle Ambient Radial Light */}

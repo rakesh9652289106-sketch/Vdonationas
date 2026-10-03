@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Settings, ShieldCheck, Flame } from 'lucide-react';
+import Link from 'next/link';
+import { Settings, ShieldCheck, Flame, Landmark, Eye, EyeOff, ExternalLink } from 'lucide-react';
+import { useGopuramExplorerVisibility } from '@/lib/feature-flags';
 import { useLanguage } from '@/lib/language-context';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
@@ -11,6 +13,7 @@ export default function SaasSettingsPage() {
   const [saasEnabled, setSaasEnabled] = useState(true);
   const [razorpayKey, setRazorpayKey] = useState('rzp_live_10928301982');
   const [phonePeKey, setPhonePeKey] = useState('M10293849102');
+  const { isVisible: gopuramVisible, setVisibility: setGopuramVisible } = useGopuramExplorerVisibility();
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +50,68 @@ export default function SaasSettingsPage() {
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
+
+        {/* 3D DEVOTIONAL EXPLORER ACCESS CONTROLS */}
+        <div className="bg-white dark:bg-stone-900 p-8 rounded-3xl border-2 border-devotional-gold/40 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-amber-400 transition-all">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Landmark className="w-5 h-5 text-devotional-saffron" />
+              <h3 className="font-serif font-bold text-lg text-stone-900 dark:text-stone-100">
+                3D Temple Gopuram & Mandapam Explorer (Public Devotee Access)
+              </h3>
+              <span className={`text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full border ${
+                gopuramVisible 
+                  ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' 
+                  : 'bg-rose-500/10 text-rose-600 border-rose-500/30'
+              }`}>
+                {gopuramVisible ? 'Live to Public' : 'Hidden from Users'}
+              </span>
+            </div>
+            <p className="text-xs text-stone-500 dark:text-stone-400 max-w-2xl">
+              Grant or revoke public devotee access to the 3D Temple Gopuram & Mandapam architectural model across the site (Home and Darshan pages). Super Admins always retain preview access.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                const nextVal = !gopuramVisible;
+                setGopuramVisible(nextVal);
+                showAlert({
+                  type: 'change',
+                  title: nextVal ? '3D Explorer Enabled for Devotees' : '3D Explorer Hidden from Devotees',
+                  message: nextVal 
+                    ? '3D Temple Gopuram & Mandapam Explorer is now visible to all devotees and visitors.'
+                    : '3D Temple Gopuram & Mandapam Explorer is now hidden from regular users (Super Admin preview only).',
+                });
+              }}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer shadow-md ${
+                gopuramVisible
+                  ? 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-700'
+                  : 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-400 dark:border-stone-700 hover:bg-stone-300'
+              }`}
+            >
+              {gopuramVisible ? (
+                <>
+                  <Eye className="w-4 h-4" /> Devotees Can View (ON)
+                </>
+              ) : (
+                <>
+                  <EyeOff className="w-4 h-4" /> Hidden from Devotees (OFF)
+                </>
+              )}
+            </button>
+
+            <Link
+              href="/darshan"
+              className="px-3.5 py-2.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-400/40 text-xs font-bold transition-all flex items-center gap-1.5"
+            >
+              <ExternalLink className="w-3.5 h-3.5" /> Preview
+            </Link>
+          </div>
+        </div>
+
         {/* SaaS Toggle Card */}
         <div className="bg-white dark:bg-stone-900 p-8 rounded-3xl border-2 border-devotional-gold/40 shadow-2xl flex items-center justify-between hover:border-amber-400 transition-all">
           <div>

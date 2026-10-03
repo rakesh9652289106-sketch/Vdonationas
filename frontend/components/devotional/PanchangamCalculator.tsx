@@ -1,17 +1,12 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import Link from 'next/link';
-import { MOCK_TEMPLES } from '@/lib/mock-data';
 import {
   Sun,
   Calendar as CalendarIcon,
-  MapPin,
   Sparkles,
   Flame,
   Clock,
-  BellRing,
-  ExternalLink,
   ChevronLeft,
   ChevronRight,
   X,
@@ -27,7 +22,6 @@ import {
 
 export default function PanchangamCalculator() {
   const { t } = useLanguage();
-  const selectedTempleId = MOCK_TEMPLES[0]?.id || 'tpl-vasavi-01';
 
   // Today's date string ISO (YYYY-MM-DD)
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -41,8 +35,6 @@ export default function PanchangamCalculator() {
   const initialDateObj = useMemo(() => new Date(selectedDate), [selectedDate]);
   const [viewYear, setViewYear] = useState<number>(initialDateObj.getFullYear() || 2026);
   const [viewMonth, setViewMonth] = useState<number>(initialDateObj.getMonth() || 9); // 0-indexed (9 = Oct)
-
-  const [bellRung, setBellRung] = useState(false);
 
   // Close calendar popover when clicking outside
   useEffect(() => {
@@ -182,83 +174,35 @@ export default function PanchangamCalculator() {
     return selectedDate;
   }, [selectedDate]);
 
-  // Find linked temple from directory
-  const activeTemple = MOCK_TEMPLES.find((tpl) => tpl.id === selectedTempleId) || MOCK_TEMPLES[0];
-
-  const handleRingBell = () => {
-    setBellRung(true);
-    setTimeout(() => setBellRung(false), 3000);
-  };
-
   return (
     <div className="bg-gradient-to-b from-stone-900 via-stone-950 to-stone-900 border-2 border-devotional-gold/60 rounded-3xl p-6 sm:p-8 text-white shadow-2xl space-y-6 relative overflow-visible diya-glow-pulse font-sans">
       {/* Decorative Glow Halo */}
       <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-devotional-gold/10 blur-3xl pointer-events-none" />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold uppercase tracking-wider border border-amber-400/40">
-            <Sun className="w-4 h-4 text-devotional-saffron animate-spin" style={{ animationDuration: '12s' }} />
-            <span>తెలుగు పంచాంగం & ముహూర్తం • TELUGU PANCHANGAM & MUHURTHAM</span>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-serif font-bold text-amber-300">
-            Daily Sacred Telugu Panchangam & Auspicious Muhurtham
-          </h2>
-          <p className="text-amber-100/80 text-xs">
-            Linked to {activeTemple.name} • చాంద్రమాన తెలుగు పంచాంగ ఖగోళ గణనలు
-          </p>
+      <div className="flex flex-col justify-start items-start gap-2 relative z-10">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold uppercase tracking-wider border border-amber-400/40">
+          <Sun className="w-4 h-4 text-devotional-saffron animate-spin" style={{ animationDuration: '12s' }} />
+          <span>తెలుగు పంచాంగం & ముహూర్తం • TELUGU PANCHANGAM & MUHURTHAM</span>
         </div>
-
-        <button
-          onClick={handleRingBell}
-          className={`px-4 py-2.5 rounded-2xl font-serif font-bold text-xs shadow-gold transition-all flex items-center gap-2 border ${
-            bellRung
-              ? 'bg-amber-400 text-stone-950 scale-105 border-white ring-4 ring-amber-300/50'
-              : 'bg-gradient-to-r from-devotional-saffron to-amber-600 text-white hover:brightness-110 border-amber-300/40'
-          }`}
-        >
-          <BellRing className={`w-4 h-4 ${bellRung ? 'animate-bounce text-devotional-maroon' : 'text-amber-300'}`} />
-          {bellRung ? '🔔 Sacred Bell Ringing...' : '🔔 Ring Sacred Temple Bell'}
-        </button>
+        <h2 className="text-2xl sm:text-3xl font-serif font-bold text-amber-300">
+          Daily Sacred Telugu Panchangam & Auspicious Muhurtham
+        </h2>
+        <p className="text-amber-100/80 text-xs">
+          శ్రీ వాసవి కన్యకా పరమేశ్వరి అమ్మవారి నిత్య పంచాంగం • చాంద్రమాన తెలుగు పంచాంగ ఖగోళ గణనలు
+        </p>
       </div>
 
-      {/* COMBINED 2-COLUMN ROW: LEFT = SHRINE DETAILS CARD | RIGHT = TELUGU CALENDAR DATE SELECTOR */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 relative z-20 items-stretch">
-        
-        {/* LEFT SIDE: SHRINE DETAILS CARD (7 columns on lg screens) */}
-        <div className="lg:col-span-7 bg-amber-500/10 p-4 rounded-2xl border border-amber-400/40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-base font-serif font-bold text-amber-300">{activeTemple.name}</span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 font-bold text-[9px] border border-emerald-400/40">
-                VERIFIED SHRINE
-              </span>
-            </div>
-            <p className="text-stone-300 mt-1 flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-devotional-saffron shrink-0" />
-              {activeTemple.address}, {activeTemple.city}, {activeTemple.state} ({activeTemple.pinCode})
-            </p>
-          </div>
-
-          <Link
-            href={`/temples/${activeTemple.id}`}
-            className="px-3.5 py-2 rounded-xl bg-devotional-maroon text-amber-300 font-bold text-xs hover:brightness-110 flex items-center gap-1.5 border border-amber-400/40 shrink-0 shadow-sm"
-          >
-            Inspect Shrine Details <ExternalLink className="w-3.5 h-3.5 text-devotional-saffron" />
-          </Link>
+      {/* INTERACTIVE TELUGU CALENDAR DATE SELECTOR */}
+      <div className="relative bg-stone-900/90 p-4 sm:p-5 rounded-2xl border border-amber-400/30 flex flex-col justify-center relative z-20" ref={calendarRef}>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-amber-200 font-bold flex items-center gap-1.5 text-xs sm:text-sm">
+            <CalendarIcon className="w-4 h-4 text-devotional-saffron" /> Select Telugu Panchangam Date
+          </label>
+          <span className="px-2.5 py-0.5 rounded-full bg-[#3d0d16] text-[#f5d77f] text-xs font-serif font-bold border border-[#f5d77f]/40">
+            తెలుగు క్యాలెండర్
+          </span>
         </div>
-
-        {/* RIGHT SIDE: INTERACTIVE TELUGU CALENDAR DATE SELECTOR (5 columns on lg screens) */}
-        <div className="lg:col-span-5 relative bg-stone-900/90 p-4 rounded-2xl border border-amber-400/30 flex flex-col justify-center" ref={calendarRef}>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-amber-200 font-bold flex items-center gap-1.5 text-xs">
-              <CalendarIcon className="w-3.5 h-3.5 text-devotional-saffron" /> Select Telugu Panchangam Date
-            </label>
-            <span className="px-2 py-0.5 rounded-full bg-[#3d0d16] text-[#f5d77f] text-[10px] font-serif font-bold border border-[#f5d77f]/40">
-              తెలుగు క్యాలెండర్
-            </span>
-          </div>
 
           {/* Trigger Input Field with Side Calendar Symbol & Telugu Tithi preview */}
           <div
@@ -439,7 +383,6 @@ export default function PanchangamCalculator() {
           )}
         </div>
 
-      </div>
 
       {/* GRAND TELUGU PANCHANGAM RIBBON (సంవత్సరం, ఆయనం, ఋతువు, మాసం, పక్షం, వారం) */}
       <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/70 via-[#2f0810]/80 to-amber-950/70 border border-amber-400/40 shadow-inner grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-center">

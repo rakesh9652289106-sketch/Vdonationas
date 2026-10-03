@@ -13,8 +13,9 @@ export default function RecurringSevaPage() {
   const { t } = useLanguage();
   const { confirmAction, showAlert } = useConfirmAlert();
   const { user } = useAuth();
-  const [selectedPlan, setSelectedPlan] = useState(102);
-  const [customAmount, setCustomAmount] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState(1);
+  const [customAmount, setCustomAmount] = useState('1');
+  const [interval, setInterval] = useState<'MONTHLY' | 'QUARTERLY' | 'YEARLY'>('MONTHLY');
   const [category, setCategory] = useState('Nitya Annadanam Seva');
   const [isSubscribed, setIsSubscribed] = useState(false);
 
@@ -33,9 +34,11 @@ export default function RecurringSevaPage() {
     if (!isNaN(parsed) && parsed > 0) {
       setSelectedPlan(parsed);
     } else if (val === '' || parsed <= 0) {
-      setSelectedPlan(102);
+      setSelectedPlan(1);
     }
   };
+
+  const intervalLabel = interval === 'YEARLY' ? 'year' : interval === 'QUARTERLY' ? 'quarter' : 'month';
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,15 +46,16 @@ export default function RecurringSevaPage() {
       showAlert({
         type: 'warning',
         title: 'Valid Amount Required',
-        message: 'Autopay monthly donation amount must be a positive number (minimum ₹102).',
+        message: 'Autopay recurring donation amount must be a positive number (minimum ₹1).',
       });
       return;
     }
 
+    const intervalTitle = interval === 'YEARLY' ? 'Yearly' : interval === 'QUARTERLY' ? 'Quarterly' : 'Monthly';
     const confirmed = await confirmAction({
-      title: 'Confirm Monthly AutoPay Mandate?',
-      message: `You are scheduling an automatic monthly pledge of ₹${selectedPlan.toLocaleString('en-IN')} towards "${category}". You can pause, modify, or cancel this pledge at any time from your Devotee Dashboard.`,
-      confirmText: `Confirm ₹${selectedPlan}/month`,
+      title: `Confirm ${intervalTitle} AutoPay Mandate?`,
+      message: `You are scheduling an automatic recurring pledge of ₹${selectedPlan.toLocaleString('en-IN')} per ${intervalLabel} towards "${category}". You can pause, modify, or cancel this pledge at any time from your Devotee Dashboard.`,
+      confirmText: `Confirm ₹${selectedPlan}/${intervalLabel}`,
       variant: 'change',
     });
 
@@ -62,7 +66,7 @@ export default function RecurringSevaPage() {
         userId: user?.id,
         categoryName: category,
         amount: selectedPlan,
-        interval: 'MONTHLY',
+        interval: interval,
         paymentMethod: 'UPI Autopay',
       });
 
@@ -70,7 +74,7 @@ export default function RecurringSevaPage() {
       showAlert({
         type: 'change',
         title: 'AutoPay Mandate Registered',
-        message: `Monthly offering of ₹${selectedPlan.toLocaleString('en-IN')} for ${category} successfully scheduled in Supabase.`,
+        message: `${intervalTitle} offering of ₹${selectedPlan.toLocaleString('en-IN')} for ${category} successfully scheduled in Supabase.`,
       });
     } catch (err) {
       console.error('[Supabase AutoPay Error]:', err);
@@ -105,7 +109,7 @@ export default function RecurringSevaPage() {
             {t('autopaySuccessMsg')}
           </h2>
           <p className="text-xs text-stone-600 dark:text-stone-300">
-            Your monthly contribution of <strong>₹{selectedPlan.toLocaleString('en-IN')}/month</strong> to Sri Vasavi Matha Penugonda has been authorized. Official 80G receipts will be sent to your WhatsApp and Email automatically every month.
+            Your {intervalLabel} contribution of <strong>₹{selectedPlan.toLocaleString('en-IN')}/{intervalLabel}</strong> to Sri Vasavi Matha Penugonda has been authorized. Official 80G receipts will be sent to your WhatsApp and Email automatically every {intervalLabel}.
           </p>
           <div className="pt-2 flex justify-center gap-3 text-xs">
             <Link
@@ -124,6 +128,29 @@ export default function RecurringSevaPage() {
         </div>
       ) : (
         <form onSubmit={handleSubscribe} className="bg-white dark:bg-stone-900 p-6 sm:p-8 rounded-3xl border-2 border-devotional-gold/60 shadow-xl space-y-6">
+          {/* Frequency / Interval Choice */}
+          <div className="space-y-1.5">
+            <label className="font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider text-xs block">
+              Contribution Frequency
+            </label>
+            <div className="grid grid-cols-3 gap-2 bg-stone-100 dark:bg-stone-800 p-1.5 rounded-xl border border-stone-200 dark:border-stone-700">
+              {(['MONTHLY', 'QUARTERLY', 'YEARLY'] as const).map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setInterval(opt)}
+                  className={`py-2 px-3 text-xs font-bold rounded-lg transition-all text-center ${
+                    interval === opt
+                      ? 'bg-amber-400 text-stone-950 shadow-sm'
+                      : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+                  }`}
+                >
+                  {opt === 'MONTHLY' ? 'Monthly' : opt === 'QUARTERLY' ? 'Quarterly' : 'Yearly'}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-3">
             <label className="font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider text-xs block">
               {t('autopaySelectPlan')}
@@ -142,7 +169,7 @@ export default function RecurringSevaPage() {
                       : 'bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border-stone-200 dark:border-stone-700 hover:border-amber-400'
                   }`}
                 >
-                  ₹{amt.toLocaleString('en-IN')}<span className="text-[10px] block opacity-70">/mo</span>
+                  ₹{amt.toLocaleString('en-IN')}<span className="text-[10px] block opacity-70">/{interval === 'YEARLY' ? 'yr' : interval === 'QUARTERLY' ? 'qtr' : 'mo'}</span>
                 </button>
               ))}
             </div>
@@ -150,9 +177,10 @@ export default function RecurringSevaPage() {
             {/* Custom Amount */}
             <input
               type="number"
-              min="102"
+              min="1"
               value={customAmount}
               onChange={handleCustomChange}
+              onFocus={(e) => e.target.select()}
               placeholder={t('customAmountPlaceholder')}
               className="w-full px-4 py-3 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-amber-400"
             />
@@ -164,7 +192,7 @@ export default function RecurringSevaPage() {
           >
             <Heart className="w-5 h-5 fill-current text-amber-300" />
             <span>Activate</span>
-            <span className="font-mono text-sm font-sans">₹{selectedPlan.toLocaleString('en-IN')}/mo</span>
+            <span className="font-mono text-sm font-sans">₹{selectedPlan.toLocaleString('en-IN')}/{interval === 'YEARLY' ? 'yr' : interval === 'QUARTERLY' ? 'qtr' : 'mo'}</span>
           </button>
         </form>
       )}

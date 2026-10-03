@@ -29,6 +29,9 @@ export default function DevoteeRecurringDonationsPage() {
         return;
       }
       try {
+        // Automatically process any due subscriptions in background
+        await autopayService.processDueSubscriptions().catch((e) => console.warn('[AutoPay Process Due]:', e));
+
         const subs = await autopayService.getDevoteeSubscriptions(user.id);
         if (subs && subs.length > 0) {
           const first = subs[0];
@@ -45,6 +48,25 @@ export default function DevoteeRecurringDonationsPage() {
     }
     loadSub();
   }, [user]);
+
+  const getFrequencyLabel = (interval?: string) => {
+    switch (interval) {
+      case 'YEARLY':
+        return 'Annually (Once a year)';
+      case 'QUARTERLY':
+        return 'Quarterly (Every 3 months)';
+      case 'MONTHLY':
+      default:
+        return 'Monthly (Recurring Seva)';
+    }
+  };
+
+  const formatNextDeduction = (dateStr?: string) => {
+    if (!dateStr) return 'Active Mandate Scheduled';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+  };
 
   const handleSaveEdit = async () => {
     const parsed = parseInt(editAmount, 10);
@@ -75,12 +97,12 @@ export default function DevoteeRecurringDonationsPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto font-sans px-3 sm:px-0">
       {/* 3D DEVOTIONAL HEADER BANNER */}
-      <div className="bg-gradient-to-r from-devotional-maroon via-devotional-maroon-dark to-stone-950 text-white p-6 sm:p-8 rounded-3xl shadow-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-2 border-devotional-gold/60 relative overflow-hidden diya-glow-pulse">
+      <div className="bg-gradient-to-r from-devotional-maroon via-devotional-maroon-dark to-stone-950 text-white p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-2 border-devotional-gold/60 relative overflow-hidden diya-glow-pulse">
         <div className="space-y-1 relative z-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold uppercase border border-amber-400/30">
             <Flame className="w-3.5 h-3.5 text-devotional-saffron animate-pulse" /> AutoPay
           </div>
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-amber-300">
+          <h1 className="text-lg sm:text-2xl md:text-3xl font-serif font-bold text-amber-300 leading-snug">
             Recurring Seva Subscriptions
           </h1>
           <p className="text-amber-100/80 text-xs">
@@ -106,7 +128,7 @@ export default function DevoteeRecurringDonationsPage() {
               <span className="text-xs text-stone-500 font-medium">AutoPay Active</span>
             </div>
             <h3 className="font-serif font-bold text-lg sm:text-xl text-stone-900 dark:text-stone-100 mt-1">
-              Monthly Nitya Annadanam Seva
+              {subscription?.category_name || 'Monthly Nitya Annadanam Seva'}
             </h3>
             <p className="text-xs text-stone-500">Sri Vasavi Kanyaka Parameswari Matha, Penugonda</p>
           </div>
@@ -151,7 +173,9 @@ export default function DevoteeRecurringDonationsPage() {
             ) : (
               <span className="font-serif font-bold text-2xl text-devotional-maroon dark:text-amber-400">
                 ₹{amount.toLocaleString('en-IN')}{' '}
-                <span className="text-xs font-sans text-stone-500 font-normal">/ month</span>
+                <span className="text-xs font-sans text-stone-500 font-normal">
+                  / {subscription?.interval ? subscription.interval.toLowerCase().replace('ly', '') : 'month'}
+                </span>
               </span>
             )}
           </div>
@@ -160,16 +184,20 @@ export default function DevoteeRecurringDonationsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-stone-50 dark:bg-stone-950 p-4 rounded-2xl border border-stone-200 dark:border-stone-800">
           <div>
             <span className="text-stone-500 block text-[10px] uppercase font-bold">Frequency</span>
-            <span className="font-bold text-stone-900 dark:text-stone-100">1st of Every Month</span>
+            <span className="font-bold text-stone-900 dark:text-stone-100">
+              {getFrequencyLabel(subscription?.interval)}
+            </span>
           </div>
           <div>
             <span className="text-stone-500 block text-[10px] uppercase font-bold">Next Deduction</span>
-            <span className="font-bold text-stone-900 dark:text-stone-100">01 October 2026</span>
+            <span className="font-bold text-stone-900 dark:text-stone-100">
+              {formatNextDeduction(subscription?.next_deduction_date)}
+            </span>
           </div>
           <div className="col-span-2 sm:col-span-1">
             <span className="text-stone-500 block text-[10px] uppercase font-bold">Payment Method</span>
             <span className="font-bold text-emerald-600 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" /> vasavi@oksbi
+              <ShieldCheck className="w-3.5 h-3.5" /> {subscription?.payment_method || 'UPI Autopay'}
             </span>
           </div>
         </div>
@@ -222,9 +250,20 @@ export default function DevoteeRecurringDonationsPage() {
               type="button"
               onClick={async () => {
                 if (subscription?.id) {
-                  await autopayService.updateStatus(subscription.id, 'ACTIVE');
+                  await autopayService.updateStatus(subscription.id, 'ACTIVE', {
+                    recalculateNextDateIfPast: true,
+                    interval: subscription.interval,
+                  });
+                  if (user?.id) {
+                    const subs = await autopayService.getDevoteeSubscriptions(user.id);
+                    if (subs && subs.length > 0) {
+                      setSubscription(subs[0]);
+                      setStatus((subs[0].status as any) || 'ACTIVE');
+                    }
+                  }
+                } else {
+                  setStatus('ACTIVE');
                 }
-                setStatus('ACTIVE');
                 showAlert({
                   title: 'Sacred AutoPay Resumed!',
                   message: 'Your recurring monthly seva offering is now active in Supabase. May Sri Vasavi Matha bless you.',

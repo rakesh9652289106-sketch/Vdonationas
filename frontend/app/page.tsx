@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import DevaAIAssistantModal from '@/components/DevaAIAssistantModal';
@@ -13,7 +14,10 @@ import InteractiveTempleMap3D from '@/components/3d/InteractiveTempleMap3D';
 import MedalDetailModal from '@/components/3d/MedalDetailModal';
 import VasaviVirtualDarshanModal from '@/components/3d/VasaviVirtualDarshanModal';
 import NavagrahaYantra3D from '@/components/3d/NavagrahaYantra3D';
-import TempleGopuram3D from '@/components/3d/TempleGopuram3D';
+const TempleGopuram3D = dynamic(
+  () => import('@/components/3d/TempleGopuram3D'),
+  { ssr: false }
+);
 import PanchangamCalculator from '@/components/devotional/PanchangamCalculator';
 import MobileHomeScreen from '@/components/mobile/MobileHomeScreen';
 import { MEDAL_TIERS, MedalTier } from '@/lib/medals';

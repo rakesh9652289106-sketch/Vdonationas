@@ -10,8 +10,13 @@ import {
   InitiativeStage,
   InitiativeStatus,
   createInitiative,
+  toLocalDatetimeInputString,
+  fromLocalDatetimeInputString,
+  validateCountdownTiming,
   INITIATIVE_TYPE_LABELS,
 } from '@/lib/initiatives-data';
+import InitiativePhotoPicker from '@/components/initiatives/InitiativePhotoPicker';
+import { getCuratedPhotosForInitiativeType } from '@/lib/initiative-curated-photos';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
 import {
   ArrowLeft,
@@ -36,6 +41,7 @@ import {
   Radio,
   FileText,
   AlertCircle,
+  AlertTriangle,
   HelpCircle,
   Timer,
 } from 'lucide-react';
@@ -106,12 +112,12 @@ export default function CreateInitiativeWizardPage() {
   // Step 7: Launch & Scheduling Protocol State
   const [launchMode, setLaunchMode] = useState<'INSTANT' | 'SCHEDULED'>('SCHEDULED');
   
-  // Default tomorrow at 06:00 AM IST
+  // Default tomorrow at 04:30 AM IST (Brahma Muhurtham)
   const getTomorrowMorning = () => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    d.setHours(6, 0, 0, 0);
-    return d.toISOString().slice(0, 16);
+    d.setHours(4, 30, 0, 0);
+    return toLocalDatetimeInputString(d);
   };
 
   const [scheduledDateTime, setScheduledDateTime] = useState(getTomorrowMorning());
@@ -125,11 +131,19 @@ export default function CreateInitiativeWizardPage() {
     const d = new Date();
     d.setDate(d.getDate() + dayOffset);
     d.setHours(hour, minute, 0, 0);
-    // Format YYYY-MM-DDTHH:mm
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(hour)}:${pad(minute)}`;
-    setScheduledDateTime(formatted);
+    setScheduledDateTime(toLocalDatetimeInputString(d));
     setMuhurthamName(presetName);
+  };
+
+  // Quick Countdown Presets (> 24 hours & < 10 days before release)
+  const applyCountdownPreset = (hoursBefore: number) => {
+    if (!scheduledDateTime) return;
+    const relDate = new Date(scheduledDateTime);
+    if (isNaN(relDate.getTime())) return;
+    // Bound between 24.5 hours and 239 hours (24h to 10 days)
+    const clampedHours = Math.min(Math.max(hoursBefore, 24.5), 239);
+    const teaserDate = new Date(relDate.getTime() - clampedHours * 60 * 60 * 1000);
+    setTeaserStartDateTime(toLocalDatetimeInputString(teaserDate));
   };
 
   // Add / Remove Breakdown Row
@@ -163,6 +177,21 @@ export default function CreateInitiativeWizardPage() {
       });
       setCurrentStep(1);
       return;
+    }
+
+    // Validate countdown timing rule (> 24 hours & < 10 days before release)
+    if (actionType === 'SCHEDULED' && isTeaserEnabled && teaserStartDateTime.trim()) {
+      const scheduledIso = fromLocalDatetimeInputString(scheduledDateTime);
+      const teaserStartIso = fromLocalDatetimeInputString(teaserStartDateTime);
+      const val = validateCountdownTiming(scheduledIso, teaserStartIso);
+      if (!val.isValid) {
+        showAlert({
+          type: 'warning',
+          title: 'Invalid Countdown Timing',
+          message: val.error || 'Countdown time must be greater than 24 hours and less than 10 days before the release date and time.',
+        });
+        return;
+      }
     }
 
     const confirmed = await confirmAction({
@@ -228,10 +257,10 @@ export default function CreateInitiativeWizardPage() {
         gallery_images: galleryImages,
         documents: docName ? [{ name: docName, size: '2.4 MB', type: 'PDF' }] : [],
         status: finalStatus,
-        scheduled_publish_at: finalStatus === 'SCHEDULED' ? scheduledDateTime : undefined,
+        scheduled_publish_at: finalStatus === 'SCHEDULED' ? fromLocalDatetimeInputString(scheduledDateTime) : undefined,
         muhurtham_name: finalStatus === 'SCHEDULED' ? muhurthamName : undefined,
         is_teaser_enabled: isTeaserEnabled,
-        teaser_start_at: (finalStatus === 'SCHEDULED' && isTeaserEnabled && teaserStartDateTime.trim()) ? teaserStartDateTime : undefined,
+        teaser_start_at: (finalStatus === 'SCHEDULED' && isTeaserEnabled && teaserStartDateTime.trim()) ? fromLocalDatetimeInputString(teaserStartDateTime) : undefined,
         broadcast_on_publish: broadcastOnPublish,
       });
 
@@ -368,7 +397,14 @@ export default function CreateInitiativeWizardPage() {
                 </label>
                 <select
                   value={initiativeType}
-                  onChange={(e) => setInitiativeType(e.target.value as InitiativeType)}
+                  onChange={(e) => {
+                    const newType = e.target.value as InitiativeType;
+                    setInitiativeType(newType);
+                    const recommended = getCuratedPhotosForInitiativeType(newType);
+                    if (recommended.length > 0) {
+                      setCoverImage(recommended[0].url);
+                    }
+                  }}
                   className="w-full p-3 rounded-xl bg-stone-900 border border-stone-800 text-stone-100 text-xs focus:ring-2 focus:ring-devotional-gold focus:outline-none cursor-pointer"
                 >
                   {Object.entries(INITIATIVE_TYPE_LABELS).map(([key, val]) => (
@@ -744,21 +780,22 @@ export default function CreateInitiativeWizardPage() {
               Step 5: Visual Media & Documentation
             </h3>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-stone-300 uppercase tracking-wider">
-                Primary Cover Image URL
-              </label>
-              <input
-                type="text"
-                value={coverImage}
-                onChange={(e) => setCoverImage(e.target.value)}
-                className="w-full p-3 rounded-xl bg-stone-900 border border-stone-800 text-stone-100 text-xs focus:ring-2 focus:ring-devotional-gold focus:outline-none"
+            {/* Curated Devotional Photo Selector & Gallery */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-stone-900/60 border border-stone-800 space-y-4">
+              <InitiativePhotoPicker
+                selectedCoverUrl={coverImage}
+                onSelectCover={(url) => setCoverImage(url)}
+                initiativeType={initiativeType}
+                galleryUrls={galleryImages}
+                onToggleGallery={(url) => {
+                  if (galleryImages.includes(url)) {
+                    setGalleryImages(galleryImages.filter((u) => u !== url));
+                  } else {
+                    setGalleryImages([...galleryImages, url]);
+                  }
+                }}
+                label="Primary Cover Photo & Visual Gallery"
               />
-              {coverImage && (
-                <div className="h-44 w-full rounded-2xl overflow-hidden mt-2 border border-stone-800">
-                  <img src={coverImage} alt="Cover Preview" className="w-full h-full object-cover" />
-                </div>
-              )}
             </div>
 
             <div className="space-y-2">
@@ -1166,52 +1203,142 @@ export default function CreateInitiativeWizardPage() {
                   </label>
 
                   {/* Optional: Countdown Display Start Time Controller */}
-                  {isTeaserEnabled && (
-                    <div className="ml-2 sm:ml-6 p-4 rounded-2xl bg-stone-950/90 border border-amber-500/40 space-y-3 shadow-inner animate-in fade-in duration-200">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div>
-                          <label className="block text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-devotional-saffron" />
-                            Countdown Display Start Time (Optional)
-                          </label>
-                          <p className="text-[11px] text-stone-400 mt-0.5 leading-relaxed">
-                            Specify from when devotees can start seeing the countdown in their portal. If left blank, devotees see the countdown immediately upon scheduling.
-                          </p>
-                        </div>
-                        {teaserStartDateTime && (
-                          <button
-                            type="button"
-                            onClick={() => setTeaserStartDateTime('')}
-                            className="text-[10px] text-amber-400 hover:text-red-400 font-bold underline transition-colors shrink-0"
-                          >
-                            Clear (Show Countdown Immediately)
-                          </button>
-                        )}
-                      </div>
+                  {isTeaserEnabled && (() => {
+                    const scheduledIso = scheduledDateTime.trim()
+                      ? fromLocalDatetimeInputString(scheduledDateTime)
+                      : undefined;
+                    const teaserStartIso = teaserStartDateTime.trim()
+                      ? fromLocalDatetimeInputString(teaserStartDateTime)
+                      : undefined;
+                    const validation = validateCountdownTiming(scheduledIso, teaserStartIso);
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                        <div>
-                          <input
-                            type="datetime-local"
-                            value={teaserStartDateTime}
-                            onChange={(e) => setTeaserStartDateTime(e.target.value)}
-                            className="w-full p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-stone-100 text-xs focus:ring-2 focus:ring-devotional-gold focus:outline-none font-mono"
-                          />
-                        </div>
-                        <div className="flex items-center text-[10px]">
-                          {teaserStartDateTime ? (
-                            <span className="p-2 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-mono w-full">
-                              ✓ Devotees see countdown starting: <strong className="text-white">{new Date(teaserStartDateTime).toLocaleString('en-IN')}</strong>
-                            </span>
-                          ) : (
-                            <span className="p-2 rounded-lg bg-stone-900/60 border border-stone-800 text-stone-400 w-full">
-                              ℹ️ Optional unset: Countdown clock will be visible immediately to devotees upon scheduling.
-                            </span>
+                    const relMs = scheduledIso ? new Date(scheduledIso).getTime() : NaN;
+                    const minAllowedLocal = !isNaN(relMs)
+                      ? toLocalDatetimeInputString(new Date(relMs - 10 * 24 * 60 * 60 * 1000))
+                      : undefined;
+                    const maxAllowedLocal = !isNaN(relMs)
+                      ? toLocalDatetimeInputString(new Date(relMs - 24 * 60 * 60 * 1000))
+                      : undefined;
+
+                    return (
+                      <div className="ml-2 sm:ml-6 p-4 rounded-2xl bg-stone-950/90 border border-amber-500/40 space-y-3 shadow-inner animate-in fade-in duration-200">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <label className="block text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                                <Clock className="w-3.5 h-3.5 text-devotional-saffron" />
+                                Countdown Display Start Time (Optional)
+                              </label>
+                              <span className="text-[9px] text-amber-400 font-semibold bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                                ⏱️ Must be &gt; 24h &amp; &lt; 10 days of release
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-stone-400 mt-0.5 leading-relaxed">
+                              Specify from when devotees can start seeing the countdown in their portal. Must be between 24 hours and 10 days before scheduled release.
+                            </p>
+                          </div>
+                          {teaserStartDateTime && (
+                            <button
+                              type="button"
+                              onClick={() => setTeaserStartDateTime('')}
+                              className="text-[10px] text-amber-400 hover:text-red-400 font-bold underline transition-colors shrink-0"
+                            >
+                              Clear (Show from default 7 days before)
+                            </button>
                           )}
                         </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                          <div>
+                            <input
+                              type="datetime-local"
+                              min={minAllowedLocal}
+                              max={maxAllowedLocal}
+                              value={teaserStartDateTime}
+                              onChange={(e) => setTeaserStartDateTime(e.target.value)}
+                              className={`w-full p-2.5 rounded-xl bg-stone-900 border text-stone-100 text-xs focus:ring-2 focus:ring-devotional-gold focus:outline-none font-mono ${
+                                !validation.isValid
+                                  ? 'border-red-500 focus:border-red-400 ring-1 ring-red-500/50'
+                                  : 'border-stone-800 focus:border-amber-400'
+                              }`}
+                            />
+                          </div>
+                          <div className="flex items-center text-[10px]">
+                            {teaserStartDateTime ? (
+                              <span className="p-2 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-mono w-full">
+                                ✓ Devotees see countdown starting: <strong className="text-white">{new Date(teaserStartDateTime).toLocaleString('en-IN')}</strong>
+                              </span>
+                            ) : (
+                              <span className="p-2 rounded-lg bg-stone-900/60 border border-stone-800 text-stone-400 w-full">
+                                ℹ️ Optional unset: Countdown clock will be visible from default 7 days before release.
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 1-Tap Quick Countdown Presets (> 24h & < 10 days) */}
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-stone-400 uppercase flex items-center gap-1">
+                            <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                            Quick Countdown Presets (24h to 10 Days Before Release)
+                          </label>
+                          <div className="flex flex-wrap gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => applyCountdownPreset(7 * 24)}
+                              className="px-2 py-1 rounded-lg bg-stone-900 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                            >
+                              📅 7 Days Before (Default)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => applyCountdownPreset(5 * 24)}
+                              className="px-2 py-1 rounded-lg bg-stone-900 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                            >
+                              📅 5 Days Before
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => applyCountdownPreset(3 * 24)}
+                              className="px-2 py-1 rounded-lg bg-stone-900 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                            >
+                              📅 3 Days Before
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => applyCountdownPreset(25)}
+                              className="px-2 py-1 rounded-lg bg-stone-900 hover:bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-semibold transition-all hover:border-amber-400"
+                            >
+                              ⏳ 25h Before (&gt; 24h)
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Inline Error Alert if outside >24h & <10d */}
+                        {!validation.isValid && (
+                          <div className="p-2.5 rounded-xl bg-red-950/80 border border-red-500 text-red-200 text-[11px] flex items-center justify-between gap-2 shadow-sm animate-pulse">
+                            <span className="flex items-center gap-1.5 font-bold">
+                              <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                              {validation.error}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => applyCountdownPreset(7 * 24)}
+                              className="px-2.5 py-1 rounded-lg bg-red-700 hover:bg-red-600 text-white font-extrabold text-[10px] shrink-0"
+                            >
+                              Auto-Fix to 7 Days
+                            </button>
+                          </div>
+                        )}
+
+                        <p className="text-[10px] text-stone-400 leading-relaxed">
+                          Devotees will only see the countdown clock in their portal starting from this timestamp.
+                          <br />
+                          <strong className="text-amber-300/90 font-mono">Note:</strong> Countdown time must be greater than 24 hours and less than 10 days before the releasing date and time. If cleared, countdown defaults to 7 days before release.
+                        </p>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Feature 2: Automated Broadcast */}
                   <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl bg-stone-950 border border-stone-800/80 hover:border-stone-700">

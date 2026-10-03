@@ -136,12 +136,12 @@ export default function DevoteeRewardsPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto font-sans px-3 sm:px-0">
       {/* 3D DEVOTIONAL HEADER BANNER */}
-      <div className="bg-gradient-to-r from-devotional-maroon via-devotional-maroon-dark to-stone-950 text-white p-6 sm:p-8 rounded-3xl shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border border-devotional-gold/40 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-devotional-maroon via-devotional-maroon-dark to-stone-950 text-white p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border border-devotional-gold/40 relative overflow-hidden">
         <div className="space-y-1 relative z-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold uppercase border border-amber-400/30">
             <Flame className="w-3.5 h-3.5 text-devotional-saffron animate-pulse" /> Sacred Recognition
           </div>
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-amber-300">
+          <h1 className="text-lg sm:text-2xl md:text-3xl font-serif font-bold text-amber-300 leading-snug">
             Devotee Rewards & Honors
           </h1>
           <p className="text-amber-100/80 text-xs">

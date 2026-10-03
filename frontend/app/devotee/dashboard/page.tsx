@@ -10,7 +10,7 @@ import Medal3DCard from '@/components/3d/Medal3DCard';
 import MedalDetailModal from '@/components/3d/MedalDetailModal';
 import PanchangamCalculator from '@/components/devotional/PanchangamCalculator';
 import AuspiciousMuhurthamTeaser from '@/components/initiatives/AuspiciousMuhurthamTeaser';
-import { getInitiatives, Initiative, isInitiativeTeaserVisible } from '@/lib/initiatives-data';
+import { getInitiatives, Initiative, isInitiativeVisibleToUsers, isWithin24HoursOfRelease } from '@/lib/initiatives-data';
 import { calculateDevoteeMedals, MEDAL_TIERS, MedalTier } from '@/lib/medals';
 import { useLanguage } from '@/lib/language-context';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
@@ -55,7 +55,7 @@ export default function DevoteeDashboardPage() {
     async function loadInitiatives() {
       try {
         const list = await getInitiatives();
-        const scheduled = list.filter((i) => isInitiativeTeaserVisible(i));
+        const scheduled = list.filter((i) => i.status === 'SCHEDULED' && isWithin24HoursOfRelease(i));
         setScheduledInitiatives(scheduled);
       } catch {
         // fallback
