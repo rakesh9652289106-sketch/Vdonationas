@@ -110,8 +110,8 @@ export default function TempleAdminNotificationsPage() {
   const filteredNotifications = notifications.filter((n) => {
     // Type Filter
     if (typeFilter === 'UNREAD' && n.read) return false;
-    if (typeFilter === 'APPROVAL' && n.type !== 'APPROVAL') return false;
-    if (typeFilter === 'REJECTION' && n.type !== 'REJECTION') return false;
+    if (typeFilter === 'APPROVAL' && !n.type.includes('APPROVAL')) return false;
+    if (typeFilter === 'REJECTION' && !n.type.includes('REJECTION')) return false;
     if (typeFilter === 'SUSPEND_DECISION' && n.type !== 'SUSPEND_DECISION') return false;
     if (typeFilter === 'BLOCK_DECISION' && n.type !== 'BLOCK_DECISION') return false;
 
@@ -122,6 +122,8 @@ export default function TempleAdminNotificationsPage() {
         n.title.toLowerCase().includes(q) ||
         n.message.toLowerCase().includes(q) ||
         (n.sevaTitle && n.sevaTitle.toLowerCase().includes(q)) ||
+        (n.categoryName && n.categoryName.toLowerCase().includes(q)) ||
+        (n.campaignTitle && n.campaignTitle.toLowerCase().includes(q)) ||
         (n.reason && n.reason.toLowerCase().includes(q)) ||
         (n.monthName && n.monthName.toLowerCase().includes(q)) ||
         n.createdAt.toLowerCase().includes(q);
@@ -131,8 +133,8 @@ export default function TempleAdminNotificationsPage() {
   });
 
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const approvalsCount = notifications.filter((n) => n.type === 'APPROVAL').length;
-  const rejectionsCount = notifications.filter((n) => n.type === 'REJECTION').length;
+  const approvalsCount = notifications.filter((n) => n.type.includes('APPROVAL')).length;
+  const rejectionsCount = notifications.filter((n) => n.type.includes('REJECTION')).length;
   const suspensionsCount = notifications.filter((n) => n.type === 'SUSPEND_DECISION').length;
   const blocksCount = notifications.filter((n) => n.type === 'BLOCK_DECISION').length;
 
@@ -148,7 +150,7 @@ export default function TempleAdminNotificationsPage() {
             Temple Admin Notifications
           </h1>
           <p className="text-amber-100/80 text-xs sm:text-sm max-w-2xl">
-            Real-time governance decisions, seva release approvals, blackout authorizations, and rejection feedback from Super Admin.
+            Real-time governance decisions, profile updates, category authorizations, campaigns, and seva approvals from Super Admin.
           </p>
         </div>
 
@@ -174,7 +176,6 @@ export default function TempleAdminNotificationsPage() {
         </div>
       </div>
 
-
       {/* SEARCH & FILTER CONTROLS */}
       <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-xl space-y-4">
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
@@ -185,7 +186,7 @@ export default function TempleAdminNotificationsPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search notifications by title, message, seva name, or date..."
+              placeholder="Search notifications by title, message, purpose, or date..."
               className="w-full pl-10 pr-9 py-2.5 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-2xl text-xs font-semibold text-stone-800 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all"
             />
             {searchQuery && (
@@ -301,10 +302,25 @@ export default function TempleAdminNotificationsPage() {
       ) : (
         <div className="space-y-4">
           {filteredNotifications.map((notif) => {
-            const isRejection = notif.type === 'REJECTION';
-            const isApproval = notif.type === 'APPROVAL';
+            const isRejection = notif.type.includes('REJECTION');
+            const isApproval = notif.type.includes('APPROVAL');
             const isSuspension = notif.type === 'SUSPEND_DECISION';
             const isBlock = notif.type === 'BLOCK_DECISION';
+
+            // Dynamic redirect link based on section
+            let targetHref = '/admin/temple/poojas';
+            let targetLabel = 'Go to Pooja Catalog & Quotas';
+
+            if (notif.targetSection === 'profile' || notif.type.startsWith('PROFILE_')) {
+              targetHref = '/admin/temple/profile';
+              targetLabel = 'View Shrine Profile';
+            } else if (notif.targetSection === 'categories' || notif.type.startsWith('CATEGORY_')) {
+              targetHref = '/admin/temple/categories';
+              targetLabel = 'View Donation Categories';
+            } else if (notif.targetSection === 'campaigns' || notif.type.startsWith('CAMPAIGN_')) {
+              targetHref = '/admin/temple/campaigns';
+              targetLabel = 'View Campaigns';
+            }
 
             return (
               <div
@@ -401,13 +417,13 @@ export default function TempleAdminNotificationsPage() {
                   </div>
                 )}
 
-                {/* Direct Action Link to Pooja Catalog */}
+                {/* Direct Action Link */}
                 <div className="pt-2 flex justify-end">
                   <Link
-                    href="/admin/temple/poojas"
+                    href={targetHref}
                     className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-devotional-saffron to-amber-600 hover:brightness-110 text-white font-bold text-xs rounded-xl shadow-gold transition-all"
                   >
-                    <span>Go to Pooja Catalog &amp; Quotas</span>
+                    <span>{targetLabel}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>

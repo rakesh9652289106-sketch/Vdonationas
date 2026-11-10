@@ -3,7 +3,35 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { templeAudio } from '@/lib/templeAudio';
-import { Landmark, Sparkles, Compass, Eye, EyeOff, Info, MapPin, RotateCcw, RotateCw, Rotate3d, ShieldAlert, Maximize2, Minimize2, X } from 'lucide-react';
+import {
+  Landmark,
+  Sparkles,
+  Compass,
+  Eye,
+  EyeOff,
+  Info,
+  MapPin,
+  RotateCcw,
+  RotateCw,
+  Rotate3d,
+  ShieldAlert,
+  Maximize2,
+  Minimize2,
+  X,
+  Plus,
+  Minus,
+  ZoomIn,
+  ZoomOut,
+  Bell,
+  Sun,
+  Sunset,
+  Moon,
+  Volume2,
+  VolumeX,
+  Camera,
+  Share2,
+  Flame,
+} from 'lucide-react';
 import { useGopuramExplorerVisibility } from '@/lib/feature-flags';
 import { useConfirmAlert } from '@/lib/confirm-alert-context';
 
@@ -170,9 +198,13 @@ function createBlackGraniteTexture(): THREE.CanvasTexture {
 function TempleGopuram2DCanvas({
   selectedHotspot,
   onSelectHotspot,
+  zoomPercent = 100,
+  ambianceMode = 'DAY',
 }: {
   selectedHotspot: Hotspot;
   onSelectHotspot: (spot: Hotspot) => void;
+  zoomPercent?: number;
+  ambianceMode?: 'DAY' | 'SANDHYA' | 'DEEPARADHANA';
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -199,13 +231,32 @@ function TempleGopuram2DCanvas({
 
       const w = canvas.width;
       const h = canvas.height;
+      const scale = Math.max(0.6, Math.min(2.5, zoomPercent / 100));
 
-      // 1. Twilight sky background
+      ctx.save();
+      ctx.translate(w / 2, h / 2);
+      ctx.scale(scale, scale);
+      ctx.translate(-w / 2, -h / 2);
+
+      // 1. Sky background based on sacred ambianceMode
       const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
-      skyGrad.addColorStop(0, '#0c0712');
-      skyGrad.addColorStop(0.5, '#201018');
-      skyGrad.addColorStop(0.85, '#3b1812');
-      skyGrad.addColorStop(1, '#18120e');
+      if (ambianceMode === 'DAY') {
+        skyGrad.addColorStop(0, '#0c0712');
+        skyGrad.addColorStop(0.5, '#201018');
+        skyGrad.addColorStop(0.85, '#3b1812');
+        skyGrad.addColorStop(1, '#18120e');
+      } else if (ambianceMode === 'SANDHYA') {
+        skyGrad.addColorStop(0, '#150624');
+        skyGrad.addColorStop(0.4, '#380e2b');
+        skyGrad.addColorStop(0.75, '#681c25');
+        skyGrad.addColorStop(1, '#1c090d');
+      } else {
+        // DEEPARADHANA
+        skyGrad.addColorStop(0, '#040207');
+        skyGrad.addColorStop(0.5, '#0b0614');
+        skyGrad.addColorStop(0.85, '#190e24');
+        skyGrad.addColorStop(1, '#07040a');
+      }
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, w, h);
 
@@ -330,11 +381,13 @@ function TempleGopuram2DCanvas({
       ctx.fillRect(w * 0.02, mandapamRoofY + 8 * dpr, mandapamLeftW + w * 0.04, 6 * dpr);
       ctx.fillStyle = '#eab308';
       ctx.fillRect(w * 0.015, mandapamRoofY, mandapamLeftW + w * 0.05, 8 * dpr);
+
+      ctx.restore();
     };
 
     render();
     return () => cancelAnimationFrame(animId);
-  }, [selectedHotspot]);
+  }, [selectedHotspot, zoomPercent, ambianceMode]);
 
   return (
     <canvas
@@ -370,6 +423,23 @@ export default function TempleGopuram3D() {
   const setTempleAngleRef = useRef<((deg: number) => void) | null>(null);
   const resetAngleRef = useRef<(() => void) | null>(null);
 
+  // Zoom Controls State & Refs
+  const [zoomPercent, setZoomPercent] = useState(100);
+  const zoomTempleRef = useRef<((deltaDistance: number) => void) | null>(null);
+  const resetZoomRef = useRef<(() => void) | null>(null);
+
+  const handleZoomIn = () => {
+    zoomTempleRef.current?.(-1.4);
+  };
+
+  const handleZoomOut = () => {
+    zoomTempleRef.current?.(1.4);
+  };
+
+  const handleResetZoom = () => {
+    resetZoomRef.current?.();
+  };
+
   const handleRotateDelta = (deltaDeg: number) => {
     setAutoRotate(false);
     rotateTempleRef.current?.(deltaDeg);
@@ -379,6 +449,227 @@ export default function TempleGopuram3D() {
     setAutoRotate(false);
     setRotationDegrees(deg);
     setTempleAngleRef.current?.(deg);
+  };
+
+  // Devotional Features State
+  const [flowerOfferCount, setFlowerOfferCount] = useState(0);
+  const [ambianceMode, setAmbianceMode] = useState<'DAY' | 'SANDHYA' | 'DEEPARADHANA'>('DAY');
+  const [isOmDroneActive, setIsOmDroneActive] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [isBellRinging, setIsBellRinging] = useState(false);
+
+  // Devotional Actions Refs
+  const triggerPushpanjaliRef = useRef<(() => void) | null>(null);
+  const triggerBellRingRef = useRef<(() => void) | null>(null);
+  const setAmbianceRef = useRef<((mode: 'DAY' | 'SANDHYA' | 'DEEPARADHANA') => void) | null>(null);
+  const ambianceModeRef = useRef<'DAY' | 'SANDHYA' | 'DEEPARADHANA'>('DAY');
+  ambianceModeRef.current = ambianceMode;
+
+  // Cleanup drone audio on unmount
+  useEffect(() => {
+    return () => {
+      templeAudio.toggleDrone(false);
+    };
+  }, []);
+
+  const handleOfferPushpanjali = () => {
+    setFlowerOfferCount((c) => c + 1);
+    triggerPushpanjaliRef.current?.();
+    showAlert({
+      type: 'change',
+      title: '🌺 Pushpanjali Offered',
+      message: 'Sacred flower petals showered at Sri Vasavi Swarna Vimana. May Her divine blessings be with you 🙏',
+    });
+  };
+
+  const handleRingBell = () => {
+    setIsBellRinging(true);
+    setTimeout(() => setIsBellRinging(false), 1200);
+    triggerBellRingRef.current?.();
+    showAlert({
+      type: 'info',
+      title: '🔔 Sacred Ghanta Ring',
+      message: 'Om Sri Vasavi Kanyaka Parameswaryai Namaha 🙏',
+    });
+  };
+
+  const handleSetAmbiance = (mode: 'DAY' | 'SANDHYA' | 'DEEPARADHANA') => {
+    setAmbianceMode(mode);
+    setAmbianceRef.current?.(mode);
+  };
+
+  const handleCycleAmbiance = () => {
+    const nextMode = ambianceMode === 'DAY' ? 'SANDHYA' : ambianceMode === 'SANDHYA' ? 'DEEPARADHANA' : 'DAY';
+    handleSetAmbiance(nextMode);
+  };
+
+  const handleToggleOmDrone = () => {
+    setIsOmDroneActive((prev) => {
+      const next = !prev;
+      templeAudio.toggleDrone(next, 0.16);
+      if (next) {
+        showAlert({
+          type: 'info',
+          title: '🕉️ Om Ambiance Active',
+          message: 'Cosmic 136.1 Hz Om drone activated for peaceful virtual darshan.',
+        });
+      }
+      return next;
+    });
+  };
+
+  const SACRED_VIEWPOINTS = [
+    {
+      id: 'kalasam',
+      label: 'Kalasam',
+      icon: '🪔',
+      target: [0.3, 5.2, -0.2],
+      pos: [-2.5, 6.2, 5.0],
+      desc: 'Golden Pinnacle Stupi',
+    },
+    {
+      id: 'vimana',
+      label: 'Vimana',
+      icon: '🛕',
+      target: [0.3, 3.2, -0.2],
+      pos: [-5.5, 4.8, 6.5],
+      desc: '5-Tier Swarna Vimana',
+    },
+    {
+      id: 'sanctum',
+      label: 'Sanctum',
+      icon: '✨',
+      target: [0.3, 1.2, -0.2],
+      pos: [1.8, 2.2, 5.8],
+      desc: 'Moola Vigraha Sanctum',
+    },
+    {
+      id: 'mandapam',
+      label: 'Mandapam',
+      icon: '🏛️',
+      target: [-2.6, 1.2, 0.4],
+      pos: [-6.8, 2.8, 4.5],
+      desc: 'Pillared Colonnade Hall',
+    },
+    {
+      id: 'aerial',
+      label: 'Garuda View',
+      icon: '🦅',
+      target: [0, 1.5, 0],
+      pos: [-8.5, 9.5, 9.5],
+      desc: 'High Aerial View',
+    },
+  ];
+
+  const handleSelectViewpoint = (vp: (typeof SACRED_VIEWPOINTS)[0]) => {
+    setAutoRotate(false);
+    targetCamPos.current.set(vp.pos[0], vp.pos[1], vp.pos[2]);
+    targetCamLook.current.set(vp.target[0], vp.target[1], vp.target[2]);
+    templeAudio.playFlowerChime(0.3);
+  };
+
+  const handleCaptureDarshan = async () => {
+    if (!containerEl) return;
+    const canvas = containerEl.querySelector('canvas');
+    if (!canvas) return;
+
+    setIsCapturing(true);
+    try {
+      const snapCanvas = document.createElement('canvas');
+      snapCanvas.width = canvas.width;
+      snapCanvas.height = canvas.height;
+      const ctx = snapCanvas.getContext('2d');
+      if (!ctx) return;
+
+      // 1. Draw 3D scene from WebGL Canvas
+      ctx.drawImage(canvas, 0, 0);
+
+      // 2. Add Decorative Sacred Border
+      const w = snapCanvas.width;
+      const h = snapCanvas.height;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      // Outer gold frame
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 6 * dpr;
+      ctx.strokeRect(10 * dpr, 10 * dpr, w - 20 * dpr, h - 20 * dpr);
+
+      // Inner gold line
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.strokeRect(16 * dpr, 16 * dpr, w - 32 * dpr, h - 32 * dpr);
+
+      // 3. Top Banner Header
+      const grad = ctx.createLinearGradient(0, 0, 0, 80 * dpr);
+      grad.addColorStop(0, 'rgba(20, 10, 8, 0.95)');
+      grad.addColorStop(1, 'rgba(20, 10, 8, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, 80 * dpr);
+
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = `bold ${16 * dpr}px serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('SRI VASAVI KANYAKA PARAMESWARI TEMPLE', w / 2, 38 * dpr);
+
+      ctx.fillStyle = '#fef08a';
+      ctx.font = `${11 * dpr}px sans-serif`;
+      ctx.fillText('360° Sacred Vimana & Mandapam Darshan', w / 2, 56 * dpr);
+
+      // 4. Bottom Benediction Footer
+      const bGrad = ctx.createLinearGradient(0, h - 70 * dpr, 0, h);
+      bGrad.addColorStop(0, 'rgba(20, 10, 8, 0)');
+      bGrad.addColorStop(1, 'rgba(20, 10, 8, 0.92)');
+      ctx.fillStyle = bGrad;
+      ctx.fillRect(0, h - 70 * dpr, w, 70 * dpr);
+
+      ctx.fillStyle = '#fcd34d';
+      ctx.font = `${11 * dpr}px serif`;
+      ctx.fillText('॥ सर्वमङ्गलमाङ्गल्ये शिवे सर्वार्थसाधिके । शरण्ये त्र्यम्बके गौरि नारायणि नमोऽस्तु ते ॥', w / 2, h - 38 * dpr);
+
+      ctx.fillStyle = '#a8a29e';
+      ctx.font = `${9 * dpr}px monospace`;
+      ctx.fillText(`Consecrated Virtual Darshan • ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`, w / 2, h - 20 * dpr);
+
+      snapCanvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], 'Sri-Vasavi-Temple-Darshan.png', { type: 'image/png' });
+
+        if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              title: 'Sri Vasavi Temple Darshan',
+              text: 'Blessed Darshan of Sri Vasavi Swarna Vimana & Mandapam 🙏',
+              files: [file],
+            });
+            showAlert({
+              type: 'change',
+              title: 'Darshan Shared',
+              message: 'Temple darshan shared with family and loved ones 🙏',
+            });
+            return;
+          } catch {
+            // Cancelled or unsupported share target
+          }
+        }
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Sri-Vasavi-Temple-Darshan-${Date.now()}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        showAlert({
+          type: 'change',
+          title: 'Darshan Captured',
+          message: 'High-resolution consecrated darshan snapshot downloaded to your device! 🙏',
+        });
+      }, 'image/png');
+    } catch (err) {
+      console.error('Failed to capture darshan snapshot', err);
+    } finally {
+      setIsCapturing(false);
+    }
   };
 
   // ESC key to exit fullscreen
@@ -449,6 +740,7 @@ export default function TempleGopuram3D() {
       targetCamPos.current.set(-6.5, 4.8, 8.5);
       targetCamLook.current.set(-0.4, 2.2, 0);
     }
+    resetZoomRef.current?.();
   };
 
   useEffect(() => {
@@ -889,6 +1181,198 @@ export default function TempleGopuram3D() {
     const pSystem = new THREE.Points(pGeo, pMat);
     scene.add(pSystem);
 
+    // 5B. Sacred Brass Oil Lamps (Pillar Deepams) for Deeparadhana Mode
+    const deepamGroup = new THREE.Group();
+    const diyaMat = new THREE.MeshStandardMaterial({
+      color: 0xd97706,
+      metalness: 0.85,
+      roughness: 0.25,
+    });
+    const diyaFlameMat = new THREE.MeshBasicMaterial({ color: 0xffedd5 });
+    const diyaHaloMat = new THREE.MeshBasicMaterial({
+      color: 0xf59e0b,
+      transparent: true,
+      opacity: 0.8,
+    });
+
+    const pillarDiyaPositions = [
+      [-0.6, 0.95, 1.6],
+      [0.6, 0.95, 1.6],
+      [1.8, 0.95, 1.6],
+      [-0.6, 0.95, 2.6],
+      [0.6, 0.95, 2.6],
+      [1.8, 0.95, 2.6],
+      [-2.6, 1.25, 0.4],
+      [-1.8, 1.25, 0.4],
+    ];
+
+    pillarDiyaPositions.forEach(([dx, dy, dz]) => {
+      const diyaBase = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.04, 0.05, 10), diyaMat);
+      diyaBase.position.set(dx, dy, dz);
+      deepamGroup.add(diyaBase);
+
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.08, 8), diyaFlameMat);
+      flame.position.set(dx, dy + 0.05, dz);
+      deepamGroup.add(flame);
+
+      const halo = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), diyaHaloMat);
+      halo.position.set(dx, dy + 0.05, dz);
+      deepamGroup.add(halo);
+    });
+    scene.add(deepamGroup);
+    deepamGroup.visible = false; // Default daytime
+
+    // 5C. Pushpanjali (Flower Shower) Particle System
+    const flowerCount = 85;
+    const flowerGeo = new THREE.BufferGeometry();
+    const flowerPos = new Float32Array(flowerCount * 3);
+    const flowerColors = new Float32Array(flowerCount * 3);
+    const flowerVelocities = new Float32Array(flowerCount * 3);
+
+    const petalPalette = [
+      new THREE.Color(0xfb923c), // Marigold Orange
+      new THREE.Color(0xe11d48), // Rose Crimson Red
+      new THREE.Color(0xfef08a), // Jasmine Cream / Yellow
+      new THREE.Color(0xf59e0b), // Amber Gold
+    ];
+
+    for (let i = 0; i < flowerCount; i++) {
+      flowerPos[i * 3] = (Math.random() - 0.5) * 5;
+      flowerPos[i * 3 + 1] = -10; // Dormant below courtyard
+      flowerPos[i * 3 + 2] = (Math.random() - 0.5) * 5;
+
+      const col = petalPalette[i % petalPalette.length];
+      flowerColors[i * 3] = col.r;
+      flowerColors[i * 3 + 1] = col.g;
+      flowerColors[i * 3 + 2] = col.b;
+
+      flowerVelocities[i * 3] = (Math.random() - 0.5) * 0.015;
+      flowerVelocities[i * 3 + 1] = 0.035 + Math.random() * 0.025;
+      flowerVelocities[i * 3 + 2] = (Math.random() - 0.5) * 0.015;
+    }
+
+    flowerGeo.setAttribute('position', new THREE.BufferAttribute(flowerPos, 3));
+    flowerGeo.setAttribute('color', new THREE.BufferAttribute(flowerColors, 3));
+
+    const petalCanvas = document.createElement('canvas');
+    petalCanvas.width = 32;
+    petalCanvas.height = 32;
+    const pctx = petalCanvas.getContext('2d');
+    if (pctx) {
+      pctx.fillStyle = '#ffffff';
+      pctx.beginPath();
+      pctx.ellipse(16, 16, 12, 7, Math.PI / 4, 0, Math.PI * 2);
+      pctx.fill();
+    }
+    const petalTex = new THREE.CanvasTexture(petalCanvas);
+
+    const flowerMat = new THREE.PointsMaterial({
+      size: 0.32,
+      vertexColors: true,
+      map: petalTex,
+      transparent: true,
+      opacity: 0.95,
+      alphaTest: 0.02,
+      depthWrite: false,
+    });
+
+    const flowerSystem = new THREE.Points(flowerGeo, flowerMat);
+    scene.add(flowerSystem);
+
+    let isPushpanjaliActive = false;
+    let pushpanjaliTimer = 0;
+
+    triggerPushpanjaliRef.current = () => {
+      templeAudio.playFlowerChime(0.5);
+      isPushpanjaliActive = true;
+      pushpanjaliTimer = 0;
+      const fPos = flowerGeo.attributes.position.array as Float32Array;
+      for (let i = 0; i < flowerCount; i++) {
+        fPos[i * 3] = (Math.random() - 0.5) * 4.5 + 0.3;
+        fPos[i * 3 + 1] = 6.2 + Math.random() * 3.5;
+        fPos[i * 3 + 2] = (Math.random() - 0.5) * 4.5 + 0.5;
+      }
+      flowerGeo.attributes.position.needsUpdate = true;
+    };
+
+    // 5D. Sacred Temple Bell (Ghanta) Wave Ripple Mesh
+    const bellRingGeo = new THREE.RingGeometry(0.12, 0.22, 32);
+    const bellRingMat = new THREE.MeshBasicMaterial({
+      color: 0xffd700,
+      transparent: true,
+      opacity: 0,
+      side: THREE.DoubleSide,
+    });
+    const bellRingMesh = new THREE.Mesh(bellRingGeo, bellRingMat);
+    bellRingMesh.position.set(0.3, 5.8, -0.2); // At Swarna Kalasam peak
+    bellRingMesh.rotation.x = Math.PI / 2;
+    scene.add(bellRingMesh);
+
+    let bellRingActive = false;
+    let bellRingProgress = 0;
+
+    triggerBellRingRef.current = () => {
+      templeAudio.playTempleBell(0.7);
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate([40, 30, 80]);
+        } catch {}
+      }
+      bellRingActive = true;
+      bellRingProgress = 0;
+      bellRingMesh.scale.set(1, 1, 1);
+      bellRingMat.opacity = 0.95;
+    };
+
+    // 5E. Sacred Ambiance Controller
+    setAmbianceRef.current = (mode: 'DAY' | 'SANDHYA' | 'DEEPARADHANA') => {
+      if (mode === 'DAY') {
+        renderer.setClearColor(0x140e0a, 1);
+        ambient.color.setHex(0xffecd6);
+        ambient.intensity = 1.4;
+        sunLight.color.setHex(0xfff3cc);
+        sunLight.intensity = 2.4;
+        sunLight.position.set(8, 16, 10);
+        goldPoint.color.setHex(0xffbe1a);
+        goldPoint.intensity = 2.2;
+        goldPoint.distance = 14;
+        fillLight.color.setHex(0x7ca1d9);
+        fillLight.intensity = 0.8;
+        deepamGroup.visible = false;
+      } else if (mode === 'SANDHYA') {
+        renderer.setClearColor(0x1a0a16, 1);
+        ambient.color.setHex(0xdd9bc6);
+        ambient.intensity = 1.15;
+        sunLight.color.setHex(0xf97316);
+        sunLight.intensity = 2.0;
+        sunLight.position.set(12, 6, 8);
+        goldPoint.color.setHex(0xfbbf24);
+        goldPoint.intensity = 2.8;
+        goldPoint.distance = 16;
+        fillLight.color.setHex(0x5a2d5e);
+        fillLight.intensity = 0.7;
+        deepamGroup.visible = true;
+      } else {
+        // DEEPARADHANA
+        renderer.setClearColor(0x08050c, 1);
+        ambient.color.setHex(0x352342);
+        ambient.intensity = 0.65;
+        sunLight.color.setHex(0x6366f1);
+        sunLight.intensity = 0.8;
+        sunLight.position.set(-6, 14, -6);
+        goldPoint.color.setHex(0xff9900);
+        goldPoint.intensity = 4.2;
+        goldPoint.distance = 20;
+        fillLight.color.setHex(0x1e1528);
+        fillLight.intensity = 0.4;
+        deepamGroup.visible = true;
+      }
+    };
+
+    if (ambianceModeRef.current !== 'DAY') {
+      setAmbianceRef.current(ambianceModeRef.current);
+    }
+
     // 6. INTERACTIVE 360° ORBIT & TOUCH CONTROLS
     let isDragging = false;
     let prevMouseX = 0;
@@ -905,6 +1389,11 @@ export default function TempleGopuram3D() {
       setRotationDegrees(deg);
     };
 
+    const updateZoomState = () => {
+      const pct = Math.round((11.5 / cameraDistance) * 100);
+      setZoomPercent(pct);
+    };
+
     resetAngleRef.current = () => {
       sphericalTheta = -0.65;
       sphericalPhi = 1.15;
@@ -912,6 +1401,23 @@ export default function TempleGopuram3D() {
       targetCamLook.current.set(-0.4, 2.2, 0);
       targetCamPos.current.set(-6.5, 4.8, 8.5);
       updateAngleState();
+      updateZoomState();
+    };
+
+    zoomTempleRef.current = (deltaDistance: number) => {
+      cameraDistance = Math.max(4.5, Math.min(20.0, cameraDistance + deltaDistance));
+      targetCamPos.current.x = targetCamLook.current.x + cameraDistance * Math.sin(sphericalPhi) * Math.sin(sphericalTheta);
+      targetCamPos.current.y = targetCamLook.current.y + cameraDistance * Math.cos(sphericalPhi);
+      targetCamPos.current.z = targetCamLook.current.z + cameraDistance * Math.sin(sphericalPhi) * Math.cos(sphericalTheta);
+      updateZoomState();
+    };
+
+    resetZoomRef.current = () => {
+      cameraDistance = 11.5;
+      targetCamPos.current.x = targetCamLook.current.x + cameraDistance * Math.sin(sphericalPhi) * Math.sin(sphericalTheta);
+      targetCamPos.current.y = targetCamLook.current.y + cameraDistance * Math.cos(sphericalPhi);
+      targetCamPos.current.z = targetCamLook.current.z + cameraDistance * Math.sin(sphericalPhi) * Math.cos(sphericalTheta);
+      updateZoomState();
     };
 
     rotateTempleRef.current = (deltaDeg: number) => {
@@ -978,15 +1484,17 @@ export default function TempleGopuram3D() {
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      cameraDistance = Math.max(5.0, Math.min(18.0, cameraDistance + e.deltaY * 0.008));
+      cameraDistance = Math.max(4.5, Math.min(20.0, cameraDistance + e.deltaY * 0.008));
       targetCamPos.current.x = targetCamLook.current.x + cameraDistance * Math.sin(sphericalPhi) * Math.sin(sphericalTheta);
       targetCamPos.current.y = targetCamLook.current.y + cameraDistance * Math.cos(sphericalPhi);
       targetCamPos.current.z = targetCamLook.current.z + cameraDistance * Math.sin(sphericalPhi) * Math.cos(sphericalTheta);
+      updateZoomState();
     };
 
     // Mobile 1-Finger 360° Touch Drag & 2-Finger Pinch Zoom
     let initialPinchDist = 0;
     let initialPinchCamDist = cameraDistance;
+    let lastTapTime = 0;
 
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 1) {
@@ -1028,16 +1536,31 @@ export default function TempleGopuram3D() {
         const currentDist = Math.hypot(dx, dy);
         if (currentDist > 10) {
           const factor = initialPinchDist / currentDist;
-          cameraDistance = Math.max(5.0, Math.min(18.0, initialPinchCamDist * factor));
+          cameraDistance = Math.max(4.5, Math.min(20.0, initialPinchCamDist * factor));
           targetCamPos.current.x = targetCamLook.current.x + cameraDistance * Math.sin(sphericalPhi) * Math.sin(sphericalTheta);
           targetCamPos.current.y = targetCamLook.current.y + cameraDistance * Math.cos(sphericalPhi);
           targetCamPos.current.z = targetCamLook.current.z + cameraDistance * Math.sin(sphericalPhi) * Math.cos(sphericalTheta);
+          updateZoomState();
         }
       }
     };
 
     const onTouchEnd = (e: TouchEvent) => {
+      const now = Date.now();
       if (e.touches.length === 0) {
+        if (now - lastTapTime < 280) {
+          // Double tap to toggle zoom
+          if (cameraDistance > 8.0) {
+            cameraDistance = 6.2;
+          } else {
+            cameraDistance = 11.5;
+          }
+          targetCamPos.current.x = targetCamLook.current.x + cameraDistance * Math.sin(sphericalPhi) * Math.sin(sphericalTheta);
+          targetCamPos.current.y = targetCamLook.current.y + cameraDistance * Math.cos(sphericalPhi);
+          targetCamPos.current.z = targetCamLook.current.z + cameraDistance * Math.sin(sphericalPhi) * Math.cos(sphericalTheta);
+          updateZoomState();
+        }
+        lastTapTime = now;
         isDragging = false;
         initialPinchDist = 0;
       } else if (e.touches.length === 1) {
@@ -1098,6 +1621,43 @@ export default function TempleGopuram3D() {
       }
       pSystem.geometry.attributes.position.needsUpdate = true;
 
+      // Devotional Pushpanjali Flutter Animation
+      if (isPushpanjaliActive) {
+        pushpanjaliTimer += 0.016;
+        const fPos = flowerGeo.attributes.position.array as Float32Array;
+        for (let i = 0; i < flowerCount; i++) {
+          fPos[i * 3 + 1] -= flowerVelocities[i * 3 + 1];
+          fPos[i * 3] += Math.sin(pushpanjaliTimer * 3 + i) * 0.007;
+          fPos[i * 3 + 2] += Math.cos(pushpanjaliTimer * 2.5 + i) * 0.007;
+          if (fPos[i * 3 + 1] < 0.1) {
+            fPos[i * 3 + 1] = 0.08;
+          }
+        }
+        flowerGeo.attributes.position.needsUpdate = true;
+        if (pushpanjaliTimer > 9) {
+          isPushpanjaliActive = false;
+        }
+      }
+
+      // Devotional Bell Wave Ripple Animation
+      if (bellRingActive) {
+        bellRingProgress += 0.032;
+        const s = 1 + bellRingProgress * 8.5;
+        bellRingMesh.scale.set(s, s, s);
+        bellRingMat.opacity = Math.max(0, 0.92 * (1 - bellRingProgress));
+        if (bellRingProgress >= 1) {
+          bellRingActive = false;
+          bellRingMat.opacity = 0;
+        }
+      }
+
+      // Deeparadhana Night Aarti Flame Flicker
+      if (ambianceModeRef.current === 'DEEPARADHANA') {
+        const flicker = Math.sin(Date.now() * 0.015) * 0.35 + Math.cos(Date.now() * 0.023) * 0.2;
+        goldPoint.intensity = 4.0 + flicker;
+        diyaHaloMat.opacity = 0.72 + Math.sin(Date.now() * 0.018) * 0.22;
+      }
+
       renderer.render(scene, camera);
     };
 
@@ -1130,6 +1690,11 @@ export default function TempleGopuram3D() {
       rotateTempleRef.current = null;
       setTempleAngleRef.current = null;
       resetAngleRef.current = null;
+      zoomTempleRef.current = null;
+      resetZoomRef.current = null;
+      triggerPushpanjaliRef.current = null;
+      triggerBellRingRef.current = null;
+      setAmbianceRef.current = null;
       clearTimeout(timer);
       if (ro) ro.disconnect();
       container.removeEventListener('pointerdown', onPointerDown);
@@ -1170,6 +1735,25 @@ export default function TempleGopuram3D() {
           : 'absolute bottom-3 inset-x-2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-20 flex flex-col items-center gap-1.5 pointer-events-auto max-w-[98%] sm:max-w-none'
       }
     >
+      {/* Sacred Architectural Viewpoints Quick Bar */}
+      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 px-2 bg-stone-950/80 backdrop-blur-md rounded-xl border border-amber-400/30 max-w-full justify-start sm:justify-center">
+        <span className="text-[9px] font-bold text-amber-400/80 uppercase tracking-wider shrink-0 mr-0.5 hidden xs:inline">
+          Darshan:
+        </span>
+        {SACRED_VIEWPOINTS.map((vp) => (
+          <button
+            key={vp.id}
+            type="button"
+            onClick={() => handleSelectViewpoint(vp)}
+            className="px-2 py-0.5 rounded-lg bg-stone-900/90 hover:bg-stone-800 border border-stone-700 hover:border-amber-400/60 text-stone-300 hover:text-amber-200 text-[10px] font-medium flex items-center gap-1 transition-all active:scale-95 whitespace-nowrap cursor-pointer shrink-0"
+            title={`Focus View on ${vp.label} (${vp.desc})`}
+          >
+            <span>{vp.icon}</span>
+            <span>{vp.label}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="flex items-center gap-1 sm:gap-1.5 bg-stone-950/90 backdrop-blur-md px-2 sm:px-3 py-1.5 sm:py-2 rounded-2xl border border-amber-400/40 shadow-2xl overflow-x-auto no-scrollbar max-w-full">
         {/* Rotate -45° */}
         <button
@@ -1235,6 +1819,30 @@ export default function TempleGopuram3D() {
           })}
         </div>
 
+        {/* Zoom In & Zoom Out Controls */}
+        <div className="flex items-center gap-0.5 sm:gap-1 pl-1 border-l border-stone-800 shrink-0">
+          <button
+            type="button"
+            onClick={handleZoomIn}
+            className="p-1.5 sm:px-2 sm:py-1 rounded-xl bg-stone-900/90 hover:bg-stone-800 text-amber-300 border border-stone-700 hover:border-amber-400/60 active:scale-95 transition-all text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0"
+            title="Zoom In (+)"
+            aria-label="Zoom In"
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
+            <span className="text-[10px] hidden md:inline">In</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleZoomOut}
+            className="p-1.5 sm:px-2 sm:py-1 rounded-xl bg-stone-900/90 hover:bg-stone-800 text-amber-300 border border-stone-700 hover:border-amber-400/60 active:scale-95 transition-all text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0"
+            title="Zoom Out (-)"
+            aria-label="Zoom Out"
+          >
+            <ZoomOut className="w-3.5 h-3.5" />
+            <span className="text-[10px] hidden md:inline">Out</span>
+          </button>
+        </div>
+
         {/* Quick 360° Auto-Orbit Toggle Button */}
         <button
           type="button"
@@ -1254,7 +1862,7 @@ export default function TempleGopuram3D() {
           type="button"
           onClick={resetView}
           className="p-1.5 rounded-xl bg-stone-900/80 hover:bg-stone-800 border border-stone-700 text-stone-400 hover:text-white transition-all cursor-pointer shrink-0"
-          title="Reset Camera View"
+          title="Reset Camera View & Zoom"
         >
           <RotateCcw className="w-3.5 h-3.5" />
         </button>
@@ -1264,7 +1872,7 @@ export default function TempleGopuram3D() {
       {!isDockInFullscreen && (
         <div className="bg-stone-950/85 backdrop-blur-sm px-2.5 py-0.5 rounded-full border border-stone-800 text-[10px] text-stone-300 flex items-center gap-1.5 pointer-events-none shadow-md">
           <Eye className="w-3 h-3 text-amber-400 shrink-0" />
-          <span>Swipe 360° to view all angles • Pinch to zoom</span>
+          <span>Swipe 360° to view all angles • Pinch or tap +/- to zoom</span>
         </div>
       )}
     </div>
@@ -1289,6 +1897,82 @@ export default function TempleGopuram3D() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Pushpanjali (Flower Shower) */}
+          <button
+            onClick={handleOfferPushpanjali}
+            className="relative px-3 py-1.5 rounded-full border border-rose-500/50 bg-gradient-to-r from-rose-950/60 to-amber-950/60 hover:from-rose-900/70 hover:to-amber-900/70 text-rose-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
+            title="Offer Sacred Pushpanjali (Flower Petal Shower)"
+          >
+            <span className="text-sm leading-none">🌺</span>
+            <span className="hidden sm:inline">Pushpanjali</span>
+            {flowerOfferCount > 0 && (
+              <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-rose-500 text-[10px] text-white font-mono font-bold leading-tight">
+                {flowerOfferCount}
+              </span>
+            )}
+          </button>
+
+          {/* Sacred Bell (Ghanta) */}
+          <button
+            onClick={handleRingBell}
+            className={`p-1.5 sm:px-3 sm:py-1.5 rounded-full border transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+              isBellRinging
+                ? 'bg-amber-400 border-amber-300 text-stone-950 shadow-[0_0_15px_rgba(251,191,36,0.8)] scale-105'
+                : 'border-amber-500/40 bg-stone-950 hover:bg-stone-800 text-amber-300'
+            }`}
+            title="Ring Sacred Temple Bell (Ghanta)"
+          >
+            <Bell className={`w-3.5 h-3.5 ${isBellRinging ? 'animate-bounce text-stone-950' : 'text-amber-400'}`} />
+            <span className="hidden sm:inline text-xs font-bold">Bell</span>
+          </button>
+
+          {/* Sacred Ambiance (Surya / Sandhya / Deeparadhana) */}
+          <button
+            onClick={handleCycleAmbiance}
+            className="px-3 py-1.5 rounded-full border border-amber-500/40 bg-stone-950 hover:bg-stone-800 text-amber-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+            title={`Current Ambiance: ${ambianceMode}. Click to switch (Day / Twilight / Night Aarti)`}
+          >
+            {ambianceMode === 'DAY' ? (
+              <Sun className="w-3.5 h-3.5 text-amber-400" />
+            ) : ambianceMode === 'SANDHYA' ? (
+              <Sunset className="w-3.5 h-3.5 text-orange-400" />
+            ) : (
+              <Flame className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+            )}
+            <span className="hidden md:inline">
+              {ambianceMode === 'DAY' ? 'Surya' : ambianceMode === 'SANDHYA' ? 'Sandhya' : 'Deeparadhana'}
+            </span>
+          </button>
+
+          {/* Om Drone Audio */}
+          <button
+            onClick={handleToggleOmDrone}
+            className={`p-1.5 sm:px-3 sm:py-1.5 rounded-full border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              isOmDroneActive
+                ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow'
+                : 'bg-stone-950 border-stone-700 text-stone-400 hover:text-stone-200'
+            }`}
+            title="Toggle Cosmic 136.1 Hz Om Drone"
+          >
+            {isOmDroneActive ? (
+              <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+            ) : (
+              <VolumeX className="w-3.5 h-3.5" />
+            )}
+            <span className="hidden lg:inline">{isOmDroneActive ? 'Om Audio: On' : 'Om Audio'}</span>
+          </button>
+
+          {/* Snapshot & Share */}
+          <button
+            onClick={handleCaptureDarshan}
+            disabled={isCapturing}
+            className="p-1.5 sm:px-3 sm:py-1.5 rounded-full border border-amber-500/40 bg-stone-950 hover:bg-stone-800 text-amber-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            title="Capture & Share Consecrated Darshan Snapshot"
+          >
+            <Camera className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden md:inline">Darshan</span>
+          </button>
+
           {/* Fullscreen Button */}
           <button
             onClick={() => setIsFullscreen(true)}
@@ -1338,12 +2022,15 @@ export default function TempleGopuram3D() {
         >
           {/* Fullscreen Top HUD */}
           {isFullscreen && (
-            <div className="absolute top-0 inset-x-0 z-30 p-3 sm:p-4 bg-gradient-to-b from-stone-950/95 via-stone-950/80 to-transparent flex items-center justify-between gap-2 backdrop-blur-sm pointer-events-auto">
+            <div className="absolute top-0 inset-x-0 z-30 p-2.5 sm:p-4 bg-gradient-to-b from-stone-950/95 via-stone-950/80 to-transparent flex items-center justify-between gap-2 backdrop-blur-sm pointer-events-auto">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                 <div className="leading-tight">
-                  <p className="font-serif font-bold text-amber-300 text-xs sm:text-sm">
-                    Sri Vasavi Temple • 360° Explorer
+                  <p className="font-serif font-bold text-amber-300 text-xs sm:text-sm flex items-center gap-1.5">
+                    <span>Sri Vasavi Temple</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400/10 border border-amber-400/30 text-amber-300 hidden md:inline">
+                      {ambianceMode === 'DAY' ? 'Surya Mode' : ambianceMode === 'SANDHYA' ? 'Sandhya Dusk' : 'Deeparadhana Night'}
+                    </span>
                   </p>
                   <p className="text-[10px] text-stone-400 hidden sm:block">
                     {selectedHotspot.name} • {selectedHotspot.sanskrit}
@@ -1351,10 +2038,86 @@ export default function TempleGopuram3D() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
+                {/* Pushpanjali Offering */}
+                <button
+                  onClick={handleOfferPushpanjali}
+                  className="px-2.5 sm:px-3 py-1.5 rounded-full border border-rose-500/50 bg-rose-950/70 hover:bg-rose-900/80 text-rose-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow active:scale-95"
+                  title="Offer Sacred Pushpanjali (Flower Shower)"
+                >
+                  <span className="text-xs sm:text-sm leading-none">🌺</span>
+                  <span className="hidden sm:inline">Pushpanjali</span>
+                  {flowerOfferCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-[10px] text-white font-mono font-bold leading-tight">
+                      {flowerOfferCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Ring Temple Bell */}
+                <button
+                  onClick={handleRingBell}
+                  className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-full border transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
+                    isBellRinging
+                      ? 'bg-amber-400 border-amber-300 text-stone-950 shadow-[0_0_15px_rgba(251,191,36,0.9)] scale-105'
+                      : 'border-amber-500/40 bg-stone-900/90 hover:bg-stone-800 text-amber-300'
+                  }`}
+                  title="Ring Sacred Temple Bell (Ghanta)"
+                >
+                  <Bell className={`w-3.5 h-3.5 ${isBellRinging ? 'animate-bounce text-stone-950' : 'text-amber-400'}`} />
+                  <span className="hidden md:inline text-xs font-bold">Bell</span>
+                </button>
+
+                {/* Ambiance Switcher */}
+                <button
+                  onClick={handleCycleAmbiance}
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-full border border-amber-500/40 bg-stone-900/90 hover:bg-stone-800 text-amber-200 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                  title="Switch Ambiance (Surya / Sandhya / Deeparadhana)"
+                >
+                  {ambianceMode === 'DAY' ? (
+                    <Sun className="w-3.5 h-3.5 text-amber-400" />
+                  ) : ambianceMode === 'SANDHYA' ? (
+                    <Sunset className="w-3.5 h-3.5 text-orange-400" />
+                  ) : (
+                    <Flame className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+                  )}
+                  <span className="hidden md:inline">
+                    {ambianceMode === 'DAY' ? 'Surya' : ambianceMode === 'SANDHYA' ? 'Sandhya' : 'Aarti'}
+                  </span>
+                </button>
+
+                {/* Om Drone Audio */}
+                <button
+                  onClick={handleToggleOmDrone}
+                  className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-full border text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                    isOmDroneActive
+                      ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow'
+                      : 'bg-stone-900/90 border-stone-700 text-stone-400 hover:text-stone-200'
+                  }`}
+                  title="Toggle Cosmic 136.1 Hz Om Drone Audio"
+                >
+                  {isOmDroneActive ? (
+                    <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+                  ) : (
+                    <VolumeX className="w-3.5 h-3.5" />
+                  )}
+                  <span className="hidden lg:inline">Om</span>
+                </button>
+
+                {/* Darshan Snapshot */}
+                <button
+                  onClick={handleCaptureDarshan}
+                  disabled={isCapturing}
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-full border border-amber-500/40 bg-stone-900/90 hover:bg-stone-800 text-amber-300 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+                  title="Capture & Share Blessed Darshan Snapshot"
+                >
+                  <Camera className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden md:inline">Darshan</span>
+                </button>
+
                 <button
                   onClick={() => setAutoRotate((prev) => !prev)}
-                  className={`px-3 py-1.5 rounded-full border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-full border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                     autoRotate
                       ? 'bg-amber-400/20 border-amber-400 text-amber-300 shadow'
                       : 'bg-stone-900/90 border-stone-700 text-stone-300'
@@ -1362,13 +2125,31 @@ export default function TempleGopuram3D() {
                   title="Toggle 360° Auto-Orbit"
                 >
                   <Compass className={`w-3.5 h-3.5 ${autoRotate ? 'animate-spin' : ''}`} />
-                  <span className="text-[11px]">{autoRotate ? '360° Orbit' : 'Manual'}</span>
+                  <span className="text-[11px] hidden sm:inline">{autoRotate ? '360° Orbit' : 'Manual'}</span>
+                </button>
+
+                <button
+                  onClick={handleZoomIn}
+                  className="p-1.5 rounded-full border border-stone-700 bg-stone-900/90 hover:bg-stone-800 text-stone-300 hover:text-amber-300 transition-colors cursor-pointer"
+                  title="Zoom In (+)"
+                  aria-label="Zoom In"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  onClick={handleZoomOut}
+                  className="p-1.5 rounded-full border border-stone-700 bg-stone-900/90 hover:bg-stone-800 text-stone-300 hover:text-amber-300 transition-colors cursor-pointer"
+                  title="Zoom Out (-)"
+                  aria-label="Zoom Out"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
                 </button>
 
                 <button
                   onClick={resetView}
                   className="p-1.5 rounded-full border border-stone-700 bg-stone-900/90 hover:bg-stone-800 text-stone-300 hover:text-white transition-colors cursor-pointer"
-                  title="Reset Camera View"
+                  title="Reset Camera View & Zoom"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                 </button>
@@ -1389,6 +2170,8 @@ export default function TempleGopuram3D() {
             <TempleGopuram2DCanvas
               selectedHotspot={selectedHotspot}
               onSelectHotspot={selectHotspot}
+              zoomPercent={zoomPercent}
+              ambianceMode={ambianceMode}
             />
           ) : (
             <div
@@ -1397,6 +2180,113 @@ export default function TempleGopuram3D() {
               style={{ touchAction: 'none' }}
             />
           )}
+
+          {/* Mobile & Desktop Floating Vertical Quick Actions & Zoom Control (Right-edge thumb friendly) */}
+          <div
+            className="absolute right-2.5 sm:right-4 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-1.5 bg-stone-950/85 backdrop-blur-md p-1 sm:p-1.5 rounded-2xl border border-amber-400/50 shadow-[0_8px_24px_rgba(0,0,0,0.6)] pointer-events-auto select-none"
+            role="group"
+            aria-label="Interactive Controls"
+          >
+            {/* Zoom In Button */}
+            <button
+              type="button"
+              onClick={handleZoomIn}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-stone-900/90 hover:bg-stone-800 active:bg-amber-400/30 text-amber-300 border border-stone-700 hover:border-amber-400/70 active:scale-95 flex items-center justify-center transition-all cursor-pointer shadow-md"
+              title="Zoom In (+)"
+              aria-label="Zoom In"
+            >
+              <Plus className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
+            </button>
+
+            {/* Current Zoom Indicator (Click to reset zoom to 100%) */}
+            <button
+              type="button"
+              onClick={handleResetZoom}
+              className="py-0.5 px-1 text-center cursor-pointer hover:bg-stone-900/80 rounded-lg transition-colors border border-transparent hover:border-amber-500/30 group/zoom"
+              title="Click to reset zoom to 100%"
+            >
+              <span className="text-[10px] sm:text-[11px] font-mono font-bold text-amber-300 block leading-none">
+                {zoomPercent}%
+              </span>
+              <span className="text-[7px] text-stone-400 uppercase tracking-tighter block leading-none mt-0.5 group-hover/zoom:text-amber-400">
+                Zoom
+              </span>
+            </button>
+
+            {/* Zoom Out Button */}
+            <button
+              type="button"
+              onClick={handleZoomOut}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-stone-900/90 hover:bg-stone-800 active:bg-amber-400/30 text-amber-300 border border-stone-700 hover:border-amber-400/70 active:scale-95 flex items-center justify-center transition-all cursor-pointer shadow-md"
+              title="Zoom Out (-)"
+              aria-label="Zoom Out"
+            >
+              <Minus className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
+            </button>
+
+            {/* Sacred Devotional Divider */}
+            <div className="w-5 h-px bg-amber-500/30 my-0.5" />
+
+            {/* 🌺 Pushpanjali (Flower Shower Offering) */}
+            <button
+              type="button"
+              onClick={handleOfferPushpanjali}
+              className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-rose-950/90 to-amber-950/90 hover:from-rose-900 hover:to-amber-900 active:scale-90 text-rose-300 border border-rose-500/40 hover:border-rose-400 flex items-center justify-center transition-all cursor-pointer shadow-md"
+              title="🌺 Pushpanjali (Offer Sacred Flower Petals)"
+              aria-label="Offer Pushpanjali"
+            >
+              <span className="text-base sm:text-lg leading-none select-none">🌺</span>
+              {flowerOfferCount > 0 && (
+                <span className="absolute -top-1 -right-1 px-1 rounded-full bg-rose-500 text-[8px] text-white font-mono font-bold leading-tight">
+                  {flowerOfferCount > 99 ? '99+' : flowerOfferCount}
+                </span>
+              )}
+            </button>
+
+            {/* 🔔 Sacred Temple Bell (Ghanta Ring) */}
+            <button
+              type="button"
+              onClick={handleRingBell}
+              className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl transition-all cursor-pointer flex items-center justify-center shadow-md active:scale-90 ${
+                isBellRinging
+                  ? 'bg-amber-400 border border-amber-300 text-stone-950 shadow-[0_0_15px_rgba(251,191,36,0.9)]'
+                  : 'bg-stone-900/90 hover:bg-stone-800 text-amber-300 border border-stone-700 hover:border-amber-400/70'
+              }`}
+              title="🔔 Ring Sacred Temple Bell (Ghanta)"
+              aria-label="Ring Temple Bell"
+            >
+              <Bell className={`w-4 h-4 sm:w-4.5 sm:h-4.5 ${isBellRinging ? 'animate-bounce text-stone-950' : 'text-amber-300'}`} />
+            </button>
+
+            {/* 🪔 Sacred Ambiance (Surya / Sandhya / Deeparadhana) */}
+            <button
+              type="button"
+              onClick={handleCycleAmbiance}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-stone-900/90 hover:bg-stone-800 active:bg-amber-400/30 text-amber-300 border border-stone-700 hover:border-amber-400/70 active:scale-90 flex items-center justify-center transition-all cursor-pointer shadow-md"
+              title={`🪔 Ambiance Mode: ${ambianceMode} (Tap to change)`}
+              aria-label="Cycle Temple Ambiance"
+            >
+              {ambianceMode === 'DAY' ? (
+                <Sun className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-amber-400" />
+              ) : ambianceMode === 'SANDHYA' ? (
+                <Sunset className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-orange-400" />
+              ) : (
+                <Flame className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-red-400 animate-pulse" />
+              )}
+            </button>
+
+            {/* 📸 Consecrated Darshan Snapshot & Share */}
+            <button
+              type="button"
+              onClick={handleCaptureDarshan}
+              disabled={isCapturing}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-stone-900/90 hover:bg-stone-800 active:bg-amber-400/30 text-amber-300 border border-stone-700 hover:border-amber-400/70 active:scale-90 flex items-center justify-center transition-all cursor-pointer shadow-md disabled:opacity-50"
+              title="📸 Capture & Share Blessed Darshan Blessing"
+              aria-label="Capture and Share Darshan Snapshot"
+            >
+              <Camera className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-amber-300" />
+            </button>
+          </div>
 
           {/* Normal Mode Canvas Fullscreen Button */}
           {!isFullscreen && (
@@ -1415,7 +2305,7 @@ export default function TempleGopuram3D() {
             <div className="absolute bottom-0 inset-x-0 z-30 p-3 sm:p-4 bg-gradient-to-t from-stone-950 via-stone-950/90 to-transparent flex flex-col gap-2.5 backdrop-blur-sm pointer-events-auto">
               <div className="mx-auto bg-stone-900/90 border border-amber-500/30 px-3.5 py-1 rounded-full text-[10px] sm:text-xs text-amber-200/90 flex items-center gap-1.5 pointer-events-none shadow-md">
                 <Eye className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>Swipe in any direction for 360° view • Pinch with two fingers to zoom</span>
+                <span>Swipe in any direction for 360° view • Pinch or tap +/- to zoom</span>
               </div>
 
               {/* 360° Interactive Rotation Controls */}

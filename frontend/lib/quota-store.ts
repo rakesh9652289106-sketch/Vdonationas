@@ -26,13 +26,27 @@ export interface MonthReleaseRecord {
 
 export interface TempleAdminNotification {
   id: string;
-  type: 'REJECTION' | 'APPROVAL' | 'BLOCK_DECISION' | 'SUSPEND_DECISION' | 'SYSTEM';
+  type:
+    | 'REJECTION'
+    | 'APPROVAL'
+    | 'BLOCK_DECISION'
+    | 'SUSPEND_DECISION'
+    | 'SYSTEM'
+    | 'PROFILE_APPROVAL'
+    | 'PROFILE_REJECTION'
+    | 'CATEGORY_APPROVAL'
+    | 'CATEGORY_REJECTION'
+    | 'CAMPAIGN_APPROVAL'
+    | 'CAMPAIGN_REJECTION';
   title: string;
   message: string;
   sevaId?: string;
   sevaTitle?: string;
   releaseRecordId?: string;
   monthName?: string;
+  categoryName?: string;
+  campaignTitle?: string;
+  targetSection?: 'profile' | 'categories' | 'campaigns' | 'poojas' | 'releases' | 'blocks';
   reason?: string;
   createdAt: string;
   read?: boolean;
@@ -402,13 +416,16 @@ export function saveTempleAdminNotifications(records: TempleAdminNotification[])
 }
 
 export function dispatchTempleAdminNotification(notif: {
-  type: 'REJECTION' | 'APPROVAL' | 'BLOCK_DECISION' | 'SUSPEND_DECISION' | 'SYSTEM';
+  type: TempleAdminNotification['type'];
   title: string;
   message: string;
   sevaId?: string;
   sevaTitle?: string;
   releaseRecordId?: string;
   monthName?: string;
+  categoryName?: string;
+  campaignTitle?: string;
+  targetSection?: 'profile' | 'categories' | 'campaigns' | 'poojas' | 'releases' | 'blocks';
   reason?: string;
 }): void {
   if (typeof window === 'undefined') return;
@@ -423,6 +440,9 @@ export function dispatchTempleAdminNotification(notif: {
       sevaTitle: notif.sevaTitle,
       releaseRecordId: notif.releaseRecordId,
       monthName: notif.monthName,
+      categoryName: notif.categoryName,
+      campaignTitle: notif.campaignTitle,
+      targetSection: notif.targetSection,
       reason: notif.reason,
       createdAt: new Date().toLocaleDateString('en-IN', {
         day: '2-digit',

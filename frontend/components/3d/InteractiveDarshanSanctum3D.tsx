@@ -2369,53 +2369,53 @@ export default function InteractiveDarshanSanctum3D({
       </div>
 
       {/* Bottom Interactive Seva Actions Toolbar */}
-      <div className="absolute bottom-4 inset-x-4 z-20 flex flex-wrap items-center justify-center sm:justify-between gap-3 bg-stone-950/85 backdrop-blur-md p-3 rounded-2xl border border-devotional-gold/40 shadow-2xl">
-        <div className="flex items-center gap-2 text-stone-300 text-xs font-serif hidden md:flex">
+      <div className="absolute bottom-4 inset-x-4 z-20 flex items-center justify-center sm:justify-between gap-2 bg-stone-950/85 backdrop-blur-md p-2.5 rounded-2xl border border-devotional-gold/40 shadow-2xl">
+        <div className="flex items-center gap-2 text-stone-300 text-xs font-serif hidden md:flex shrink-0">
           <Eye className="w-4 h-4 text-amber-400" />
           <span>Click 3D Bell or move view to experience Sri Vasavi Sanctum</span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5 w-full sm:w-auto justify-center sm:justify-end">
           {/* Seva Action 1: Ring Bell */}
           <button
             onClick={handleRingBell}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md ${
+            className={`flex-1 sm:flex-none px-2.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all shadow-md min-w-0 ${
               isBellRinging
                 ? 'bg-amber-400 text-stone-950 scale-105 shadow-gold ring-2 ring-amber-300'
                 : 'bg-stone-900/90 hover:bg-stone-800 text-amber-300 border border-amber-400/40 hover:border-amber-400'
             }`}
             title="Ring Sacred Temple Ghanta"
           >
-            <BellRing className={`w-4 h-4 text-amber-400 ${isBellRinging ? 'animate-bounce' : ''}`} />
-            <span>Ring Ghanta</span>
+            <BellRing className={`w-3.5 h-3.5 text-amber-400 shrink-0 ${isBellRinging ? 'animate-bounce' : ''}`} />
+            <span className="truncate">Ring Ghanta</span>
           </button>
 
           {/* Seva Action 2: Real Flower Pushparchana */}
           <button
             onClick={handleFlowerShower}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md ${
+            className={`flex-1 sm:flex-none px-2.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all shadow-md min-w-0 ${
               isFlowerShowerActive
                 ? 'bg-gradient-to-r from-orange-500 via-amber-500 to-rose-500 text-white shadow-lg ring-2 ring-amber-300 scale-105 animate-pulse'
                 : 'bg-stone-900/90 hover:bg-stone-800 text-orange-300 border border-orange-400/40 hover:border-orange-400'
             }`}
             title="Pushparchana"
           >
-            <Flower2 className={`w-4 h-4 text-orange-400 ${isFlowerShowerActive ? 'animate-spin' : ''}`} />
-            <span>Pushparchana</span>
+            <Flower2 className={`w-3.5 h-3.5 text-orange-400 shrink-0 ${isFlowerShowerActive ? 'animate-spin' : ''}`} />
+            <span className="truncate">Pushparchana</span>
           </button>
 
           {/* Seva Action 3: Mangala Aarti */}
           <button
             onClick={handleOfferAarti}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md ${
+            className={`flex-1 sm:flex-none px-2.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all shadow-md min-w-0 ${
               isAartiActive || isAartiFacingDevotee
                 ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-amber-300 text-stone-950 font-extrabold shadow-[0_0_24px_rgba(251,191,36,0.9)] ring-2 ring-amber-300 scale-105'
                 : 'bg-gradient-to-r from-[#6b1410] via-[#a33213] to-[#d97706] text-amber-100 border border-amber-400/50 hover:border-amber-300 shadow-[0_4px_16px_rgba(217,119,6,0.3)] hover:brightness-110'
             }`}
             title="Aarti"
           >
-            <Flame className={`w-4 h-4 ${isAartiActive || isAartiFacingDevotee ? 'animate-bounce text-red-700 fill-amber-300' : 'text-amber-300 animate-pulse'}`} />
-            <span>Aarti</span>
+            <Flame className={`w-3.5 h-3.5 shrink-0 ${isAartiActive || isAartiFacingDevotee ? 'animate-bounce text-red-700 fill-amber-300' : 'text-amber-300 animate-pulse'}`} />
+            <span className="truncate">Aarti</span>
           </button>
         </div>
       </div>

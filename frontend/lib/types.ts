@@ -120,7 +120,7 @@ export interface Campaign {
   startDate: string;
   endDate: string;
   minDonation: number;
-  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'PENDING_APPROVAL' | 'PAUSED';
   isFeatured: boolean;
   updates: CampaignUpdate[];
 }

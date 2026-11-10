@@ -119,6 +119,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         console.warn('[VDonations Auth] Error reading local session:', err);
+      } finally {
+        // Immediately mark auth as hydrated from local state so client navigation/guards don't hang
+        setIsHydrated(true);
       }
 
       // Step 2: Harmonize with Supabase in the background if available

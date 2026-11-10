@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { templeAudio } from '@/lib/templeAudio';
-import { Flame, Sparkles, RotateCw, Hand } from 'lucide-react';
+import { Flame, Sparkles, RotateCw } from 'lucide-react';
 
 interface InteractiveAartiThali3DProps {
   className?: string;
@@ -250,12 +250,7 @@ export default function InteractiveAartiThali3D({
         </span>
       </div>
 
-      <div className="absolute bottom-4 inset-x-4 z-20 flex items-center justify-between bg-stone-950/80 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-stone-800 text-xs">
-        <div className="flex items-center gap-1.5 text-stone-300 font-serif">
-          <Hand className="w-4 h-4 text-amber-400" />
-          <span>Move mouse to tilt • Aarti Sevas Performed: <strong className="text-amber-300">{aartiCount}</strong></span>
-        </div>
-
+      <div className="absolute bottom-4 inset-x-4 z-20 flex items-center justify-end bg-stone-950/80 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-stone-800 text-xs">
         <button
           onClick={handleStartCircling}
           className={`px-4 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all shadow ${
@@ -265,7 +260,7 @@ export default function InteractiveAartiThali3D({
           }`}
         >
           <RotateCw className={`w-3.5 h-3.5 ${isCircling ? 'animate-spin' : ''}`} />
-          {isCircling ? `Stop Aarti (${secondsLeft}s)` : 'Circle Aarti Thali (11s)'}
+          {isCircling ? 'Stop Aarti' : 'Circle Aarti Thali'}
         </button>
       </div>
     </div>

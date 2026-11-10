@@ -1,11 +1,27 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MOCK_CAMPAIGNS } from '@/lib/mock-data';
 import { Flame, ArrowRight, Heart } from 'lucide-react';
+import { getActiveCampaigns } from '@/lib/temple-governance-store';
+import { Campaign } from '@/lib/types';
 
 export default function CampaignsListPage() {
+  const [campaigns, setCampaigns] = useState<Campaign[]>(() => getActiveCampaigns(undefined, true));
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setCampaigns(getActiveCampaigns(undefined, true));
+    };
+
+    window.addEventListener('campaigns_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('campaigns_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Banner */}
@@ -22,11 +38,20 @@ export default function CampaignsListPage() {
       </div>
 
       {/* Campaigns Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {MOCK_CAMPAIGNS.map((campaign) => {
-          const percent = Math.round((campaign.currentRaised / campaign.goalAmount) * 100);
-          return (
-            <div
+      {campaigns.length === 0 ? (
+        <div className="text-center py-16 bg-stone-50 dark:bg-stone-900 rounded-3xl border border-dashed border-stone-300 dark:border-stone-800">
+          <Flame className="w-10 h-10 text-stone-400 mx-auto mb-3 opacity-50" />
+          <h3 className="font-serif font-bold text-lg text-stone-700 dark:text-stone-300">No Active Campaigns Available</h3>
+          <p className="text-xs text-stone-500 mt-1 max-w-md mx-auto">
+            All active campaigns are currently in preparation or pending Super Admin verification. Please check back shortly.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {campaigns.map((campaign) => {
+            const percent = Math.round((campaign.currentRaised / campaign.goalAmount) * 100);
+            return (
+              <div
               key={campaign.id}
               className="bg-white dark:bg-stone-900 rounded-3xl overflow-hidden border border-stone-200 dark:border-stone-800 shadow-lg flex flex-col"
             >
@@ -73,7 +98,8 @@ export default function CampaignsListPage() {
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

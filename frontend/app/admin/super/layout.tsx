@@ -19,6 +19,13 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
 import { isSuperAdminUser, isTempleAdminUser, isFinanceAdminUser } from '@/lib/rbac';
+import { getTotalPendingGovernanceRequestsCount } from '@/lib/temple-governance-store';
+import {
+  getMonthlyReleases,
+  getBlockedDates,
+  getSevaSuspensions,
+  getSevaModifications,
+} from '@/lib/quota-store';
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -26,6 +33,43 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const { t } = useLanguage();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pendingGovCount, setPendingGovCount] = useState(0);
+  const [pendingSevaCount, setPendingSevaCount] = useState(0);
+
+  const loadApprovalCounts = () => {
+    try {
+      const gov = getTotalPendingGovernanceRequestsCount();
+      setPendingGovCount(gov.total);
+
+      const rels = getMonthlyReleases().filter((r) => r.status === 'PENDING_APPROVAL').length;
+      const blks = getBlockedDates().filter((b) => b.status === 'PENDING_APPROVAL').length;
+      const sus = getSevaSuspensions().filter((s) => s.status === 'PENDING_APPROVAL').length;
+      const mods = getSevaModifications().filter((m) => m.status === 'PENDING_APPROVAL').length;
+      setPendingSevaCount(rels + blks + sus + mods);
+    } catch {
+      // ignore in SSR
+    }
+  };
+
+  useEffect(() => {
+    loadApprovalCounts();
+    window.addEventListener('temple_profile_requests_updated', loadApprovalCounts);
+    window.addEventListener('category_requests_updated', loadApprovalCounts);
+    window.addEventListener('campaign_requests_updated', loadApprovalCounts);
+    window.addEventListener('seva_releases_updated', loadApprovalCounts);
+    window.addEventListener('blocked_dates_updated', loadApprovalCounts);
+    window.addEventListener('seva_suspensions_updated', loadApprovalCounts);
+    window.addEventListener('seva_modifications_updated', loadApprovalCounts);
+    return () => {
+      window.removeEventListener('temple_profile_requests_updated', loadApprovalCounts);
+      window.removeEventListener('category_requests_updated', loadApprovalCounts);
+      window.removeEventListener('campaign_requests_updated', loadApprovalCounts);
+      window.removeEventListener('seva_releases_updated', loadApprovalCounts);
+      window.removeEventListener('blocked_dates_updated', loadApprovalCounts);
+      window.removeEventListener('seva_suspensions_updated', loadApprovalCounts);
+      window.removeEventListener('seva_modifications_updated', loadApprovalCounts);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -78,8 +122,18 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const navItems = [
     { name: t('sidebarSuperDashboard'), href: '/admin/super/dashboard', icon: PieChart },
     { name: 'Initiatives & Fundraising', href: '/admin/super/initiatives', icon: Sparkles },
-    { name: 'Seva Quota Approvals', href: '/admin/super/seva-approvals', icon: ShieldCheck },
-    { name: t('sidebarManageTemples'), href: '/admin/super/temples', icon: Building2 },
+    {
+      name: 'Seva Quota Approvals',
+      href: '/admin/super/seva-approvals',
+      icon: ShieldCheck,
+      badge: pendingSevaCount,
+    },
+    {
+      name: t('sidebarManageTemples'),
+      href: '/admin/super/temples',
+      icon: Building2,
+      badge: pendingGovCount,
+    },
     { name: t('sidebarUserMatrix'), href: '/admin/super/users', icon: Users },
     { name: t('sidebarPanchangamManager'), href: '/admin/super/panchangam', icon: Sun },
     { name: t('sidebarAuditLogs'), href: '/admin/super/audit', icon: Lock },
@@ -150,8 +204,12 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                         : 'text-stone-300 hover:text-white hover:bg-stone-900'
                     }`}
                   >
-                    <Icon className="w-4 h-4 text-devotional-saffron shrink-0" />
                     <span className="truncate">{item.name}</span>
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className="ml-auto px-2 py-0.5 rounded-full bg-red-600 text-white font-bold text-[10px] animate-pulse">
+                        {item.badge}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -186,6 +244,11 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
               >
                 <Icon className="w-4 h-4 text-devotional-saffron shrink-0" />
                 <span className="truncate">{item.name}</span>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span className="ml-auto px-2 py-0.5 rounded-full bg-red-600 text-white font-bold text-[10px] animate-pulse">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}

@@ -19,22 +19,55 @@ import {
   ExternalLink,
   Lock,
   RefreshCw,
+  Check,
+  X as XIcon,
+  ArrowRight,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { templeService, generateHighEntropyNumberPassword } from '@/lib/supabase-service';
 import { Temple, TempleManagementRequest } from '@/lib/types';
 import { useLanguage } from '@/lib/language-context';
+import {
+  ProfileChangeRequest,
+  CategoryChangeRequest,
+  CampaignChangeRequest,
+  getProfileChangeRequests,
+  approveProfileChangeRequest,
+  rejectProfileChangeRequest,
+  getCategoryChangeRequests,
+  approveCategoryChangeRequest,
+  rejectCategoryChangeRequest,
+  getCampaignChangeRequests,
+  approveCampaignChangeRequest,
+  rejectCampaignChangeRequest,
+} from '@/lib/temple-governance-store';
 
 export default function SuperAdminTemplesPage() {
   const { t } = useLanguage();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'directory' | 'requests'>('directory');
+  const [activeTab, setActiveTab] = useState<'directory' | 'governance-approvals' | 'requests'>('directory');
+  const [govSubTab, setGovSubTab] = useState<'profiles' | 'categories' | 'campaigns'>('profiles');
   const [temples, setTemples] = useState<Temple[]>([]);
   const [requests, setRequests] = useState<TempleManagementRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Governance Requests State
+  const [profileRequests, setProfileRequests] = useState<ProfileChangeRequest[]>([]);
+  const [categoryRequests, setCategoryRequests] = useState<CategoryChangeRequest[]>([]);
+  const [campaignRequests, setCampaignRequests] = useState<CampaignChangeRequest[]>([]);
+
+  // Rejection Modal State
+  const [rejectModal, setRejectModal] = useState<{
+    type: 'profile' | 'category' | 'campaign';
+    id: string;
+    title: string;
+  } | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   // Selected Temple for Password Reset Modal
   const [resetModalTemple, setResetModalTemple] = useState<Temple | null>(null);
@@ -53,9 +86,16 @@ export default function SuperAdminTemplesPage() {
   const [selectedTempleFilter, setSelectedTempleFilter] = useState<string>('ALL');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<'ALL' | 'TEMPLE_ADMIN' | 'FINANCE_ADMIN'>('ALL');
 
+  const loadGovernanceData = () => {
+    setProfileRequests(getProfileChangeRequests());
+    setCategoryRequests(getCategoryChangeRequests());
+    setCampaignRequests(getCampaignChangeRequests());
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
+      loadGovernanceData();
       const [allTemples, allRequests] = await Promise.all([
         templeService.getAllTemples(),
         templeService.fetchTempleManagementRequests(),
@@ -71,6 +111,14 @@ export default function SuperAdminTemplesPage() {
 
   useEffect(() => {
     loadData();
+    window.addEventListener('temple_profile_requests_updated', loadGovernanceData);
+    window.addEventListener('category_requests_updated', loadGovernanceData);
+    window.addEventListener('campaign_requests_updated', loadGovernanceData);
+    return () => {
+      window.removeEventListener('temple_profile_requests_updated', loadGovernanceData);
+      window.removeEventListener('category_requests_updated', loadGovernanceData);
+      window.removeEventListener('campaign_requests_updated', loadGovernanceData);
+    };
   }, []);
 
   const handleToggleVerification = async (temple: Temple) => {
@@ -167,6 +215,62 @@ export default function SuperAdminTemplesPage() {
     }
   };
 
+  const handleApproveProfile = (id: string, name: string) => {
+    approveProfileChangeRequest(id, 'Super Admin RAKESH');
+    setStatusMsg({
+      type: 'success',
+      text: `✓ Authorized! Shrine profile for "${name}" updated live and published to devotee portals!`,
+    });
+    loadGovernanceData();
+    setTimeout(() => setStatusMsg(null), 5000);
+  };
+
+  const handleApproveCategory = (id: string, name: string) => {
+    approveCategoryChangeRequest(id, 'Super Admin RAKESH');
+    setStatusMsg({
+      type: 'success',
+      text: `✓ Authorized! Donation Category "${name}" published live to offering portals!`,
+    });
+    loadGovernanceData();
+    setTimeout(() => setStatusMsg(null), 5000);
+  };
+
+  const handleApproveCampaign = (id: string, title: string) => {
+    approveCampaignChangeRequest(id, 'Super Admin RAKESH');
+    setStatusMsg({
+      type: 'success',
+      text: `✓ Authorized! Campaign "${title}" launched live for devotee participation!`,
+    });
+    loadGovernanceData();
+    setTimeout(() => setStatusMsg(null), 5000);
+  };
+
+  const handleConfirmReject = () => {
+    if (!rejectModal) return;
+    const finalReason = rejectReason.trim() || 'Submission does not meet platform documentation and compliance standards.';
+    if (rejectModal.type === 'profile') {
+      rejectProfileChangeRequest(rejectModal.id, finalReason, 'Super Admin RAKESH');
+    } else if (rejectModal.type === 'category') {
+      rejectCategoryChangeRequest(rejectModal.id, finalReason, 'Super Admin RAKESH');
+    } else if (rejectModal.type === 'campaign') {
+      rejectCampaignChangeRequest(rejectModal.id, finalReason, 'Super Admin RAKESH');
+    }
+
+    setStatusMsg({
+      type: 'success',
+      text: `Rejected request for "${rejectModal.title}". Notification transmitted to Temple Admin.`,
+    });
+    setRejectModal(null);
+    setRejectReason('');
+    loadGovernanceData();
+    setTimeout(() => setStatusMsg(null), 5000);
+  };
+
+  const pendingProfiles = profileRequests.filter((r) => r.status === 'PENDING_APPROVAL');
+  const pendingCategories = categoryRequests.filter((r) => r.status === 'PENDING_APPROVAL');
+  const pendingCampaigns = campaignRequests.filter((r) => r.status === 'PENDING_APPROVAL');
+  const totalPendingGov = pendingProfiles.length + pendingCategories.length + pendingCampaigns.length;
+
   const pendingRequestsCount = requests.filter((r) => r.status === 'PENDING' || r.status === 'IN_REVIEW').length;
 
   const filteredRequests = requests.filter((r) => {
@@ -238,26 +342,26 @@ export default function SuperAdminTemplesPage() {
           </span>
         </div>
         <div className="bg-stone-950 p-4 rounded-2xl border border-stone-800">
-          <span className="text-[11px] text-stone-400 block font-medium">Designated Temple Managers</span>
-          <span className="font-serif font-bold text-2xl text-stone-200">
-            {temples.filter((t) => t.managerPhone || t.managerName).length}
-          </span>
-        </div>
-        <div className="bg-stone-950 p-4 rounded-2xl border border-stone-800">
-          <span className="text-[11px] text-stone-400 block font-medium">Pending Manager Requests</span>
-          <span className="font-serif font-bold text-2xl text-amber-500 flex items-center gap-2">
-            {pendingRequestsCount}
-            {pendingRequestsCount > 0 && (
+          <span className="text-[11px] text-stone-400 block font-medium">Pending Temple Approvals</span>
+          <span className="font-serif font-bold text-2xl text-amber-400 flex items-center gap-2">
+            {totalPendingGov}
+            {totalPendingGov > 0 && (
               <span className="text-[10px] font-sans px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 animate-pulse border border-amber-500/40">
                 Action Needed
               </span>
             )}
           </span>
         </div>
+        <div className="bg-stone-950 p-4 rounded-2xl border border-stone-800">
+          <span className="text-[11px] text-stone-400 block font-medium">Pending Manager Requests</span>
+          <span className="font-serif font-bold text-2xl text-stone-300 flex items-center gap-2">
+            {pendingRequestsCount}
+          </span>
+        </div>
       </div>
 
       {/* NAVIGATION TABS */}
-      <div className="flex items-center gap-3 border-b border-stone-800 pb-3">
+      <div className="flex items-center gap-3 border-b border-stone-800 pb-3 flex-wrap">
         <button
           onClick={() => setActiveTab('directory')}
           className={`px-5 py-2.5 rounded-2xl font-serif font-bold text-xs transition-all flex items-center gap-2 ${
@@ -270,6 +374,23 @@ export default function SuperAdminTemplesPage() {
         </button>
 
         <button
+          onClick={() => setActiveTab('governance-approvals')}
+          className={`px-5 py-2.5 rounded-2xl font-serif font-bold text-xs transition-all flex items-center gap-2 relative ${
+            activeTab === 'governance-approvals'
+              ? 'bg-amber-400 text-stone-950 shadow-gold'
+              : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4" />
+          <span>Governance Approvals</span>
+          {totalPendingGov > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold animate-pulse">
+              {totalPendingGov}
+            </span>
+          )}
+        </button>
+
+        <button
           onClick={() => setActiveTab('requests')}
           className={`px-5 py-2.5 rounded-2xl font-serif font-bold text-xs transition-all flex items-center gap-2 relative ${
             activeTab === 'requests'
@@ -278,7 +399,7 @@ export default function SuperAdminTemplesPage() {
           }`}
         >
           <MessageSquare className="w-4 h-4" />
-          <span>Temple Governance Requests ({requests.length})</span>
+          <span>Manager Desk Requests ({requests.length})</span>
           {pendingRequestsCount > 0 && (
             <span className="px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold">
               {pendingRequestsCount}
@@ -434,7 +555,417 @@ export default function SuperAdminTemplesPage() {
         </div>
       )}
 
-      {/* TAB 2: TEMPLE GOVERNANCE & REQUESTS CHANNEL */}
+      {/* TAB: TEMPLE GOVERNANCE APPROVALS (PROFILES, CATEGORIES, CAMPAIGNS) */}
+      {activeTab === 'governance-approvals' && (
+        <div className="space-y-6">
+          {/* Sub Navigation Bar */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-stone-950 p-4 rounded-3xl border border-stone-800">
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <button
+                type="button"
+                onClick={() => setGovSubTab('profiles')}
+                className={`px-4 py-2 rounded-2xl font-bold transition-all flex items-center gap-2 ${
+                  govSubTab === 'profiles'
+                    ? 'bg-amber-400 text-stone-950 shadow-gold'
+                    : 'bg-stone-900 text-stone-400 hover:text-stone-200'
+                }`}
+              >
+                <span>🛕 Shrine Profiles</span>
+                {pendingProfiles.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold">
+                    {pendingProfiles.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setGovSubTab('categories')}
+                className={`px-4 py-2 rounded-2xl font-bold transition-all flex items-center gap-2 ${
+                  govSubTab === 'categories'
+                    ? 'bg-amber-400 text-stone-950 shadow-gold'
+                    : 'bg-stone-900 text-stone-400 hover:text-stone-200'
+                }`}
+              >
+                <span>🍱 Donation Categories</span>
+                {pendingCategories.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold">
+                    {pendingCategories.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setGovSubTab('campaigns')}
+                className={`px-4 py-2 rounded-2xl font-bold transition-all flex items-center gap-2 ${
+                  govSubTab === 'campaigns'
+                    ? 'bg-amber-400 text-stone-950 shadow-gold'
+                    : 'bg-stone-900 text-stone-400 hover:text-stone-200'
+                }`}
+              >
+                <span>🌟 Campaigns & Projects</span>
+                {pendingCampaigns.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold">
+                    {pendingCampaigns.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            <Link
+              href="/admin/super/seva-approvals"
+              className="px-4 py-2 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-400/30 font-bold text-xs flex items-center gap-1.5 transition-all self-stretch sm:self-auto justify-center"
+            >
+              <span>📿 Seva Quota & Catalog Approvals</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {/* SUB-TAB 1: SHRINE PROFILE REQUESTS */}
+          {govSubTab === 'profiles' && (
+            <div className="space-y-4">
+              {profileRequests.length === 0 ? (
+                <div className="p-12 text-center text-stone-400 text-xs bg-stone-950 rounded-3xl border border-stone-800 space-y-2">
+                  <ShieldCheck className="w-8 h-8 mx-auto text-amber-400/50" />
+                  <p className="font-bold text-stone-200">No Shrine Profile Update Requests</p>
+                  <p className="text-[11px]">When Temple Admins submit updates to shrine details, darshan timings, or trust info, they will appear here for authorization.</p>
+                </div>
+              ) : (
+                profileRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className={`bg-stone-950 p-6 rounded-3xl border-2 space-y-4 shadow-xl ${
+                      req.status === 'PENDING_APPROVAL'
+                        ? 'border-amber-400/80 ring-2 ring-amber-400/20'
+                        : 'border-stone-800'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800 pb-3">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-serif font-bold text-base text-amber-300">
+                            {req.templeName}
+                          </span>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                              req.status === 'APPROVED'
+                                ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                                : req.status === 'REJECTED'
+                                ? 'bg-red-950 text-red-300 border-red-500/40'
+                                : 'bg-amber-950 text-amber-300 border-amber-500/40'
+                            }`}
+                          >
+                            {req.status === 'PENDING_APPROVAL' ? '⏳ PENDING REVIEW' : req.status}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-stone-400">
+                          Requested by {req.requestedBy} on {req.requestedAt}
+                        </span>
+                      </div>
+
+                      {req.status === 'PENDING_APPROVAL' && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleApproveProfile(req.id, req.templeName)}
+                            className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:brightness-110 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition-all"
+                          >
+                            <Check className="w-3.5 h-3.5" /> Approve & Update Live
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setRejectModal({
+                                type: 'profile',
+                                id: req.id,
+                                title: `Shrine Profile: ${req.templeName}`,
+                              })
+                            }
+                            className="px-3 py-2 bg-stone-900 hover:bg-red-950 text-stone-300 hover:text-red-300 border border-stone-800 hover:border-red-700 rounded-xl font-bold text-xs flex items-center gap-1 transition-all"
+                          >
+                            <XIcon className="w-3.5 h-3.5" /> Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Diff Table */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                      {req.proposedData.name !== req.originalData.name && (
+                        <div className="p-3 rounded-2xl bg-stone-900 border border-stone-800 space-y-1">
+                          <span className="text-[10px] font-bold text-stone-400 uppercase">Temple Name</span>
+                          <div className="text-stone-500 line-through text-[11px]">{req.originalData.name}</div>
+                          <div className="text-amber-300 font-bold">{req.proposedData.name}</div>
+                        </div>
+                      )}
+
+                      {req.proposedData.deity !== req.originalData.deity && (
+                        <div className="p-3 rounded-2xl bg-stone-900 border border-stone-800 space-y-1">
+                          <span className="text-[10px] font-bold text-stone-400 uppercase">Presiding Deity</span>
+                          <div className="text-stone-500 line-through text-[11px]">{req.originalData.deity}</div>
+                          <div className="text-amber-300 font-bold">{req.proposedData.deity}</div>
+                        </div>
+                      )}
+
+                      {req.proposedData.trustName !== req.originalData.trustName && (
+                        <div className="p-3 rounded-2xl bg-stone-900 border border-stone-800 space-y-1">
+                          <span className="text-[10px] font-bold text-stone-400 uppercase">Registered Trust</span>
+                          <div className="text-stone-500 line-through text-[11px]">{req.originalData.trustName}</div>
+                          <div className="text-amber-300 font-bold">{req.proposedData.trustName}</div>
+                        </div>
+                      )}
+
+                      {req.proposedData.registrationNo !== req.originalData.registrationNo && (
+                        <div className="p-3 rounded-2xl bg-stone-900 border border-stone-800 space-y-1">
+                          <span className="text-[10px] font-bold text-stone-400 uppercase">Registration No</span>
+                          <div className="text-stone-500 line-through text-[11px] font-mono">{req.originalData.registrationNo}</div>
+                          <div className="text-amber-300 font-bold font-mono">{req.proposedData.registrationNo}</div>
+                        </div>
+                      )}
+
+                      {req.proposedData.timings !== req.originalData.timings && (
+                        <div className="p-3 rounded-2xl bg-stone-900 border border-stone-800 space-y-1">
+                          <span className="text-[10px] font-bold text-stone-400 uppercase">Darshan Timings</span>
+                          <div className="text-stone-500 line-through text-[11px]">{req.originalData.timings}</div>
+                          <div className="text-amber-300 font-bold">{req.proposedData.timings}</div>
+                        </div>
+                      )}
+
+                      {req.proposedData.description !== req.originalData.description && (
+                        <div className="p-3 rounded-2xl bg-stone-900 border border-stone-800 space-y-1 sm:col-span-2 lg:col-span-3">
+                          <span className="text-[10px] font-bold text-stone-400 uppercase">Sacred Description</span>
+                          <div className="text-stone-500 line-through text-[11px] line-clamp-1">{req.originalData.description}</div>
+                          <div className="text-amber-300 font-bold line-clamp-2">{req.proposedData.description}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    {req.rejectionReason && (
+                      <div className="p-3 rounded-2xl bg-red-950/40 border border-red-500/40 text-xs text-red-300">
+                        <span className="font-bold">Super Admin Feedback:</span> {req.rejectionReason}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* SUB-TAB 2: DONATION CATEGORY REQUESTS */}
+          {govSubTab === 'categories' && (
+            <div className="space-y-4">
+              {categoryRequests.length === 0 ? (
+                <div className="p-12 text-center text-stone-400 text-xs bg-stone-950 rounded-3xl border border-stone-800 space-y-2">
+                  <ShieldCheck className="w-8 h-8 mx-auto text-amber-400/50" />
+                  <p className="font-bold text-stone-200">No Category Change Requests</p>
+                  <p className="text-[11px]">When Temple Admins add, edit, or delete donation categories, they will appear here for authorization.</p>
+                </div>
+              ) : (
+                categoryRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className={`bg-stone-950 p-6 rounded-3xl border-2 space-y-4 shadow-xl ${
+                      req.status === 'PENDING_APPROVAL'
+                        ? 'border-amber-400/80 ring-2 ring-amber-400/20'
+                        : 'border-stone-800'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800 pb-3">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                              req.action === 'CREATE'
+                                ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40'
+                                : req.action === 'EDIT'
+                                ? 'bg-amber-950 text-amber-300 border border-amber-500/40'
+                                : 'bg-red-950 text-red-300 border border-red-500/40'
+                            }`}
+                          >
+                            ACTION: {req.action}
+                          </span>
+                          <span className="font-serif font-bold text-base text-stone-100">
+                            {req.category.name}
+                          </span>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                              req.status === 'APPROVED'
+                                ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                                : req.status === 'REJECTED'
+                                ? 'bg-red-950 text-red-300 border-red-500/40'
+                                : 'bg-amber-950 text-amber-300 border-amber-500/40'
+                            }`}
+                          >
+                            {req.status === 'PENDING_APPROVAL' ? '⏳ PENDING REVIEW' : req.status}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-stone-400">
+                          {req.templeName} • Requested by {req.requestedBy} on {req.requestedAt}
+                        </span>
+                      </div>
+
+                      {req.status === 'PENDING_APPROVAL' && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleApproveCategory(req.id, req.category.name)}
+                            className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:brightness-110 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition-all"
+                          >
+                            <Check className="w-3.5 h-3.5" /> Approve & Apply
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setRejectModal({
+                                type: 'category',
+                                id: req.id,
+                                title: `Category: ${req.category.name}`,
+                              })
+                            }
+                            className="px-3 py-2 bg-stone-900 hover:bg-red-950 text-stone-300 hover:text-red-300 border border-stone-800 hover:border-red-700 rounded-xl font-bold text-xs flex items-center gap-1 transition-all"
+                          >
+                            <XIcon className="w-3.5 h-3.5" /> Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-stone-300 leading-relaxed">
+                      {req.category.description}
+                    </p>
+
+                    {req.originalCategory && req.action === 'EDIT' && (
+                      <div className="p-3 rounded-2xl bg-stone-900 border border-stone-800 text-[11px] text-stone-400 space-y-1">
+                        <span className="font-bold text-stone-300">Previous Details:</span>
+                        <div>Name: {req.originalCategory.name}</div>
+                        <div>Description: {req.originalCategory.description}</div>
+                      </div>
+                    )}
+
+                    {req.rejectionReason && (
+                      <div className="p-3 rounded-2xl bg-red-950/40 border border-red-500/40 text-xs text-red-300">
+                        <span className="font-bold">Super Admin Feedback:</span> {req.rejectionReason}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* SUB-TAB 3: CAMPAIGN REQUESTS */}
+          {govSubTab === 'campaigns' && (
+            <div className="space-y-4">
+              {campaignRequests.length === 0 ? (
+                <div className="p-12 text-center text-stone-400 text-xs bg-stone-950 rounded-3xl border border-stone-800 space-y-2">
+                  <ShieldCheck className="w-8 h-8 mx-auto text-amber-400/50" />
+                  <p className="font-bold text-stone-200">No Campaign Launch Requests</p>
+                  <p className="text-[11px]">When Temple Admins launch or edit fundraising campaigns, they will appear here for authorization.</p>
+                </div>
+              ) : (
+                campaignRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className={`bg-stone-950 p-6 rounded-3xl border-2 space-y-4 shadow-xl ${
+                      req.status === 'PENDING_APPROVAL'
+                        ? 'border-amber-400/80 ring-2 ring-amber-400/20'
+                        : 'border-stone-800'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800 pb-3">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                              req.action === 'CREATE'
+                                ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40'
+                                : req.action === 'EDIT'
+                                ? 'bg-amber-950 text-amber-300 border border-amber-500/40'
+                                : 'bg-red-950 text-red-300 border border-red-500/40'
+                            }`}
+                          >
+                            ACTION: {req.action}
+                          </span>
+                          <span className="font-serif font-bold text-base text-stone-100">
+                            {req.campaign.title}
+                          </span>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                              req.status === 'APPROVED'
+                                ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                                : req.status === 'REJECTED'
+                                ? 'bg-red-950 text-red-300 border-red-500/40'
+                                : 'bg-amber-950 text-amber-300 border-amber-500/40'
+                            }`}
+                          >
+                            {req.status === 'PENDING_APPROVAL' ? '⏳ PENDING REVIEW' : req.status}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-stone-400">
+                          {req.templeName} • Requested by {req.requestedBy} on {req.requestedAt}
+                        </span>
+                      </div>
+
+                      {req.status === 'PENDING_APPROVAL' && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleApproveCampaign(req.id, req.campaign.title)}
+                            className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:brightness-110 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition-all"
+                          >
+                            <Check className="w-3.5 h-3.5" /> Approve & Publish Live
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setRejectModal({
+                                type: 'campaign',
+                                id: req.id,
+                                title: `Campaign: ${req.campaign.title}`,
+                              })
+                            }
+                            className="px-3 py-2 bg-stone-900 hover:bg-red-950 text-stone-300 hover:text-red-300 border border-stone-800 hover:border-red-700 rounded-xl font-bold text-xs flex items-center gap-1 transition-all"
+                          >
+                            <XIcon className="w-3.5 h-3.5" /> Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-start gap-4">
+                      {req.campaign.bannerUrl && (
+                        <img
+                          src={req.campaign.bannerUrl}
+                          alt={req.campaign.title}
+                          className="w-24 h-24 rounded-2xl object-cover border border-amber-400/40 shrink-0"
+                        />
+                      )}
+                      <div className="space-y-2 flex-1 text-xs">
+                        <div className="text-amber-400 font-bold text-sm">
+                          Target Goal Amount: ₹{req.campaign.goalAmount.toLocaleString('en-IN')}
+                        </div>
+                        <p className="text-stone-300 leading-relaxed">{req.campaign.description}</p>
+                        {req.campaign.story && (
+                          <p className="text-stone-400 italic text-[11px]">"{req.campaign.story}"</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {req.rejectionReason && (
+                      <div className="p-3 rounded-2xl bg-red-950/40 border border-red-500/40 text-xs text-red-300">
+                        <span className="font-bold">Super Admin Feedback:</span> {req.rejectionReason}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: TEMPLE GOVERNANCE & REQUESTS CHANNEL */}
       {activeTab === 'requests' && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-stone-950 p-4 rounded-2xl border border-stone-800">
@@ -748,6 +1279,69 @@ export default function SuperAdminTemplesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: SUPER ADMIN REJECTION REMARKS */}
+      {rejectModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-stone-950 border-2 border-red-500/60 rounded-3xl p-6 space-y-4 text-xs shadow-2xl">
+            <div className="flex items-center justify-between border-b border-stone-800 pb-3">
+              <div className="flex items-center gap-2 text-red-400 font-serif font-bold text-base">
+                <AlertCircle className="w-5 h-5 text-red-500" />
+                <span>Reject Governance Request</span>
+              </div>
+              <button
+                onClick={() => {
+                  setRejectModal(null);
+                  setRejectReason('');
+                }}
+                className="text-stone-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-stone-900 border border-stone-800 space-y-1">
+              <span className="text-[10px] text-stone-400 uppercase font-bold">Target Item</span>
+              <h4 className="font-serif font-bold text-sm text-stone-100">{rejectModal.title}</h4>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block font-bold text-stone-300">
+                Reason / Mandatory Feedback for Temple Admin *
+              </label>
+              <textarea
+                required
+                rows={3}
+                placeholder="State why this change was rejected and what the Temple Admin should rectify..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-stone-800 bg-stone-900 text-stone-100 font-medium"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setRejectModal(null);
+                  setRejectReason('');
+                }}
+                className="px-4 py-2 rounded-xl text-stone-400 hover:text-white font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmReject}
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold flex items-center gap-1.5 shadow-md"
+              >
+                <XIcon className="w-3.5 h-3.5" />
+                Confirm Rejection &amp; Notify
+              </button>
+            </div>
           </div>
         </div>
       )}

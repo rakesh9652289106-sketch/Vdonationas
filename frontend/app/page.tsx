@@ -47,17 +47,23 @@ export default function HomePage() {
   const [showVirtualDarshan, setShowVirtualDarshan] = useState(false);
 
   // Auth Guard: Devotee must be logged in to access the Home Page.
-  // Unauthenticated users are redirected to complete their Sankalpam or to /login.
+  // Unauthenticated users are redirected immediately to complete their Sankalpam or to /login.
   useEffect(() => {
-    if (isHydrated && !isAuthenticated) {
+    if (!isAuthenticated) {
       const hasPending = typeof window !== 'undefined' && !!localStorage.getItem('vdonations_pending_sankalpam');
-      if (hasPending) {
-        router.replace('/sankalpam/gotram');
-      } else {
-        router.replace('/login');
-      }
+      const target = hasPending ? '/sankalpam/gotram' : '/login';
+      router.replace(target);
+
+      // Instant fallback to ensure seamless redirect on initial site launch
+      const timer = setTimeout(() => {
+        if (typeof window !== 'undefined' && window.location.pathname === '/') {
+          window.location.replace(target);
+        }
+      }, 100);
+
+      return () => clearTimeout(timer);
     }
-  }, [isHydrated, isAuthenticated, router]);
+  }, [isAuthenticated, router]);
 
   // Live Database Stats
   const [dbStats, setDbStats] = useState<{
